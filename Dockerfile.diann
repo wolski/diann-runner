@@ -1,0 +1,27 @@
+# DIA-NN in a tiny Ubuntu base (CPU)
+FROM ubuntu:24.04
+
+ARG DIANN_URL="https://github.com/vdemichev/DiaNN/releases/download/2.0/DIA-NN-2.3.0-Academia-Linux-Preview.zip"
+
+# Minimal deps; add others if DIA-NN complains (e.g., libomp, libquadmath0)
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates wget unzip libgomp1 libstdc++6 libgcc-s1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install DIA-NN binary to PATH
+RUN mkdir -p /usr/diann && \
+    wget -O /usr/diann/diann.zip "$DIANN_URL" && \
+    unzip /usr/diann/diann.zip -d /usr/diann && \
+    rm /usr/diann/diann.zip && \
+    sh -lc 'f=$(find /usr/diann -type f -name diann-linux -print -quit); \
+            chmod +x "$f"; ln -s "$f" /usr/local/bin/diann-linux'
+
+ENV LC_ALL=C.UTF-8
+WORKDIR /work
+ENTRYPOINT ["diann-linux"]
+
+# Build and run examples:
+# docker build --platform linux/amd64 -f Dockerfile.diann -t diann:2.3.0 .
+# docker run --rm --platform linux/amd64 -v $(pwd):/work diann:2.3.0
+# docker run --rm -v $(pwd):/work diann:2.3.0 --f data.mzML --fasta proteins.fasta --out report.tsv

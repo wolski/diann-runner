@@ -1,0 +1,30 @@
+{
+  "workunit_id": "WU001",
+  "output_base_dir": "out-DIANN",
+  "var_mods": [
+    [
+      "35",
+      "15.994915",
+      "M"
+    ]
+  ],
+  "diann_bin": "diann-docker",
+  "threads": 64,
+  "qvalue": 0.01,
+  "min_pep_len": 6,
+  "max_pep_len": 30,
+  "min_pr_charge": 2,
+  "max_pr_charge": 3,
+  "min_pr_mz": 400,
+  "max_pr_mz": 1500,
+  "missed_cleavages": 1,
+  "cut": "K*,R*",
+  "mass_acc": 20,
+  "mass_acc_ms1": 15,
+  "verbose": 1,
+  "pg_level": 0,
+  "is_dda": false,
+  "temp_dir_base": "temp-DIANN",
+  "unimod4": true,
+  "met_excision": true
+}
