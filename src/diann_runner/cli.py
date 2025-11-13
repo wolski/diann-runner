@@ -178,39 +178,51 @@ def quantification_refinement(
     config: Path,
     predicted_lib: Path,
     raw_files: List[Path],
+    quantify: bool = True,
     script_name: str = "step_B_quantification_refinement.sh",
 ):
     """
     Generate Step B: Quantification with refinement script.
-    
+
     Requires config JSON from Step A to ensure parameter consistency.
-    
+
     Args:
         config: Path to .config.json file from Step A (required)
         predicted_lib: Path to predicted library from Step A
         raw_files: List of raw/mzML files
+        quantify: Generate quantification matrices (default: True). Set to False to only build refined library.
         script_name: Output script name
-    
+
     Example:
+        # Full quantification (default):
         diann-workflow quantification-refinement \\
             --config out_A_libA/WU123_predicted.speclib.config.json \\
             --predicted-lib out_A_libA/WU123_predicted.speclib \\
             --raw-files sample1.mzML sample2.mzML
+
+        # Library building only (for subset → full workflow):
+        diann-workflow quantification-refinement \\
+            --config out_A_libA/WU123_predicted.speclib.config.json \\
+            --predicted-lib out_A_libA/WU123_predicted.speclib \\
+            --raw-files pilot1.mzML pilot2.mzML \\
+            --no-quantify
     """
     if not config.exists():
         raise FileNotFoundError(f"Config file not found: {config}")
-    
+
     # Load workflow from config
     workflow = DiannWorkflow.from_config_file(str(config))
-    
+
     # Generate script
     script_path = workflow.generate_step_b_quantification_with_refinement(
         raw_files=[str(f) for f in raw_files],
         predicted_lib_path=str(predicted_lib),
+        quantify=quantify,
         script_name=script_name,
     )
-    
-    print(f"✓ Generated: {script_path}")
+
+    mode = "with quantification" if quantify else "library building only"
+    print(f"✓ Generated: {script_path} ({mode})")
 
 
 @app.command
@@ -218,38 +230,68 @@ def final_quantification(
     config: Path,
     refined_lib: Path,
     raw_files: List[Path],
+    force: bool = False,
     script_name: str = "step_C_final_quantification.sh",
 ):
     """
     Generate Step C: Final quantification script.
-    
+
     Requires config JSON from Step B to ensure parameter consistency.
-    
+
+    NOTE: Step C is typically only needed when Step B was run with --no-quantify
+    (library building only). If Step B already did quantification with the same
+    files, running Step C is redundant. Use --force to override this check.
+
     Args:
         config: Path to .config.json file from Step B (required)
         refined_lib: Path to refined library from Step B
         raw_files: List of raw/mzML files
+        force: Force generation even if Step B already quantified
         script_name: Output script name
-    
+
     Example:
         diann-workflow final-quantification \\
             --config out_B_quantB/WU123_refined.speclib.config.json \\
             --refined-lib out_B_quantB/WU123_refined.speclib \\
-            --raw-files sample1.mzML sample2.mzML
+            --raw-files sample*.mzML
     """
     if not config.exists():
         raise FileNotFoundError(f"Config file not found: {config}")
-    
+
     # Load workflow from config
     workflow = DiannWorkflow.from_config_file(str(config))
-    
+
+    # Check if Step B already did quantification
+    if not force:
+        import json
+        from pathlib import Path as PathLib
+
+        # Check for Step B report files indicating quantification was done
+        quant_b_dir = PathLib(workflow.quant_b_dir)
+        report_file = quant_b_dir / f"{workflow.workunit_id}_reportB.tsv"
+        matrix_file = quant_b_dir / f"{workflow.workunit_id}_reportB.pg_matrix.tsv"
+
+        if report_file.exists() or matrix_file.exists():
+            print("⚠️  Warning: Step B appears to have already performed quantification.")
+            print(f"   Found: {report_file if report_file.exists() else matrix_file}")
+            print("")
+            print("   Step C is typically only needed when:")
+            print("   - Step B was run with --no-quantify (library building only)")
+            print("   - You want to quantify a different/larger set of files than Step B")
+            print("")
+            print("   If Step B already quantified your target files, the results are")
+            print("   already in out-DIANN_quantB/ and Step C is redundant.")
+            print("")
+            print("   Use --force to generate Step C anyway.")
+            return
+
     # Generate script
     script_path = workflow.generate_step_c_final_quantification(
         raw_files=[str(f) for f in raw_files],
         refined_lib_path=str(refined_lib),
         script_name=script_name,
     )
-    
+
     print(f"✓ Generated: {script_path}")
 
 

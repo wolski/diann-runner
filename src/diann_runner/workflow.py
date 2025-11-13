@@ -345,7 +345,8 @@ class DiannWorkflow:
             script_path=script_name,
             commands=cmd,
             temp_dirs=[temp_dir],
-            output_dirs=[self.lib_dir]
+            output_dirs=[self.lib_dir],
+            log_file=f"{self.lib_dir}/diann_libA.log.txt"
         )
         
         # Save config alongside the predicted library

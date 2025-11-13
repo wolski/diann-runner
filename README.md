@@ -25,6 +25,7 @@ diann_runner/
 ├── Snakefile                # Snakemake workflow
 ├── docs/                    # Documentation and examples
 │   ├── README.md           # Configuration guide
+│   ├── KOINA_INTEGRATION.md # Using Koina/Oktoberfest libraries
 │   └── default_config.json # Example config file
 ├── src/
 │   └── diann_runner/
@@ -35,6 +36,13 @@ diann_runner/
 │       └── plotter.py       # QC plotting tools
 └── tests/                   # Test suite
 ```
+
+## Documentation
+
+- **[Quick Reference](QUICK_REFERENCE.md)** - Common usage patterns and examples
+- **[Usage Examples](USAGE_EXAMPLES.md)** - Detailed workflow examples
+- **[Koina Integration](docs/KOINA_INTEGRATION.md)** - Using alternative prediction models
+- **[Testing Log](TESTING_LOG.md)** - Testing results and workflow patterns
 
 ## Usage
 
