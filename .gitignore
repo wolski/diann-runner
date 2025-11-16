@@ -62,11 +62,18 @@ temp-KOINA*/
 *.log
 *.log.*
 diann*.log.txt
+workflow_*.log
+workflow*.log
+
+# Snakemake files
+.snakemake/
+*.snakemake.log
 
 # Shell scripts (generated dynamically)
 step_A_*.sh
 step_B_*.sh
 step_C_*.sh
+step_*.sh
 
 # Temporary files
 *.tmp

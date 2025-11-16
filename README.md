@@ -42,6 +42,8 @@ diann_runner/
 - **[Quick Reference](QUICK_REFERENCE.md)** - Common usage patterns and examples
 - **[Usage Examples](USAGE_EXAMPLES.md)** - Detailed workflow examples
 - **[Koina Integration](docs/KOINA_INTEGRATION.md)** - Using alternative prediction models
+- **[Koina Config Adapter](docs/KOINA_ADAPTER.md)** - Automatic DIA-NN → Oktoberfest config translation
+- **[Comparing Predictors](COMPARING_PREDICTORS.md)** - Running parallel workflows with different predictors
 - **[Testing Log](TESTING_LOG.md)** - Testing results and workflow patterns
 
 ## Usage

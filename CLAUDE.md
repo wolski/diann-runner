@@ -44,17 +44,38 @@ diann-docker --help
 ```
 
 ### Snakemake Workflow
+
+**CRITICAL: Use run_workflow.sh for all testing**
+
+When testing or running workflows, ALWAYS use the `run_workflow.sh` script:
+
 ```bash
-# Run the complete workflow (from work directory)
-cd work_directory
-snakemake -s /path/to/diann_runner/Snakefile --cores 64
-
-# Dry run to see what will execute
-snakemake -s /path/to/diann_runner/Snakefile --cores 64 -n
-
-# Clean outputs
-snakemake --delete-all-output
+# Run from the diann_runner directory
+cd /path/to/diann_runner
+bash run_workflow.sh
 ```
+
+**Important workflow execution rules:**
+- ALWAYS use `run_workflow.sh` - never run snakemake commands directly
+- Run ONLY ONE workflow at a time - check for running processes first
+- ALL workflow runs must log to `workflow.log` in the work directory
+- The script automatically handles proper logging and cleanup
+- Before starting a new run, ensure no other workflows are running:
+  ```bash
+  ps aux | grep -E "(snakemake|diann)" | grep -v grep
+  ```
+
+The script is located at `/Users/wolski/projects/slurmworker/config/A386_DIANN_23/diann_runner/run_workflow.sh` and handles:
+- Proper working directory setup
+- Consistent log file naming (`workflow.log`)
+- Virtual environment activation
+- Snakemake execution with correct parameters
+
+**Do NOT:**
+- Run snakemake commands directly from work directories
+- Create multiple workflow log files with different names
+- Run multiple workflows simultaneously
+- Use different log files for each test run
 
 ## Architecture
 
@@ -130,6 +151,10 @@ Key features:
 - Uses Docker containers for msconvert and prolfqua
 
 ## Important Patterns
+
+### File Management Policy
+
+**NEVER use symlinks.** Always use direct file references. This project policy prohibits symlinks in all scenarios - they add unnecessary complexity and can cause issues with some tools.
 
 ### Flexible File Lists Between Stages
 

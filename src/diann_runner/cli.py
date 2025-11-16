@@ -59,6 +59,7 @@ def _load_workflow_from_defaults(
     # Load all other parameters from defaults
     unimod4 = defaults.get("unimod4", True)
     met_excision = defaults.get("met_excision", True)
+    no_peptidoforms = defaults.get("no_peptidoforms", False)
     min_pep_len = defaults.get("min_pep_len", 6)
     max_pep_len = defaults.get("max_pep_len", 30)
     min_pr_charge = defaults.get("min_pr_charge", 2)
@@ -99,6 +100,7 @@ def _load_workflow_from_defaults(
         diann_bin=diann_bin,
         unimod4=unimod4,
         met_excision=met_excision,
+        no_peptidoforms=no_peptidoforms,
         min_pep_len=min_pep_len,
         max_pep_len=max_pep_len,
         min_pr_charge=min_pr_charge,
@@ -387,6 +389,7 @@ def create_config(
     temp_dir_base: str = "temp-DIANN",
     unimod4: bool = True,
     met_excision: bool = True,
+    no_peptidoforms: bool = False,
 ):
     """
     Create a default configuration JSON file for DIA-NN workflow parameters.
@@ -469,8 +472,9 @@ def create_config(
         "temp_dir_base": temp_dir_base,
         "unimod4": unimod4,
         "met_excision": met_excision,
+        "no_peptidoforms": no_peptidoforms,
     }
-    
+
     with open(output, 'w') as f:
         json.dump(config, f, indent=2)
     

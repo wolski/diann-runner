@@ -165,8 +165,12 @@ def report(stats, main, out):
     print("Generating report. Stats, main report, output file: " + stats + ", " + main + ", " + out)
     df = pd.read_csv(stats,sep='\t')
     df.loc[:,'File.Name'] = remove_common(df['File.Name'])
-    
-    quant = pd.read_csv(main,sep='\t')
+
+    # Support both .parquet (DIA-NN 2.3+) and .tsv (older versions)
+    if main.endswith('.parquet'):
+        quant = pd.read_parquet(main)
+    else:
+        quant = pd.read_csv(main,sep='\t')
     quant = quant[quant['Q.Value'] <= 0.01].reset_index(drop = True)
     quant.loc[:,'File.Name'] = remove_common(quant['File.Name'])
     quant_pg = quant[quant['PG.Q.Value'] <= 0.01][['File.Name','Protein.Group','PG.MaxLFQ']].drop_duplicates().reset_index(drop = True)
@@ -342,6 +346,11 @@ def report(stats, main, out):
 
 # In[ ]:
 
-# "H:\tmp\report.stats.tsv" "H:\tmp\report.tsv" "H:\tmp\report.pdf"
-report(sys.argv[1], sys.argv[2], sys.argv[3])
+def main():
+    """Main entry point for the diann-qc command."""
+    # "H:\tmp\report.stats.tsv" "H:\tmp\report.tsv" "H:\tmp\report.pdf"
+    report(sys.argv[1], sys.argv[2], sys.argv[3])
+
+if __name__ == "__main__":
+    main()
 
