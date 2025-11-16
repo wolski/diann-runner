@@ -67,6 +67,7 @@ class DiannWorkflow:
         output_base_dir: str = 'out-DIANN',
         var_mods: List[Tuple[str, str, str]] = None,
         diann_bin: str = 'diann-docker',
+        fasta_file: str = None,
         threads: int = 64,
         qvalue: float = 0.01,
         min_pep_len: int = 6,
@@ -84,16 +85,18 @@ class DiannWorkflow:
         is_dda: bool = False,
         temp_dir_base: str = 'temp-DIANN',
         unimod4: bool = True,
-        met_excision: bool = True
+        met_excision: bool = True,
+        no_peptidoforms: bool = False
     ):
         """
         Initialize DIA-NN workflow with shared parameters across all steps.
-        
+
         Args:
             workunit_id: Workunit ID for naming outputs
             output_base_dir: Base directory for all outputs
             var_mods: List of (unimod_id, mass_delta, residues) tuples for variable modifications
             diann_bin: Path to DIA-NN binary executable
+            fasta_file: Path to FASTA database (optional, needed for proteotypic annotation in Steps B/C)
             threads: Number of threads to use
             qvalue: FDR threshold (default 0.01 = 1%)
             min_pep_len: Minimum peptide length
@@ -112,13 +115,15 @@ class DiannWorkflow:
             temp_dir_base: Base name for temporary directories
             unimod4: Enable Carbamidomethyl (C) fixed modification
             met_excision: Enable N-terminal methionine excision
+            no_peptidoforms: Disable peptidoform scoring (faster but no modification localization)
         """
         # Core identifiers
         self.workunit_id = workunit_id
         self.output_base_dir = output_base_dir
         self.diann_bin = diann_bin
         self.temp_dir_base = temp_dir_base
-        
+        self.fasta_file = fasta_file
+
         # Variable modifications
         self.var_mods = var_mods if var_mods is not None else []
         
@@ -140,7 +145,8 @@ class DiannWorkflow:
         self.is_dda = is_dda
         self.unimod4 = unimod4
         self.met_excision = met_excision
-        
+        self.no_peptidoforms = no_peptidoforms
+
         # Derived paths
         self.lib_dir = f"{output_base_dir}_libA"
         self.quant_b_dir = f"{output_base_dir}_quantB"
@@ -149,7 +155,7 @@ class DiannWorkflow:
     def to_config_dict(self) -> dict:
         """
         Serialize workflow parameters to a dictionary for JSON storage.
-        
+
         Returns:
             Dictionary containing all workflow configuration parameters
         """
@@ -158,6 +164,7 @@ class DiannWorkflow:
             'output_base_dir': self.output_base_dir,
             'diann_bin': self.diann_bin,
             'temp_dir_base': self.temp_dir_base,
+            'fasta_file': self.fasta_file,
             'var_mods': self.var_mods,
             'threads': self.threads,
             'qvalue': self.qvalue,
@@ -176,6 +183,7 @@ class DiannWorkflow:
             'is_dda': self.is_dda,
             'unimod4': self.unimod4,
             'met_excision': self.met_excision,
+            'no_peptidoforms': self.no_peptidoforms,
         }
     
     def save_config(self, output_path: str) -> str:
@@ -252,7 +260,11 @@ class DiannWorkflow:
             params.append("--met-excision")
         if self.unimod4:
             params.append("--unimod4")
-        
+
+        # Peptidoform scoring (optional)
+        if self.no_peptidoforms:
+            params.append("--no-peptidoforms")
+
         return params
     
     def _write_shell_script(
@@ -321,24 +333,26 @@ class DiannWorkflow:
             Path to generated shell script
         """
         temp_dir = f"{self.temp_dir_base}_libA"
-        predicted_lib = f"{self.lib_dir}/{self.workunit_id}_predicted.speclib"
-        
+        # Use consistent basename across all steps: WU{id}_report.parquet
+        # DIA-NN will append .predicted.speclib for Step A
+        output_file = f"{self.lib_dir}/{self.workunit_id}_report.parquet"
+
         # Build command
         cmd = [f'"{self.diann_bin}"']
-        
+
         # FASTA search mode
         cmd.append("--fasta-search")
         cmd.append(f'--fasta "{fasta_path}"')
-        
+
         # Common parameters
         cmd.extend(self._build_common_params())
-        
+
         # Step A specific flags
         cmd.append("--predictor")
         cmd.append("--gen-spec-lib")
-        
-        # Output and temp
-        cmd.append(f'--out-lib "{predicted_lib}"')
+
+        # Output and temp (DIA-NN will create .predicted.speclib from --out prefix)
+        cmd.append(f'--out "{output_file}"')
         cmd.append(f'--temp "{temp_dir}"')
         
         self._write_shell_script(
@@ -348,13 +362,122 @@ class DiannWorkflow:
             output_dirs=[self.lib_dir],
             log_file=f"{self.lib_dir}/diann_libA.log.txt"
         )
-        
-        # Save config alongside the predicted library
-        config_path = self.save_config(predicted_lib)
+
+        # Save config with simple naming: WU{id}_libA.config.json
+        config_path = self.save_config(f"{self.lib_dir}/{self.workunit_id}_libA")
         print(f"Saved workflow config: {config_path}")
         
         return script_name
     
+    def generate_quantification_step(
+        self,
+        step_name: str,
+        raw_files: List[str],
+        input_lib_path: str,
+        generate_library: bool = True,
+        use_quant: bool = False,
+        quantify: bool = True,
+        script_name: str = None
+    ) -> str:
+        """
+        Generate unified quantification step (B or C).
+
+        This is the core quantification function that both Steps B and C use.
+        The main differences are:
+        - Step B: generates library (--gen-spec-lib), no --use-quant
+        - Step C: optionally uses --use-quant, may skip library generation
+
+        Args:
+            step_name: "B" or "C" (determines output directory and defaults)
+            raw_files: List of raw/mzML files to process
+            input_lib_path: Input library path (predicted for B, refined for C)
+            generate_library: If True, add --gen-spec-lib and --out-lib
+            use_quant: If True, add --use-quant to reuse .quant files
+            quantify: If True, add --matrices and --pg-level
+            script_name: Output script name (auto-generated if None)
+
+        Returns:
+            Path to generated shell script
+        """
+        # Determine output paths based on step
+        if step_name == "B":
+            output_dir = self.quant_b_dir
+            temp_dir = f"{self.temp_dir_base}_quantB"
+            default_script = 'step_B_quantification_refinement.sh'
+        elif step_name == "C":
+            output_dir = self.quant_c_dir
+            # Step C uses Step B's temp directory when --use-quant is enabled to find .quant files
+            # Otherwise uses its own temp directory
+            temp_dir = f"{self.temp_dir_base}_quantB" if use_quant else f"{self.temp_dir_base}_quantC"
+            default_script = 'step_C_final_quantification.sh'
+        else:
+            raise ValueError(f"step_name must be 'B' or 'C', got: {step_name}")
+
+        script_name = script_name or default_script
+        output_file = f"{output_dir}/{self.workunit_id}_report.parquet"
+        # DIA-NN auto-generates library with .speclib extension from --out basename
+        output_lib = f"{output_dir}/{self.workunit_id}_report.speclib"
+        log_file = f"{output_dir}/diann_quant{step_name}.log.txt"
+
+        # Build command (same for both steps!)
+        cmd = [f'"{self.diann_bin}"']
+
+        # Library
+        cmd.append(f'--lib "{input_lib_path}"')
+
+        # FASTA for proteotypic annotation and protein inference
+        # --fasta is needed for protein inference even when using .quant files
+        # but --reannotate changes library size and invalidates .quant files
+        if self.fasta_file:
+            cmd.append(f'--fasta "{self.fasta_file}"')
+            # Only reannotate when NOT using .quant files
+            if not use_quant:
+                cmd.append("--reannotate")
+
+        # Raw files
+        for f in raw_files:
+            cmd.append(f"--f {f}")
+
+        # Common parameters
+        cmd.extend(self._build_common_params())
+
+        # Quantification flags
+        if quantify:
+            cmd.append("--matrices")
+            cmd.append(f"--pg-level {self.pg_level}")
+
+        cmd.append("--reanalyse")
+
+        # Optional: reuse .quant files (typically Step C only)
+        if use_quant:
+            cmd.append("--use-quant")
+
+        # Optional: generate library (DIA-NN auto-generates filename from --out prefix)
+        if generate_library:
+            cmd.append("--gen-spec-lib")
+
+        # DDA mode if specified
+        if self.is_dda:
+            cmd.append("--dda")
+
+        # Output files
+        cmd.append(f'--out "{output_file}"')
+        cmd.append(f'--temp "{temp_dir}"')
+
+        self._write_shell_script(
+            script_path=script_name,
+            commands=cmd,
+            temp_dirs=[temp_dir],
+            output_dirs=[output_dir],
+            log_file=log_file
+        )
+
+        # Save config with simple naming: WU{id}_quant{B/C}.config.json
+        config_path = self.save_config(f"{output_dir}/{self.workunit_id}_quant{step_name}")
+        print(f"Saved workflow config: {config_path}")
+
+        return script_name
+
     def generate_step_b_quantification_with_refinement(
         self,
         raw_files: List[str],
@@ -364,77 +487,40 @@ class DiannWorkflow:
     ) -> str:
         """
         Generate Step B: Quantification using predicted library + generate refined library.
-        
+
+        This is a backward-compatible wrapper around generate_quantification_step().
+
         This step:
         - Uses predicted library from Step A
         - Processes raw files
         - Generates refined empirical library
         - Uses --reanalyse for MBR (match between runs)
         - Optionally generates quantification matrices
-        
+
         Args:
             raw_files: List of raw/mzML files to process (can be subset for faster library building)
-            predicted_lib_path: Path to predicted library from Step A 
+            predicted_lib_path: Path to predicted library from Step A
                                (defaults to standard location)
             quantify: If True, generate quantification matrices; if False, only build library
             script_name: Name of output shell script
-            
+
         Returns:
             Path to generated shell script
         """
         # Use default path if not provided
+        # DIA-NN 2.3.0 adds -lib before .predicted.speclib when using --gen-spec-lib
         if predicted_lib_path is None:
-            predicted_lib_path = f"{self.lib_dir}/{self.workunit_id}_predicted.speclib"
-        
-        temp_dir = f"{self.temp_dir_base}_quantB"
-        output_file = f"{self.quant_b_dir}/{self.workunit_id}_reportB.tsv"
-        refined_lib = f"{self.quant_b_dir}/{self.workunit_id}_refined.speclib"
-        log_file = f"{self.quant_b_dir}/diann_quantB.log.txt"
-        
-        # Build command
-        cmd = [f'"{self.diann_bin}"']
-        
-        # Library (NOT --fasta-search here!)
-        cmd.append(f'--lib "{predicted_lib_path}"')
-        
-        # Raw files
-        for f in raw_files:
-            cmd.append(f"--f {f}")
-        
-        # Common parameters
-        cmd.extend(self._build_common_params())
-        
-        # Step B specific flags
-        if quantify:
-            cmd.append("--matrices")
-            cmd.append(f"--pg-level {self.pg_level}")
-        
-        cmd.append("--reanalyse")
-        cmd.append("--gen-spec-lib")
-        
-        # DDA mode if specified
-        if self.is_dda:
-            cmd.append("--dda")
-        
-        # Output files
-        cmd.append(f'--out "{output_file}"')
-        cmd.append(f'--out-lib "{refined_lib}"')
-        cmd.append("--out-lib-copy")
-        cmd.append(f'--temp "{temp_dir}"')
-        
-        self._write_shell_script(
-            script_path=script_name,
-            commands=cmd,
-            temp_dirs=[temp_dir],
-            output_dirs=[self.quant_b_dir],
-            log_file=log_file
+            predicted_lib_path = f"{self.lib_dir}/{self.workunit_id}_report-lib.predicted.speclib"
+
+        return self.generate_quantification_step(
+            step_name="B",
+            raw_files=raw_files,
+            input_lib_path=predicted_lib_path,
+            generate_library=True,  # Step B always generates library
+            use_quant=False,        # Step B never uses --use-quant
+            quantify=quantify,
+            script_name=script_name
         )
-        
-        # Save config alongside the refined library
-        config_path = self.save_config(refined_lib)
-        print(f"Saved workflow config: {config_path}")
-        
-        return script_name
     
     def generate_step_c_final_quantification(
         self,
@@ -446,13 +532,15 @@ class DiannWorkflow:
     ) -> str:
         """
         Generate Step C: Final quantification using refined library.
-        
+
+        This is a backward-compatible wrapper around generate_quantification_step().
+
         This step:
         - Uses refined library from Step B
         - Re-processes raw files (can be different/larger set than Step B)
         - Optionally uses --use-quant to reuse .quant files from Step B
         - Produces final quantification results
-        
+
         Args:
             raw_files: List of raw/mzML files to process (can include more files than Step B)
             refined_lib_path: Path to refined library from Step B
@@ -462,70 +550,24 @@ class DiannWorkflow:
             save_library: If True, save output library (default True). Set False to skip
                          library writing if not needed.
             script_name: Name of output shell script
-            
+
         Returns:
             Path to generated shell script
         """
         # Use default path if not provided
+        # DIA-NN 2.3.0 uses _report-lib.parquet naming
         if refined_lib_path is None:
-            refined_lib_path = f"{self.quant_b_dir}/{self.workunit_id}_refined.speclib"
-        
-        temp_dir = f"{self.temp_dir_base}_quantC"
-        output_file = f"{self.quant_c_dir}/{self.workunit_id}_reportC.tsv"
-        output_lib = f"{self.quant_c_dir}/{self.workunit_id}_final.speclib"
-        log_file = f"{self.quant_c_dir}/diann_quantC.log.txt"
-        
-        # Build command
-        cmd = [f'"{self.diann_bin}"']
-        
-        # Library (refined from Step B)
-        cmd.append(f'--lib "{refined_lib_path}"')
-        
-        # Raw files
-        for f in raw_files:
-            cmd.append(f"--f {f}")
-        
-        # Common parameters
-        cmd.extend(self._build_common_params())
-        
-        # Step C specific flags
-        cmd.append("--matrices")
-        
-        # Optional: reuse .quant files from Step B
-        # Note: Files not in Step B will be processed from scratch (safe)
-        if use_quant:
-            cmd.append("--use-quant")
-        
-        cmd.append("--reanalyse")
-        cmd.append(f"--pg-level {self.pg_level}")
-        
-        # DDA mode if specified
-        if self.is_dda:
-            cmd.append("--dda")
-        
-        # Output files
-        cmd.append(f'--out "{output_file}"')
-        
-        # Optional: save output library
-        if save_library:
-            cmd.append(f'--out-lib "{output_lib}"')
-            cmd.append("--out-lib-copy")
-        
-        cmd.append(f'--temp "{temp_dir}"')
-        
-        self._write_shell_script(
-            script_path=script_name,
-            commands=cmd,
-            temp_dirs=[temp_dir],
-            output_dirs=[self.quant_c_dir],
-            log_file=log_file
+            refined_lib_path = f"{self.quant_b_dir}/{self.workunit_id}_report-lib.parquet"
+
+        return self.generate_quantification_step(
+            step_name="C",
+            raw_files=raw_files,
+            input_lib_path=refined_lib_path,
+            generate_library=save_library,  # Step C optionally generates library
+            use_quant=use_quant,             # Step C typically uses --use-quant
+            quantify=True,                   # Step C always quantifies
+            script_name=script_name
         )
-        
-        # Save config alongside the final report
-        config_path = self.save_config(output_file)
-        print(f"Saved workflow config: {config_path}")
-        
-        return script_name
     
     def generate_all_scripts(
         self,
@@ -570,10 +612,12 @@ class DiannWorkflow:
                 save_library=save_library_step_c
             )
         }
-        
-        predicted_lib = f"{self.lib_dir}/{self.workunit_id}_predicted.speclib"
-        refined_lib = f"{self.quant_b_dir}/{self.workunit_id}_refined.speclib"
-        
+
+        # Note: DIA-NN 2.3.0 adds -lib before .predicted.speclib when using --gen-spec-lib
+        predicted_lib = f"{self.lib_dir}/{self.workunit_id}_report-lib.predicted.speclib"
+        # DIA-NN 2.3+ uses .parquet format
+        refined_lib = f"{self.quant_b_dir}/{self.workunit_id}_refined.parquet"
+
         print()
         print("Generated scripts:")
         print(f"  1. {scripts['step_a']} - Generate predicted library from FASTA")
@@ -584,11 +628,12 @@ class DiannWorkflow:
         for step in ['step_a', 'step_b', 'step_c']:
             print(f"  bash {scripts[step]}")
         print()
-        print("Key outputs:")
+        print("Key outputs (DIA-NN 2.3+ .parquet format):")
         print(f"  - Predicted library: {predicted_lib}")
         print(f"  - Refined library:   {refined_lib}")
-        print(f"  - Step B results:    {self.quant_b_dir}/{self.workunit_id}_reportB.tsv")
-        print(f"  - Final results:     {self.quant_c_dir}/{self.workunit_id}_reportC.tsv")
+        print(f"  - Step B results:    {self.quant_b_dir}/{self.workunit_id}_report.parquet")
+        print(f"  - Final results:     {self.quant_c_dir}/{self.workunit_id}_report.parquet")
+        print(f"  - TSV matrices:      {self.quant_c_dir}/{self.workunit_id}_report.pg_matrix.tsv")
         
         return scripts
 
