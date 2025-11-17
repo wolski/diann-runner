@@ -31,6 +31,8 @@ out-KOINA*/
 temp-DIANN*/
 temp-KOINA*/
 
+WU12345_work/*.zip
+
 # Raw data files (large MS files)
 *.mzML
 *.mzXML
