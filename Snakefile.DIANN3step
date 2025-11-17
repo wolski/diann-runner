@@ -298,14 +298,16 @@ if config_dict.get("params", {}).get("enable_step_c", True):
             """
 
 rule convert_parquet_to_tsv:
-    """Convert main parquet report to TSV format for prolfqua."""
+    """Convert main parquet report to TSV format for prolfqua and diann-qc."""
     input:
         report_parquet=FINAL_QUANT_OUTPUTS["report_parquet"]
     output:
         tsv=FINAL_QUANT_OUTPUTS["report_tsv"]
+    params:
+        is_dda=config_dict["params"]["diann"].get("is_dda", False)
     run:
         from snakemake_helpers import convert_parquet_to_tsv
-        convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv))
+        convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv), params.is_dda)
 
 rule diannqc:
     """Generate DIA-NN QC plots using diann-qc command."""

@@ -37,7 +37,7 @@ def get_final_quantification_outputs(
     }
 
 
-def convert_parquet_to_tsv(parquet_path: str, tsv_path: str) -> None:
+def convert_parquet_to_tsv(parquet_path: str, tsv_path: str, is_dda: bool = False) -> None:
     """
     Convert a parquet file to TSV format.
 
@@ -47,6 +47,7 @@ def convert_parquet_to_tsv(parquet_path: str, tsv_path: str) -> None:
     Args:
         parquet_path: Path to input parquet file
         tsv_path: Path to output TSV file
+        is_dda: If True, also copy PG.MaxLFQ to PG.Quantity for prolfqua compatibility
     """
     df = pd.read_parquet(parquet_path)
 
@@ -56,6 +57,12 @@ def convert_parquet_to_tsv(parquet_path: str, tsv_path: str) -> None:
         'Run': 'File.Name',
     }
     df = df.rename(columns=column_mapping)
+
+    # For DDA data: prolfqua expects PG.Quantity but DIA-NN outputs PG.MaxLFQ
+    # Copy PG.MaxLFQ to PG.Quantity for compatibility with both diann-qc and prolfqua
+    if is_dda and 'PG.MaxLFQ' in df.columns and 'PG.Quantity' not in df.columns:
+        df['PG.Quantity'] = df['PG.MaxLFQ']
+        print(f"Added PG.Quantity column from PG.MaxLFQ for DDA data compatibility")
 
     df.to_csv(tsv_path, sep='\t', index=False)
     print(f"Converted {parquet_path} -> {tsv_path}")
