@@ -276,26 +276,29 @@ rule run_diann_step_b:
         bash {input.script}
         """
 
-# Only execute Step C if enabled in config
-if config_dict.get("params", {}).get("enable_step_c", True):
-    rule run_diann_step_c:
-        """Execute Step C: Final Quantification."""
-        input:
-            script=rules.diann_generate_scripts.output.step_c_script,
-            refined_lib=rules.run_diann_step_b.output.speclib
-        output:
-            # DIA-NN 2.3.0 creates native .parquet library (same as Step B)
-            library=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report-lib.parquet",
-            report=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.parquet",
-            pg_matrix=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
-            stats=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
-            log=f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
-        shell:
-            """
-            echo "Running Step C: Final Quantification"
-            echo "Command: bash {input.script}"
-            bash {input.script}
-            """
+rule run_diann_step_c:
+    """Execute Step C: Final Quantification.
+
+    This rule is always defined, but only executes when downstream rules
+    (convert_parquet_to_tsv, diannqc, prolfqua_qc) depend on Step C outputs.
+    When enable_step_c=False, they depend on Step B outputs instead.
+    """
+    input:
+        script=rules.diann_generate_scripts.output.step_c_script,
+        refined_lib=rules.run_diann_step_b.output.speclib
+    output:
+        # DIA-NN 2.3.0 creates native .parquet library (same as Step B)
+        library=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report-lib.parquet",
+        report=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.parquet",
+        pg_matrix=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
+        stats=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
+        log=f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
+    shell:
+        """
+        echo "Running Step C: Final Quantification"
+        echo "Command: bash {input.script}"
+        bash {input.script}
+        """
 
 rule convert_parquet_to_tsv:
     """Convert main parquet report to TSV format for prolfqua and diann-qc."""
