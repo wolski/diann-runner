@@ -48,7 +48,7 @@ class TestCLI(unittest.TestCase):
             self.assertIn('--threads 32', content)
         
         # Check that config JSON was created
-        config_path = 'out_A_libA/TEST001_predicted.speclib.config.json'
+        config_path = 'out_A_libA/TEST001_libA.config.json'
         self.assertTrue(os.path.exists(config_path), f"Config file not found: {config_path}")
         
         # Verify config contains expected parameters
@@ -70,13 +70,13 @@ class TestCLI(unittest.TestCase):
             threads=16,
         )
         
-        config_path = Path('out_A_libA/TEST002_predicted.speclib.config.json')
+        config_path = Path('out_A_libA/TEST002_libA.config.json')
         self.assertTrue(config_path.exists())
-        
+
         # Now run quantification_refinement with config
         quantification_refinement(
             config=config_path,
-            predicted_lib=Path('out_A_libA/TEST002_predicted.speclib'),
+            predicted_lib=Path('out_A_libA/TEST002_report-lib.predicted.speclib'),
             raw_files=[Path('sample1.mzML'), Path('sample2.mzML')],
         )
         
@@ -88,7 +88,7 @@ class TestCLI(unittest.TestCase):
             self.assertIn('TEST002', content)
         
         # Check that config JSON was created for step B
-        config_b_path = 'out_A_quantB/TEST002_refined.speclib.config.json'
+        config_b_path = 'out_A_quantB/TEST002_quantB.config.json'
         self.assertTrue(os.path.exists(config_b_path))
     
     def test_final_quantification(self):
@@ -102,31 +102,31 @@ class TestCLI(unittest.TestCase):
             threads=16,
         )
         
-        config_a_path = Path('out_A_libA/TEST003_predicted.speclib.config.json')
+        config_a_path = Path('out_A_libA/TEST003_libA.config.json')
         quantification_refinement(
             config=config_a_path,
-            predicted_lib=Path('out_A_libA/TEST003_predicted.speclib'),
+            predicted_lib=Path('out_A_libA/TEST003_report-lib.predicted.speclib'),
             raw_files=[Path('sample1.mzML')],
         )
-        
+
         # Now run final_quantification with config from step B
-        config_b_path = Path('out_A_quantB/TEST003_refined.speclib.config.json')
+        config_b_path = Path('out_A_quantB/TEST003_quantB.config.json')
         self.assertTrue(config_b_path.exists())
-        
+
         final_quantification(
             config=config_b_path,
-            refined_lib=Path('out_A_quantB/TEST003_refined.speclib'),
+            refined_lib=Path('out_A_quantB/TEST003_report-lib.parquet'),
             raw_files=[Path('sample1.mzML')],
         )
         
         self.assertTrue(os.path.exists('step_C_final_quantification.sh'))
         with open('step_C_final_quantification.sh') as f:
             content = f.read()
-            self.assertIn('refined.speclib', content)
+            self.assertIn('report-lib.parquet', content)
             self.assertIn('TEST003', content)
-        
+
         # Check that config JSON was created for step C
-        config_c_path = 'out_A_quantC/TEST003_reportC.tsv.config.json'
+        config_c_path = 'out_A_quantC/TEST003_quantC.config.json'
         self.assertTrue(os.path.exists(config_c_path))
     
     def test_all_stages(self):

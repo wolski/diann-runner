@@ -103,15 +103,15 @@ class TestDiannWorkflow(unittest.TestCase):
             quantify=True,
             script_name='test_step_b.sh'
         )
-        
+
         # Check script exists
         self.assertTrue(os.path.exists(script_path))
-        
+
         # Check content
         content = self.read_script(script_path)
         self.assertIn('#!/bin/bash', content)
         self.assertIn('--lib', content)
-        self.assertIn('predicted.speclib', content)
+        self.assertIn('report-lib.predicted.speclib', content)
         
         # Check all raw files are present
         for raw_file in self.raw_files:
@@ -152,26 +152,26 @@ class TestDiannWorkflow(unittest.TestCase):
             raw_files=self.raw_files,
             script_name='test_step_c.sh'
         )
-        
+
         # Check script exists
         self.assertTrue(os.path.exists(script_path))
-        
+
         # Check content
         content = self.read_script(script_path)
         self.assertIn('#!/bin/bash', content)
         self.assertIn('--lib', content)
-        self.assertIn('refined.speclib', content)
+        self.assertIn('report-lib.parquet', content)
         
         # Check Step C specific flags
         self.assertIn('--matrices', content)
         self.assertIn('--use-quant', content)  # Critical for Step C!
         self.assertIn('--reanalyse', content)
         self.assertIn('--pg-level', content)
-        
+        self.assertIn('--gen-spec-lib', content)  # Step C generates library by default (save_library=True)
+
         # Should NOT have these
         self.assertNotIn('--fasta-search', content)
         self.assertNotIn('--predictor', content)
-        self.assertNotIn('--gen-spec-lib', content)  # Not in Step C
     
     def test_different_files_b_vs_c(self):
         """Test using different file lists for Steps B and C."""
@@ -359,7 +359,11 @@ class TestDiannWorkflow(unittest.TestCase):
         self.assertIn('test-out_libA', content)
     
     def test_log_files(self):
-        """Test that log files are properly configured in Steps B and C."""
+        """Test that log files are properly configured in all steps."""
+        script_a = self.workflow.generate_step_a_library(
+            fasta_path=self.fasta_path,
+            script_name='test_log_a.sh'
+        )
         script_b = self.workflow.generate_step_b_quantification_with_refinement(
             raw_files=self.raw_files,
             script_name='test_log_b.sh'
@@ -368,24 +372,20 @@ class TestDiannWorkflow(unittest.TestCase):
             raw_files=self.raw_files,
             script_name='test_log_c.sh'
         )
-        
+
+        content_a = self.read_script(script_a)
         content_b = self.read_script(script_b)
         content_c = self.read_script(script_c)
-        
-        # Check for tee redirection
+
+        # All steps should have tee redirection now
+        self.assertIn('| tee', content_a)
+        self.assertIn('diann_libA.log.txt', content_a)
+
         self.assertIn('| tee', content_b)
         self.assertIn('diann_quantB.log.txt', content_b)
-        
+
         self.assertIn('| tee', content_c)
         self.assertIn('diann_quantC.log.txt', content_c)
-        
-        # Step A should not have log redirection
-        script_a = self.workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
-            script_name='test_log_a.sh'
-        )
-        content_a = self.read_script(script_a)
-        self.assertNotIn('| tee', content_a)
     
     def test_protein_grouping_levels(self):
         """Test different protein grouping levels."""
@@ -420,11 +420,11 @@ class TestDiannWorkflow(unittest.TestCase):
             raw_files=self.raw_files,
             script_name='test_wu_b.sh'
         )
-        
+
         content = self.read_script(script_b)
         self.assertIn('TEST001', content)
-        self.assertIn('TEST001_reportB.tsv', content)
-        self.assertIn('TEST001_refined.speclib', content)
+        self.assertIn('TEST001_report.parquet', content)
+        self.assertIn('TEST001_report-lib', content)
 
 
 class TestEdgeCases(unittest.TestCase):
