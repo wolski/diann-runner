@@ -9,7 +9,7 @@
     ]
   ],
   "diann_bin": "diann-docker",
-  "threads": 64,
+  "threads": 12,
   "qvalue": 0.01,
   "min_pep_len": 6,
   "max_pep_len": 30,

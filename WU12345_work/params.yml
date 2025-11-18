@@ -1,0 +1,70 @@
+# params.yml - improved structure
+# Top level (registration, params) must be preserved
+# Everything under params: can be restructured!
+
+registration:
+  workunit_id: "12345"
+  container_id: "67890"
+
+params:
+  # msconvert options for raw file conversion
+  msconvert_docker_image: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses:latest msconvert"
+
+  # Workflow control
+  enable_step_c: false  # Set to true to run Step C after Step B
+                        # When false: uses Step B outputs directly (~50% faster)
+                        # When true: runs Step C for additional refinement
+                        # Note: Step C only benefits workflows with different files in B vs C
+
+  # FASTA configuration
+  fasta:
+    database_path: "ProteoBenchFASTA_MixedSpecies_HYE.fasta"
+    use_custom_fasta: false  # If true, also use order.fasta from working dir
+
+  # DIA-NN parameters matching DiannWorkflow.__init__
+  diann:
+    # Binary and resources
+    diann_bin: "diann-docker"
+    threads: 12  # Set to match your CPU core count (avoid oversubscription)
+
+    # Data type
+    is_dda: true
+
+    # Variable modifications: list of [unimod_id, mass_delta, residues]
+    var_mods:
+      - ["35", "15.994915", "M"]  # Oxidation (Met)
+
+    # Fixed modifications
+    unimod4: true  # Carbamidomethyl (C)
+    met_excision: true
+
+    # Peptidoform scoring (default: enabled when var_mods present)
+    # Set to true to disable modification localization (faster but less accurate)
+    no_peptidoforms: false
+
+    # FDR and quality
+    qvalue: 0.01
+
+    # Peptide constraints
+    min_pep_len: 6
+    max_pep_len: 30
+
+    # Precursor constraints
+    min_pr_charge: 2
+    max_pr_charge: 3
+    min_pr_mz: 400
+    max_pr_mz: 1500
+
+    # Digestion
+    cut: "K*,R*"  # Trypsin
+    missed_cleavages: 1
+
+    # Mass accuracy
+    mass_acc: 20  # MS2 (ppm)
+    mass_acc_ms1: 15  # MS1 (ppm)
+
+    # Protein grouping
+    pg_level: 1  # 0=genes, 1=protein names, 2=protein IDs
+
+    # Other
+    verbose: 1
