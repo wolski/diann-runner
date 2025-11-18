@@ -250,11 +250,20 @@ rule run_diann_step_a:
     output:
         speclib=f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_report-lib.predicted.speclib",
         log=f"{OUTPUT_PREFIX}_libA/diann_libA.log.txt"
+    params:
+        fasta=lambda wildcards: fasta_config.get("database_path", ""),
+        output_dir=f"{OUTPUT_PREFIX}_libA"
     shell:
         """
         echo "Running Step A: Library Search"
         echo "Command: bash {input.script}"
         bash {input.script}
+
+        # Copy FASTA if none exists in output directory
+        if ! ls {params.output_dir}/*.fasta 1> /dev/null 2>&1; then
+            echo "Copying FASTA to {params.output_dir}"
+            cp "{params.fasta}" "{params.output_dir}/$(basename {params.fasta})"
+        fi
         """
 
 rule run_diann_step_b:
@@ -269,11 +278,20 @@ rule run_diann_step_b:
         pg_matrix=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.pg_matrix.tsv",
         stats=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.stats.tsv",
         log=f"{OUTPUT_PREFIX}_quantB/diann_quantB.log.txt"
+    params:
+        fasta=lambda wildcards: fasta_config.get("database_path", ""),
+        output_dir=f"{OUTPUT_PREFIX}_quantB"
     shell:
         """
         echo "Running Step B: Quantification with Refinement"
         echo "Command: bash {input.script}"
         bash {input.script}
+
+        # Copy FASTA if none exists in output directory
+        if ! ls {params.output_dir}/*.fasta 1> /dev/null 2>&1; then
+            echo "Copying FASTA to {params.output_dir}"
+            cp "{params.fasta}" "{params.output_dir}/$(basename {params.fasta})"
+        fi
         """
 
 rule run_diann_step_c:
@@ -293,11 +311,20 @@ rule run_diann_step_c:
         pg_matrix=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
         stats=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
         log=f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
+    params:
+        fasta=lambda wildcards: fasta_config.get("database_path", ""),
+        output_dir=f"{OUTPUT_PREFIX}_quantC"
     shell:
         """
         echo "Running Step C: Final Quantification"
         echo "Command: bash {input.script}"
         bash {input.script}
+
+        # Copy FASTA if none exists in output directory
+        if ! ls {params.output_dir}/*.fasta 1> /dev/null 2>&1; then
+            echo "Copying FASTA to {params.output_dir}"
+            cp "{params.fasta}" "{params.output_dir}/$(basename {params.fasta})"
+        fi
         """
 
 rule convert_parquet_to_tsv:
