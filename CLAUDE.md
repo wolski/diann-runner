@@ -133,9 +133,9 @@ All source modules are located in `src/diann_runner/`:
 
 **`src/diann_runner/cleanup.py`** - Cleanup utilities for workflow files
 
-**`src/diann_runner/koina_adapter.py`** - Koina predictor integration (see docs/KOINA_INTEGRATION.md)
+**`src/diann_runner/koina_adapter.py`** - Koina predictor integration (see docs/SPECTRAL_PREDICTION.md)
 
-**`src/diann_runner/oktoberfest_docker.py`** - Oktoberfest integration for spectral prediction (see docs/OKTOBERFEST_INTEGRATION.md)
+**`src/diann_runner/oktoberfest_docker.py`** - Oktoberfest integration for spectral prediction (see docs/SPECTRAL_PREDICTION.md)
 
 **`src/diann_runner/prolfquapp_docker.py`** - Prolfqua QC integration
 
@@ -296,16 +296,12 @@ diann-workflow final-quantification \
 ## Documentation
 
 Additional documentation is available in the `docs/` directory:
-- `docs/README.md` - Documentation index
+- `docs/USAGE_EXAMPLES.md` - **Usage guide with quick reference and detailed patterns**
+- `docs/SPECTRAL_PREDICTION.md` - Koina/Oktoberfest integration for spectral library generation
+- `docs/COMPARING_PREDICTORS.md` - Running parallel workflows with different predictors
 - `docs/DIANN_PARAMETERS.md` - **Comprehensive DIA-NN parameter reference** (compiled from GitHub repo, issues, and discussions)
-- `docs/USAGE_EXAMPLES.md` - Usage examples and recipes
-- `docs/QUICK_REFERENCE.md` - Quick reference guide
-- `docs/KOINA_INTEGRATION.md` - Koina predictor integration
-- `docs/OKTOBERFEST_INTEGRATION.md` - Oktoberfest integration for spectral prediction
-- `docs/COMPARING_PREDICTORS.md` - Comparison of different spectral predictors
-- `docs/TESTING_LOG.md` - Testing history and results
-- `docs/SNAKEFILE_TEST.md` - Snakemake workflow testing guide
 - `docs/default_config.json` - Default configuration template
+- `README_DEPLOYMENT.md` - Deployment guide for production servers
 
 **When troubleshooting DIA-NN issues**: Consult `docs/DIANN_PARAMETERS.md` for parameter explanations, common issues, and links to relevant GitHub discussions.
 

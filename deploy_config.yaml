@@ -1,0 +1,16 @@
+# deploy_config.yaml - Configuration for deployment workflow
+#
+# This file allows you to set deployment options without using command-line flags.
+# You can override these settings with: snakemake -s deploy.smk --config key=value
+#
+# Usage:
+#   1. Edit this file to set your preferences
+#   2. Run: snakemake -s deploy.smk --cores 1
+
+# Skip Oktoberfest Docker build (saves ~30-60 minutes and 4GB)
+# Set to true if you don't need Koina/Prosit spectral prediction
+skip_oktoberfest: false
+
+# Force rebuild of Docker images even if they already exist
+# Useful when updating to a new version
+force_rebuild: false
