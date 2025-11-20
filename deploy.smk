@@ -243,24 +243,32 @@ rule build_oktoberfest_docker:
             print("⊘ Skipping Oktoberfest build (skip_oktoberfest=true)")
             Path(output.flag).touch()
         else:
-            dockerfile = Path("Dockerfile.oktoberfest")
-
-            # Download Dockerfile if not present
-            if not dockerfile.exists():
-                print("Downloading Dockerfile.oktoberfest...")
-                subprocess.run([
-                    "curl", "-o", "Dockerfile.oktoberfest",
-                    "https://raw.githubusercontent.com/wilhelm-lab/oktoberfest/development/Dockerfile"
-                ], check=True)
-
             # Check if image exists
             if docker_image_exists("oktoberfest:latest") and not FORCE_REBUILD:
                 print("✓ oktoberfest:latest already exists (use --config force_rebuild=true to rebuild)")
             else:
+                oktoberfest_dir = Path("oktoberfest_build")
+
+                # Clone or update Oktoberfest repository
+                if not oktoberfest_dir.exists():
+                    print("Cloning Oktoberfest repository...")
+                    result = subprocess.run([
+                        "git", "clone", "--depth", "1", "--branch", "development",
+                        "https://github.com/wilhelm-lab/oktoberfest.git",
+                        str(oktoberfest_dir)
+                    ])
+                    if result.returncode != 0:
+                        print("✗ Failed to clone Oktoberfest repository")
+                        sys.exit(1)
+                else:
+                    print("Updating Oktoberfest repository...")
+                    subprocess.run(["git", "pull"], cwd=oktoberfest_dir)
+
                 print("Building oktoberfest:latest (this takes ~30-60 minutes)...")
                 with open(log[0], "w") as logfile:
                     result = subprocess.run(
-                        ["docker", "build", "-f", "Dockerfile.oktoberfest", "-t", "oktoberfest:latest", "."],
+                        ["docker", "build", "-t", "oktoberfest:latest", "."],
+                        cwd=oktoberfest_dir,
                         stdout=logfile,
                         stderr=subprocess.STDOUT
                     )
@@ -423,6 +431,7 @@ rule clean_all:
         echo "⚠  WARNING: This will remove:"
         echo "  - Deployment flags (.deploy_flags/)"
         echo "  - Virtual environment (.venv/)"
+        echo "  - Oktoberfest build directory (oktoberfest_build/)"
         echo "  - Docker images (diann:2.3.0, oktoberfest:latest)"
         echo ""
         read -p "Continue? [y/N]: " -n 1 -r
@@ -433,6 +442,9 @@ rule clean_all:
 
             echo "Removing virtual environment..."
             rm -rf .venv
+
+            echo "Removing Oktoberfest build directory..."
+            rm -rf oktoberfest_build
 
             echo "Removing Docker images..."
             docker rmi diann:2.3.0 2>/dev/null || true

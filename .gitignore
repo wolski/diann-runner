@@ -72,6 +72,11 @@ workflow*.log
 .snakemake/
 *.snakemake.log
 
+# Deployment
+.deploy_flags/
+oktoberfest_build/
+Dockerfile.oktoberfest
+
 # Shell scripts (generated dynamically)
 step_A_*.sh
 step_B_*.sh
