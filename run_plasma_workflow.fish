@@ -33,6 +33,24 @@ echo "Snakefile: $SNAKEFILE"
 echo "Cores: $CORES"
 echo ""
 
+# Generate dataset.csv if it doesn't exist
+if not test -f $WORK_DIR/dataset.csv
+    echo "Generating dataset.csv from .raw files..."
+
+    # Create CSV with header and all .raw files
+    echo "raw.file,name,Group" > $WORK_DIR/dataset.csv
+    for rawfile in $WORK_DIR/*.raw
+        set basename (basename $rawfile .raw)
+        echo "$basename,$basename,plasma" >> $WORK_DIR/dataset.csv
+    end
+
+    set file_count (math (wc -l < $WORK_DIR/dataset.csv) - 1)
+    echo "✓ dataset.csv generated with $file_count files"
+else
+    echo "ℹ  dataset.csv already exists, using existing file"
+end
+echo ""
+
 # Copy and customize params.yml if it doesn't exist
 if not test -f $WORK_DIR/params.yml
     echo "Copying params.yml template..."
