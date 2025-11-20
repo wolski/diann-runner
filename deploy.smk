@@ -203,7 +203,7 @@ rule install_package:
     shell:
         """
         echo "Installing diann_runner package..."
-        .venv/bin/uv pip install -e .
+        uv pip install --python .venv/bin/python -e .
         echo "✓ Package installed"
         touch {output.flag}
         """
