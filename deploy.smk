@@ -33,6 +33,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Import deployment helpers
+from deploy import build_oktoberfest
+
 # Load configuration
 configfile: "deploy_config.yaml" if os.path.exists("deploy_config.yaml") else "/dev/null"
 
@@ -59,15 +62,6 @@ def get_cpu_cores():
         return os.cpu_count()
     except:
         return "unknown"
-
-def docker_image_exists(image_name):
-    """Check if Docker image exists."""
-    result = subprocess.run(
-        ["docker", "images", "-q", image_name],
-        capture_output=True,
-        text=True
-    )
-    return bool(result.stdout.strip())
 
 ################################################################################
 # Rules
@@ -239,45 +233,12 @@ rule build_oktoberfest_docker:
     log:
         "logs/build_oktoberfest_docker.log"
     run:
-        if SKIP_OKTOBERFEST:
-            print("⊘ Skipping Oktoberfest build (skip_oktoberfest=true)")
-            Path(output.flag).touch()
-        else:
-            # Check if image exists
-            if docker_image_exists("oktoberfest:latest") and not FORCE_REBUILD:
-                print("✓ oktoberfest:latest already exists (use --config force_rebuild=true to rebuild)")
-            else:
-                oktoberfest_dir = Path("oktoberfest_build")
-
-                # Clone or update Oktoberfest repository
-                if not oktoberfest_dir.exists():
-                    print("Cloning Oktoberfest repository...")
-                    result = subprocess.run([
-                        "git", "clone", "--depth", "1", "--branch", "development",
-                        "https://github.com/wilhelm-lab/oktoberfest.git",
-                        str(oktoberfest_dir)
-                    ])
-                    if result.returncode != 0:
-                        print("✗ Failed to clone Oktoberfest repository")
-                        sys.exit(1)
-                else:
-                    print("Updating Oktoberfest repository...")
-                    subprocess.run(["git", "pull"], cwd=oktoberfest_dir)
-
-                print("Building oktoberfest:latest (this takes ~30-60 minutes)...")
-                with open(log[0], "w") as logfile:
-                    result = subprocess.run(
-                        ["docker", "build", "-t", "oktoberfest:latest", "."],
-                        cwd=oktoberfest_dir,
-                        stdout=logfile,
-                        stderr=subprocess.STDOUT
-                    )
-                if result.returncode != 0:
-                    print(f"✗ Oktoberfest build failed - see {log[0]}")
-                    sys.exit(1)
-                print("✓ oktoberfest:latest built successfully")
-
-            Path(output.flag).touch()
+        build_oktoberfest(
+            output_flag=Path(output.flag),
+            log_file=Path(log[0]),
+            skip=SKIP_OKTOBERFEST,
+            force_rebuild=FORCE_REBUILD
+        )
 
 rule verify_installation:
     """Verify all CLI tools are installed and working."""
