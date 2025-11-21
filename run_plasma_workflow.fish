@@ -90,8 +90,9 @@ echo "=========================================="
 source $VENV_PATH/bin/activate.fish && \
     snakemake -s $SNAKEFILE --cores $CORES all 2>&1 | tee workflow.log
 
-# Check exit status
-if test $status -eq 0
+# Check exit status using pipestatus to get snakemake's exit code
+set workflow_status $pipestatus[1]
+if test $workflow_status -eq 0
     echo ""
     echo "=========================================="
     echo "✓ Workflow completed successfully!"
@@ -102,5 +103,6 @@ else
     echo "=========================================="
     echo "✗ Workflow failed - check workflow.log"
     echo "=========================================="
+    echo "Exit code: $workflow_status"
     exit 1
 end
