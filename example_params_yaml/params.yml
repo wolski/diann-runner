@@ -8,7 +8,9 @@ registration:
 
 params:
   # msconvert options for raw file conversion
-  msconvert_docker_image: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses:latest msconvert"
+  # Docker image is fixed in Snakefile: chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
+  # Only specify msconvert command-line options here
+  msconvert_docker_image: "--mzML --64 --zlib --filter \"peakPicking vendor msLevel=1-\""
 
   # Workflow control
   enable_step_c: false  # Set to true to run Step C after Step B
