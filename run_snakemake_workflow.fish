@@ -115,10 +115,14 @@ echo ""
 echo "=========================================="
 echo "Starting Snakemake workflow..."
 echo "=========================================="
-source $VENV_PATH/bin/activate.fish && \
-    snakemake -s $SNAKEFILE --cores $CORES all 2>&1 | tee workflow.log
 
-# Check exit status using pipestatus to get snakemake's exit code
+# Activate venv first
+source $VENV_PATH/bin/activate.fish
+
+# Run snakemake and capture exit code properly
+snakemake -s $SNAKEFILE --cores $CORES all 2>&1 | tee workflow.log
+
+# Check exit status using pipestatus to get snakemake's exit code (not tee's)
 set workflow_status $pipestatus[1]
 if test $workflow_status -eq 0
     echo ""
