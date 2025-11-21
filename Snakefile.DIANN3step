@@ -25,19 +25,22 @@ dzip_files = list(RAW_DIR.glob("*.d.zip"))
 raw_files = list(RAW_DIR.glob("*.raw"))
 mzml_files = list(RAW_DIR.glob("*.mzML"))
 
-# Ensure we only have one file type
-file_types = sum([bool(dzip_files), bool(raw_files), bool(mzml_files)])
-if file_types > 1:
-    raise ValueError("Error: Multiple file types (.d.zip, .raw, .mzML) detected in the same run!")
+# Error only if incompatible SOURCE types coexist
+if dzip_files and raw_files:
+    raise ValueError("Error: Both .d.zip and .raw files detected - choose one input type!")
 
-# Identify sample names dynamically
+# Prioritize source files over converted outputs
+# If .raw + .mzML exist together, use .raw (mzML are conversion outputs)
+# If .d.zip + .d exist together, use .d.zip (d folders are extraction outputs)
 if dzip_files:
     SAMPLES = [f.stem.removesuffix(".d") for f in dzip_files]
     INPUT_TYPE = "d.zip"
 elif raw_files:
+    # Use .raw even if .mzML exist (they're conversion outputs)
     SAMPLES = [f.stem for f in raw_files]
     INPUT_TYPE = "raw"
 elif mzml_files:
+    # Only use .mzML if no source files exist
     SAMPLES = [f.stem for f in mzml_files]
     INPUT_TYPE = "mzML"
 else:
