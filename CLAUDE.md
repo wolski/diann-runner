@@ -36,29 +36,31 @@ python3 tests/test_workflow.py
 python3 -m pytest tests/
 ```
 
-**CRITICAL: Use run_workflow.sh for all Snakemake workflow testing**
+**Snakemake Workflow Execution:**
 
-When testing or running the complete Snakemake workflow, ALWAYS use the `run_workflow.sh` script:
+Use `run_snakemake_workflow.fish` to execute the complete Snakemake workflow:
 
 ```bash
-# Run from the diann_runner directory
-bash run_workflow.sh
+# Navigate to your data directory containing .raw/.mzML/.d.zip files
+cd /path/to/your/data
 
-# To skip cleanup and continue from previous run:
-bash run_workflow.sh --no-cleanup
+# Ensure params.yml exists (copy from example_params_yaml/params.yml and customize)
+# The script will auto-generate dataset.csv if missing
+
+# Run the workflow
+/path/to/diann-runner/run_snakemake_workflow.fish --cores 8
+
+# To continue from a previous run without cleanup:
+/path/to/diann-runner/run_snakemake_workflow.fish --no-cleanup --cores 8
 ```
 
-The `run_workflow.sh` script:
-1. Changes to the `WU12345_work` directory
-2. Runs `diann-cleanup` to remove previous outputs (unless `--no-cleanup` is specified)
-3. Activates the virtual environment (`.venv`)
-4. Executes `snakemake -s ../Snakefile.DIANN3step --cores 8 all`
-5. Logs all output to `workflow.log` for troubleshooting
-
-**Important workflow execution rules:**
-- NEVER run snakemake commands directly - always use `run_workflow.sh`
-- The script ensures consistent logging, cleanup, and environment activation
-- Use `--no-cleanup` flag to resume from a partially completed run
+The script will:
+1. Auto-generate `dataset.csv` from data files if missing
+2. Verify `params.yml` exists (error if not found)
+3. Run `diann-cleanup` (unless `--no-cleanup` specified)
+4. Execute Snakemake workflow with proper environment activation
+5. Log all output to `workflow.log`
+6. Report success/failure with correct exit codes
 
 ### Docker Image
 ```bash
