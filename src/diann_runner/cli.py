@@ -60,6 +60,9 @@ def _load_workflow_from_defaults(
     unimod4 = defaults.get("unimod4", True)
     met_excision = defaults.get("met_excision", True)
     no_peptidoforms = defaults.get("no_peptidoforms", False)
+    relaxed_prot_inf = defaults.get("relaxed_prot_inf", False)
+    reanalyse = defaults.get("reanalyse", True)
+    no_norm = defaults.get("no_norm", False)
     min_pep_len = defaults.get("min_pep_len", 6)
     max_pep_len = defaults.get("max_pep_len", 30)
     min_pr_charge = defaults.get("min_pr_charge", 2)
@@ -101,6 +104,9 @@ def _load_workflow_from_defaults(
         unimod4=unimod4,
         met_excision=met_excision,
         no_peptidoforms=no_peptidoforms,
+        relaxed_prot_inf=relaxed_prot_inf,
+        reanalyse=reanalyse,
+        no_norm=no_norm,
         min_pep_len=min_pep_len,
         max_pep_len=max_pep_len,
         min_pr_charge=min_pr_charge,

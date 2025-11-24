@@ -15,36 +15,13 @@ SNAKEFILE_DIR = Path(workflow.basedir)
 sys.path.insert(0, str(SNAKEFILE_DIR / 'src'))
 sys.path.insert(0, str(SNAKEFILE_DIR))  # For snakemake_helpers
 from diann_runner.workflow import DiannWorkflow
-from snakemake_helpers import build_oktoberfest_config, get_final_quantification_outputs
+from snakemake_helpers import build_oktoberfest_config, get_final_quantification_outputs, parse_flat_params, create_diann_workflow, detect_input_files
 
 # Plotter is now available as diann-qc command via pyproject.toml entry point
 
-# Detect input files
+# Detect input files using helper function
 RAW_DIR = Path(".")
-dzip_files = list(RAW_DIR.glob("*.d.zip"))
-raw_files = list(RAW_DIR.glob("*.raw"))
-mzml_files = list(RAW_DIR.glob("*.mzML"))
-
-# Error only if incompatible SOURCE types coexist
-if dzip_files and raw_files:
-    raise ValueError("Error: Both .d.zip and .raw files detected - choose one input type!")
-
-# Prioritize source files over converted outputs
-# If .raw + .mzML exist together, use .raw (mzML are conversion outputs)
-# If .d.zip + .d exist together, use .d.zip (d folders are extraction outputs)
-if dzip_files:
-    SAMPLES = [f.stem.removesuffix(".d") for f in dzip_files]
-    INPUT_TYPE = "d.zip"
-elif raw_files:
-    # Use .raw even if .mzML exist (they're conversion outputs)
-    SAMPLES = [f.stem for f in raw_files]
-    INPUT_TYPE = "raw"
-elif mzml_files:
-    # Only use .mzML if no source files exist
-    SAMPLES = [f.stem for f in mzml_files]
-    INPUT_TYPE = "mzML"
-else:
-    raise ValueError("No valid input files (.d.zip, .raw, or .mzML) found.")
+SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_DIR)
 
 # Load params
 with open(os.path.join(RAW_DIR, "params.yml")) as f:
@@ -59,26 +36,18 @@ CONTAINERID = config_dict["registration"]["container_id"]
 DIANNTEMP = "temp-DIANN"
 OUTPUT_PREFIX = "out-DIANN"
 
-# Extract DIA-NN parameters from new params structure
-diann_params = config_dict["params"].get("diann", {})
-fasta_config = config_dict["params"].get("fasta", {})
-oktoberfest_params = config_dict["params"].get("oktoberfest", {})
+# Parse all workflow parameters in one place
+params = parse_flat_params(config_dict["params"])
 
-# Parse variable modifications from list format
-VAR_MODS = [tuple(mod) for mod in diann_params.get("var_mods", [])]
+# Only create globals needed for Snakemake wildcards and conditionals
+LIBRARY_PREDICTOR = params["library_predictor"]
+ENABLE_STEP_C = params["enable_step_c"]
+FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
-# Determine library predictor (diann or oktoberfest)
-LIBRARY_PREDICTOR = config_dict["params"].get("library_predictor", "diann")
-
-# Helper function to get final quantification outputs
+# Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
 def final_quant_outputs(wildcards):
     """Snakemake input function wrapper for get_final_quantification_outputs."""
-    enable_c = config_dict.get("params", {}).get("enable_step_c", True)
-    return get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, enable_c)
-
-# Compute static output paths (can't use functions in output: section)
-ENABLE_STEP_C = config_dict.get("params", {}).get("enable_step_c", True)
-FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
+    return get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
 # ============================================================================
 # File conversion rules (unchanged from old Snakefile)
@@ -146,34 +115,10 @@ rule diann_generate_scripts:
         config_b=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json",
         config_c=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_quantC.config.json"
     run:
-        # Determine FASTA path
-        fasta_path = fasta_config.get("database_path", "")
-
-        # Initialize workflow with all parameters from params
-        workflow = DiannWorkflow(
-            workunit_id=f"WU{WORKUNITID}",
-            output_base_dir=OUTPUT_PREFIX,
-            temp_dir_base=DIANNTEMP,
-            fasta_file=fasta_path,
-            var_mods=VAR_MODS,
-            diann_bin=diann_params.get("diann_bin", "diann-docker"),
-            threads=diann_params.get("threads", 64),
-            qvalue=diann_params.get("qvalue", 0.01),
-            min_pep_len=diann_params.get("min_pep_len", 6),
-            max_pep_len=diann_params.get("max_pep_len", 30),
-            min_pr_charge=diann_params.get("min_pr_charge", 2),
-            max_pr_charge=diann_params.get("max_pr_charge", 3),
-            min_pr_mz=diann_params.get("min_pr_mz", 400),
-            max_pr_mz=diann_params.get("max_pr_mz", 1500),
-            missed_cleavages=diann_params.get("missed_cleavages", 1),
-            cut=diann_params.get("cut", "K*,R*"),
-            mass_acc=diann_params.get("mass_acc", 20),
-            mass_acc_ms1=diann_params.get("mass_acc_ms1", 15),
-            verbose=diann_params.get("verbose", 1),
-            pg_level=diann_params.get("pg_level", 0),
-            is_dda=diann_params.get("is_dda", False),
-            unimod4=diann_params.get("unimod4", True),
-            met_excision=diann_params.get("met_excision", True),
+        # Initialize workflow with all parameters from params via helper function
+        workflow = create_diann_workflow(
+            WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
+            params["fasta"]["database_path"], params["var_mods"], params["diann"]
         )
 
         # Convert input mzML files to list of strings
@@ -205,17 +150,17 @@ rule generate_oktoberfest_config:
         import json
 
         # Determine FASTA path
-        fasta_path = fasta_config.get("database_path", "")
-        if fasta_config.get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
+        fasta_path = params["fasta"]["database_path"]
+        if params["fasta"].get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
             fasta_path = str(RAW_DIR / "order.fasta")
 
         # Build Oktoberfest config using helper function
+        # No oktoberfest_params needed - function uses defaults
         oktoberfest_config = build_oktoberfest_config(
             workunit_id=str(WORKUNITID),
             fasta_path=fasta_path,
             output_dir=f"{OUTPUT_PREFIX}_libA",
-            diann_params=diann_params,
-            oktoberfest_params=oktoberfest_params
+            diann_params=params["diann"]
         )
 
         # Write config to file

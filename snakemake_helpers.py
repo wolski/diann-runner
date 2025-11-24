@@ -1,6 +1,255 @@
 """Helper functions for Snakemake workflow."""
 
 import pandas as pd
+import re
+from pathlib import Path
+from typing import Tuple, List, Dict
+
+
+def detect_input_files(raw_dir: Path) -> Tuple[List[str], str, Dict[str, List[Path]]]:
+    """
+    Detect and validate input mass spectrometry files in a directory.
+
+    This function scans for .d.zip, .raw, and .mzML files, validates that no
+    conflicting source types coexist, and prioritizes source files over
+    converted outputs.
+
+    Priority logic:
+    - .d.zip and .raw are "source" files (cannot coexist)
+    - .mzML files are conversion outputs (lower priority)
+    - If .raw + .mzML exist together, use .raw (mzML are conversion outputs)
+    - If .d.zip + .d exist together, use .d.zip (d folders are extraction outputs)
+
+    Args:
+        raw_dir: Path to directory containing input files
+
+    Returns:
+        Tuple of (samples, input_type, file_lists):
+        - samples: List of sample names (file stems)
+        - input_type: String indicating file type ("d.zip", "raw", or "mzML")
+        - file_lists: Dict with keys 'dzip_files', 'raw_files', 'mzml_files'
+
+    Raises:
+        ValueError: If both .d.zip and .raw files exist (conflicting source types)
+        ValueError: If no valid input files are found
+
+    Example:
+        >>> samples, input_type, files = detect_input_files(Path("."))
+        >>> print(f"Found {len(samples)} {input_type} files")
+    """
+    # Glob for all potential input files
+    dzip_files = list(raw_dir.glob("*.d.zip"))
+    raw_files = list(raw_dir.glob("*.raw"))
+    mzml_files = list(raw_dir.glob("*.mzML"))
+
+    # Error only if incompatible SOURCE types coexist
+    if dzip_files and raw_files:
+        raise ValueError("Error: Both .d.zip and .raw files detected - choose one input type!")
+
+    # Prioritize source files over converted outputs
+    # If .raw + .mzML exist together, use .raw (mzML are conversion outputs)
+    # If .d.zip + .d exist together, use .d.zip (d folders are extraction outputs)
+    if dzip_files:
+        samples = [f.stem.removesuffix(".d") for f in dzip_files]
+        input_type = "d.zip"
+    elif raw_files:
+        # Use .raw even if .mzML exist (they're conversion outputs)
+        samples = [f.stem for f in raw_files]
+        input_type = "raw"
+    elif mzml_files:
+        # Only use .mzML if no source files exist
+        samples = [f.stem for f in mzml_files]
+        input_type = "mzML"
+    else:
+        raise ValueError("No valid input files (.d.zip, .raw, or .mzML) found.")
+
+    # Return file lists for reference if needed
+    file_lists = {
+        'dzip_files': dzip_files,
+        'raw_files': raw_files,
+        'mzml_files': mzml_files
+    }
+
+    return samples, input_type, file_lists
+
+
+def parse_var_mods_string(var_mods_str):
+    """Parse variable modifications string from XML format to list of tuples.
+
+    Example input: '--var-mods 1 --var-mod UniMod:35,15.994915,M'
+    Returns: [('35', '15.994915', 'M')]
+
+    Args:
+        var_mods_str: String from Bfabric XML parameter
+
+    Returns:
+        List of tuples: [(unimod_id, mass_delta, residues), ...]
+    """
+    if not var_mods_str or var_mods_str == 'None':
+        return []
+
+    var_mods = []
+    # Find all --var-mod definitions
+    pattern = r'--var-mod UniMod:(\d+),([0-9.]+),([A-Z^]+)'
+    matches = re.findall(pattern, var_mods_str)
+
+    for unimod_id, mass, residues in matches:
+        var_mods.append((unimod_id, mass, residues))
+
+    return var_mods
+
+
+def parse_flat_params(flat_params):
+    """Transform flat Bfabric XML keys to nested structure expected by workflow.
+
+    Maps Bfabric XML keys (e.g., '06a_diann_mods_variable') to Python-friendly
+    nested structure (e.g., diann.var_mods).
+
+    Args:
+        flat_params: Dictionary with flat XML parameter keys from params.yml
+
+    Returns:
+        Dictionary with keys:
+        - 'diann': Dict of DIA-NN parameters
+        - 'fasta': Dict of FASTA parameters
+        - 'var_mods': List of modification tuples (already converted from diann.var_mods)
+        - 'library_predictor': String ('diann' or 'oktoberfest')
+        - 'enable_step_c': Boolean (whether to run Step C quantification)
+    """
+    diann = {}
+    fasta = {}
+
+    # Parse modification parameters
+    if '06a_diann_mods_variable' in flat_params:
+        var_mods_str = flat_params['06a_diann_mods_variable']
+        diann['var_mods'] = parse_var_mods_string(var_mods_str)
+    else:
+        diann['var_mods'] = []
+
+    diann['no_peptidoforms'] = flat_params.get('06b_diann_mods_no_peptidoforms', 'false').lower() == 'true'
+    diann['unimod4'] = flat_params.get('06c_diann_mods_unimod4', 'true').lower() == 'true'
+    diann['met_excision'] = flat_params.get('06d_diann_mods_met_excision', 'true').lower() == 'true'
+
+    # Parse peptide constraints
+    diann['min_pep_len'] = int(flat_params.get('07_diann_peptide_min_length', '6'))
+    diann['max_pep_len'] = int(flat_params.get('07_diann_peptide_max_length', '30'))
+    diann['min_pr_charge'] = int(flat_params.get('07_diann_peptide_precursor_charge_min', '2'))
+    diann['max_pr_charge'] = int(flat_params.get('07_diann_peptide_precursor_charge_max', '3'))
+    diann['min_pr_mz'] = int(flat_params.get('07_diann_peptide_precursor_mz_min', '400'))
+    diann['max_pr_mz'] = int(flat_params.get('07_diann_peptide_precursor_mz_max', '1500'))
+
+    # Parse digestion
+    diann['cut'] = flat_params.get('08_diann_digestion_cut', 'K*,R*')
+    missed_cleavages_str = flat_params.get('08_diann_digestion_missed_cleavages', '1')
+    if missed_cleavages_str != 'None':
+        diann['missed_cleavages'] = int(missed_cleavages_str)
+    else:
+        diann['missed_cleavages'] = 1
+
+    # Parse mass accuracy
+    mass_acc_ms2_str = flat_params.get('09_diann_mass_acc_ms2', '20')
+    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'None' else 20
+    mass_acc_ms1_str = flat_params.get('09_diann_mass_acc_ms1', '15')
+    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'None' else 15
+
+    # Parse scoring
+    diann['qvalue'] = float(flat_params.get('10_diann_scoring_qvalue', '0.01'))
+
+    # Parse protein inference
+    diann['pg_level'] = int(flat_params.get('11a_diann_protein_pg_level', '1'))
+    diann['relaxed_prot_inf'] = flat_params.get('11b_diann_protein_relaxed_prot_inf', 'false').lower() == 'true'
+
+    # Parse quantification & normalization (NEW SECTION 12)
+    diann['reanalyse'] = flat_params.get('12a_diann_quantification_reanalyse', 'true').lower() == 'true'
+    diann['no_norm'] = flat_params.get('12b_diann_quantification_no_norm', 'false').lower() == 'true'
+
+    # Parse other settings
+    diann['verbose'] = int(flat_params.get('99_other_verbose', '1'))
+    diann['diann_bin'] = flat_params.get('98_diann_binary', 'diann-docker')
+
+    # Parse DDA mode
+    diann['is_dda'] = flat_params.get('05_diann_is_dda', 'false').lower() == 'true'
+
+    # Parse FASTA
+    fasta['database_path'] = flat_params.get('03_fasta_database_path', '')
+    fasta['use_custom_fasta'] = flat_params.get('03_fasta_use_custom', 'false').lower() == 'true'
+
+    # Convert var_mods to tuples for DiannWorkflow
+    var_mods_tuples = [tuple(mod) for mod in diann.get('var_mods', [])]
+
+    # Parse workflow control parameters (not in Bfabric XML - use defaults)
+    # Library predictor: 'diann' (default) or 'oktoberfest'
+    library_predictor = flat_params.get('library_predictor', 'diann')
+
+    # Step C: disabled by default (false) - can be enabled via params.yml if needed
+    enable_step_c_str = flat_params.get('enable_step_c', 'false')
+    enable_step_c = enable_step_c_str.lower() == 'true' if isinstance(enable_step_c_str, str) else bool(enable_step_c_str)
+
+    return {
+        'diann': diann,
+        'fasta': fasta,
+        'var_mods': var_mods_tuples,
+        'library_predictor': library_predictor,
+        'enable_step_c': enable_step_c
+    }
+
+
+def create_diann_workflow(
+    workunit_id: str,
+    output_prefix: str,
+    temp_dir_base: str,
+    fasta_path: str,
+    var_mods: list,
+    diann_params: dict
+):
+    """
+    Create DiannWorkflow instance from parsed parameters.
+
+    This helper function encapsulates the initialization of DiannWorkflow with all
+    required and optional parameters, using sensible defaults from the diann_params
+    dictionary.
+
+    Args:
+        workunit_id: Workunit ID (will be prefixed with "WU")
+        output_prefix: Output directory prefix (e.g., "out-DIANN")
+        temp_dir_base: Base name for temporary directories
+        fasta_path: Path to FASTA database file
+        var_mods: List of variable modification tuples
+        diann_params: Dictionary of DIA-NN parameters from parse_flat_params()
+
+    Returns:
+        Initialized DiannWorkflow instance
+    """
+    from diann_runner.workflow import DiannWorkflow
+
+    return DiannWorkflow(
+        workunit_id=f"WU{workunit_id}",
+        output_base_dir=output_prefix,
+        temp_dir_base=temp_dir_base,
+        fasta_file=fasta_path,
+        var_mods=var_mods,
+        diann_bin=diann_params.get("diann_bin", "diann-docker"),
+        threads=diann_params.get("threads", 64),
+        qvalue=diann_params.get("qvalue", 0.01),
+        min_pep_len=diann_params.get("min_pep_len", 6),
+        max_pep_len=diann_params.get("max_pep_len", 30),
+        min_pr_charge=diann_params.get("min_pr_charge", 2),
+        max_pr_charge=diann_params.get("max_pr_charge", 3),
+        min_pr_mz=diann_params.get("min_pr_mz", 400),
+        max_pr_mz=diann_params.get("max_pr_mz", 1500),
+        missed_cleavages=diann_params.get("missed_cleavages", 1),
+        cut=diann_params.get("cut", "K*,R*"),
+        mass_acc=diann_params.get("mass_acc", 20),
+        mass_acc_ms1=diann_params.get("mass_acc_ms1", 15),
+        verbose=diann_params.get("verbose", 1),
+        pg_level=diann_params.get("pg_level", 0),
+        is_dda=diann_params.get("is_dda", False),
+        unimod4=diann_params.get("unimod4", True),
+        met_excision=diann_params.get("met_excision", True),
+        relaxed_prot_inf=diann_params.get("relaxed_prot_inf", False),
+        reanalyse=diann_params.get("reanalyse", True),
+        no_norm=diann_params.get("no_norm", False),
+    )
 
 
 def get_final_quantification_outputs(
@@ -106,21 +355,27 @@ def build_oktoberfest_config(
     fasta_path: str,
     output_dir: str,
     diann_params: dict,
-    oktoberfest_params: dict
+    oktoberfest_params: dict = None
 ) -> dict:
     """
     Build Oktoberfest configuration dictionary.
+
+    Most settings are derived from diann_params or use sensible defaults.
+    oktoberfest_params is optional and typically empty (not defined in Bfabric XML).
 
     Args:
         workunit_id: Workunit ID for tagging
         fasta_path: Path to FASTA database
         output_dir: Output directory for Oktoberfest results
         diann_params: DIA-NN parameters dict (for extracting relevant settings)
-        oktoberfest_params: Oktoberfest-specific parameters
+        oktoberfest_params: Optional dict of Oktoberfest-specific parameters
+                           (defaults to {} if not provided)
 
     Returns:
         Dictionary containing Oktoberfest configuration
     """
+    oktoberfest_params = oktoberfest_params or {}
+
     config = {
         "type": "SpectralLibraryGeneration",
         "tag": f"WU{workunit_id}",

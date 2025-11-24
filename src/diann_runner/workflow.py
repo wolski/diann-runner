@@ -86,7 +86,10 @@ class DiannWorkflow:
         temp_dir_base: str = 'temp-DIANN',
         unimod4: bool = True,
         met_excision: bool = True,
-        no_peptidoforms: bool = False
+        no_peptidoforms: bool = False,
+        relaxed_prot_inf: bool = False,
+        reanalyse: bool = True,
+        no_norm: bool = False
     ):
         """
         Initialize DIA-NN workflow with shared parameters across all steps.
@@ -116,6 +119,9 @@ class DiannWorkflow:
             unimod4: Enable Carbamidomethyl (C) fixed modification
             met_excision: Enable N-terminal methionine excision
             no_peptidoforms: Disable peptidoform scoring (faster but no modification localization)
+            relaxed_prot_inf: Enable relaxed protein inference (group by gene, not protein)
+            reanalyse: Enable match-between-runs (MBR) for cross-run quantification
+            no_norm: Disable RT-dependent normalization
         """
         # Core identifiers
         self.workunit_id = workunit_id
@@ -146,6 +152,9 @@ class DiannWorkflow:
         self.unimod4 = unimod4
         self.met_excision = met_excision
         self.no_peptidoforms = no_peptidoforms
+        self.relaxed_prot_inf = relaxed_prot_inf
+        self.reanalyse = reanalyse
+        self.no_norm = no_norm
 
         # Derived paths
         self.lib_dir = f"{output_base_dir}_libA"
@@ -184,6 +193,9 @@ class DiannWorkflow:
             'unimod4': self.unimod4,
             'met_excision': self.met_excision,
             'no_peptidoforms': self.no_peptidoforms,
+            'relaxed_prot_inf': self.relaxed_prot_inf,
+            'reanalyse': self.reanalyse,
+            'no_norm': self.no_norm,
         }
     
     def save_config(self, output_path: str) -> str:
@@ -446,7 +458,17 @@ class DiannWorkflow:
             cmd.append("--matrices")
             cmd.append(f"--pg-level {self.pg_level}")
 
-        cmd.append("--reanalyse")
+        # Protein inference
+        if self.relaxed_prot_inf:
+            cmd.append("--relaxed-prot-inf")
+
+        # Match-between-runs (MBR)
+        if self.reanalyse:
+            cmd.append("--reanalyse")
+
+        # Normalization
+        if self.no_norm:
+            cmd.append("--no-norm")
 
         # Optional: reuse .quant files (typically Step C only)
         if use_quant:

@@ -6,7 +6,7 @@
     <createdby>wolski</createdby>
     <modified>2025-11-24 00:00:00</modified>
     <modifiedby>wolski</modifiedby>
-    <name>A366_DIANN_v2</name>
+    <name>A386_DIANN_v2.3.0</name>
     <description>Updated executable configuration for DIANN with improved parameter organization and readability. Derived from params.yml structure.</description>
     <program>/home/bfabric/slurmworker/config/A366_DIANN/app.yml</program>
     <filechecksum></filechecksum>
