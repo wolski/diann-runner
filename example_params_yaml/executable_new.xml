@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<executable classname="executable" id="26960">
+    <deletable>false</deletable>
+    <updatable>true</updatable>
+    <created>2025-11-24 00:00:00</created>
+    <createdby>wolski</createdby>
+    <modified>2025-11-24 00:00:00</modified>
+    <modifiedby>wolski</modifiedby>
+    <name>A366_DIANN_v2</name>
+    <description>Updated executable configuration for DIANN with improved parameter organization and readability. Derived from params.yml structure.</description>
+    <program>/home/bfabric/slurmworker/config/A366_DIANN/app.yml</program>
+    <filechecksum></filechecksum>
+    <size>0</size>
+    <status>available</status>
+    <context>APPLICATION</context>
+    <enabled>true</enabled>
+
+    <!-- 97: MSConvert Configuration -->
+    <parameter classname="parameter" id="171595">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Specify msconvert command-line options for raw file conversion. Used when having Orbitrap raw files as input. Docker image is fixed: chambm/pwiz-skyline-i-agree-to-the-vendor-licenses</description>
+        <context>APPLICATION</context>
+        <enumeration>--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"</enumeration>
+        <enumeration>--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-" --filter "demultiplex optimization=overlap_only massError=10.0ppm"</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>97_msconvert_options</key>
+        <label>MSConvert Options</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"</value>
+    </parameter>
+
+    <!-- 02: Workflow Control -->
+    <!-- <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Enable Step C (final quantification refinement) after Step B. When false: uses Step B outputs directly (~50% faster). When true: runs Step C for additional refinement. Note: Step C only benefits workflows with different files in B vs C.</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>02_workflow_enable_step_c</key>
+        <label>Enable Step C</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter> -->
+
+    <!-- 03: FASTA Configuration -->
+    <parameter classname="parameter" id="171593">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>FASTA database file for protein inference and library generation. Only forward sequences and contaminants included.</description>
+        <context>APPLICATION</context>
+        <enumeration>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>03_fasta_database_path</key>
+        <label>FASTA Database</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>If true, inject additional FASTA sequences from order.fasta in working directory (custom sequences for specific experiments).</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>03_fasta_use_custom</key>
+        <label>Add Custom Sequences</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
+    <!-- 98: DIA-NN Binary Configuration -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>DIA-NN binary or Docker wrapper to use. Default: diann-docker</description>
+        <context>APPLICATION</context>
+        <enumeration>diann-docker</enumeration>
+        <enumeration>diann-docker-v2.3.0</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>98_diann_binary</key>
+        <label>DIA-NN Binary</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>diann-docker</value>
+    </parameter>
+
+
+    <!-- 05: Data Type Configuration -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Data acquisition type. Set to true for DDA (Data-Dependent Acquisition), false for DIA (Data-Independent Acquisition).</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>05_diann_is_dda</key>
+        <label>DDA Mode</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
+    <!-- 06: Modification Configuration -->
+    <parameter classname="parameter" id="171594">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Variable modifications: format is --var-mods [count] --var-mod UniMod:[id],[mass],[sites]. Note: UniMod:21 (Phospho), UniMod:1 (Acetyl), UniMod:121 (DiGly) have PTM scoring enabled by default. Use --monitor-mod for other PTMs. DIA-NN commands: --var-mods, --var-mod, --monitor-mod</description>
+        <context>APPLICATION</context>
+        <enumeration>--var-mods 1 --var-mod UniMod:35,15.994915,M</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:35,15.994915,M</enumeration>
+        <enumeration>--var-mods 1 --var-mod UniMod:21,79.966331,STY</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:21,79.966331,STY</enumeration>
+        <enumeration>--var-mods 3 --var-mod UniMod:21,79.966331,STY</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:21,79.966331,STY --var-mod UniMod:35,15.994915,M</enumeration>
+        <enumeration>--var-mods 1 --var-mod UniMod:121,114.042927,K</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:35,15.994915,M --var-mod UniMod:121,114.042927,K</enumeration>
+        <enumeration>--var-mods 1 --var-mod UniMod:7,0.984016,NQ --monitor-mod UniMod:7</enumeration>
+        <enumeration>None</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>06a_diann_mods_variable</key>
+        <label>Variable Modifications</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--var-mods 1 --var-mod UniMod:35,15.994915,M</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Enable UniMod:4 (Carbamidomethyl on Cysteine) as fixed modification. Standard for alkylated samples. DIA-NN command: --unimod4</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>06c_diann_mods_unimod4</key>
+        <label>Carbamidomethyl (C)</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Enable methionine excision (N-terminal Met removal). Common post-translational modification. DIA-NN command: --met-excision</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>06d_diann_mods_met_excision</key>
+        <label>Met Excision</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Disable peptidoform scoring (modification localization). Set to true to disable for faster but less accurate modification site assignment. DIA-NN command: --no-peptidoforms</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>06b_diann_mods_no_peptidoforms</key>
+        <label>Disable Peptidoforms</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
+    <!-- 07: Peptide Constraints -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Minimum peptide length (amino acids) for library generation and search. DIA-NN command: --min-pep-len</description>
+        <context>APPLICATION</context>
+        <enumeration>6</enumeration>
+        <enumeration>7</enumeration>
+        <enumeration>8</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_min_length</key>
+        <label>Min Peptide Length</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>6</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Maximum peptide length (amino acids) for library generation and search. DIA-NN command: --max-pep-len</description>
+        <context>APPLICATION</context>
+        <enumeration>30</enumeration>
+        <enumeration>40</enumeration>
+        <enumeration>50</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_max_length</key>
+        <label>Max Peptide Length</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>30</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Minimum precursor charge for in silico library generation or library-free search. DIA-NN command: --min-pr-charge</description>
+        <context>APPLICATION</context>
+        <enumeration>1</enumeration>
+        <enumeration>2</enumeration>
+        <enumeration>3</enumeration>
+        <enumeration>4</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_precursor_charge_min</key>
+        <label>Min Precursor Charge</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>2</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Maximum precursor charge for in silico library generation or library-free search. DIA-NN command: --max-pr-charge</description>
+        <context>APPLICATION</context>
+        <enumeration>2</enumeration>
+        <enumeration>3</enumeration>
+        <enumeration>4</enumeration>
+        <enumeration>5</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_precursor_charge_max</key>
+        <label>Max Precursor Charge</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>3</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Minimum precursor m/z for in silico library generation or library-free search. DIA-NN command: --min-pr-mz</description>
+        <context>APPLICATION</context>
+        <enumeration>300</enumeration>
+        <enumeration>350</enumeration>
+        <enumeration>400</enumeration>
+        <enumeration>450</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_precursor_mz_min</key>
+        <label>Min Precursor m/z</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>400</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Maximum precursor m/z for in silico library generation or library-free search. DIA-NN command: --max-pr-mz</description>
+        <context>APPLICATION</context>
+        <enumeration>1000</enumeration>
+        <enumeration>1050</enumeration>
+        <enumeration>1200</enumeration>
+        <enumeration>1500</enumeration>
+        <enumeration>1800</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_precursor_mz_max</key>
+        <label>Max Precursor m/z</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>1500</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Minimum fragment m/z for spectral library and search. DIA-NN command: --min-fr-mz</description>
+        <context>APPLICATION</context>
+        <enumeration>100</enumeration>
+        <enumeration>200</enumeration>
+        <enumeration>300</enumeration>
+        <enumeration>400</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_fragment_mz_min</key>
+        <label>Min Fragment m/z</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>false</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>200</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Maximum fragment m/z for spectral library and search. DIA-NN command: --max-fr-mz</description>
+        <context>APPLICATION</context>
+        <enumeration>1500</enumeration>
+        <enumeration>1600</enumeration>
+        <enumeration>1700</enumeration>
+        <enumeration>1800</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>07_diann_peptide_fragment_mz_max</key>
+        <label>Max Fragment m/z</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>false</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>1800</value>
+    </parameter>
+
+    <!-- 08: Digestion Configuration -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Enzyme cleavage specificity. Default: K*,R* (Trypsin). Format: [residue]*,[residue]* where * indicates cleavage after residue. DIA-NN command: --cut</description>
+        <context>APPLICATION</context>
+        <enumeration>K*,R*</enumeration>
+        <enumeration>K*,R*,!*P</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>08_diann_digestion_cut</key>
+        <label>Enzyme Cut Sites</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>K*,R*</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Maximum number of missed cleavages allowed during in silico digestion. DIA-NN command: --missed-cleavages</description>
+        <context>APPLICATION</context>
+        <enumeration>0</enumeration>
+        <enumeration>1</enumeration>
+        <enumeration>2</enumeration>
+        <enumeration>None</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>08_diann_digestion_missed_cleavages</key>
+        <label>Missed Cleavages</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>1</value>
+    </parameter>
+
+    <!-- 09: Mass Accuracy -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>MS2 (fragment) mass accuracy in ppm. Lower values are more stringent. DIA-NN command: --mass-acc</description>
+        <context>APPLICATION</context>
+        <enumeration>10</enumeration>
+        <enumeration>15</enumeration>
+        <enumeration>20</enumeration>
+        <enumeration>None</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>09_diann_mass_acc_ms2</key>
+        <label>MS2 Mass Accuracy (ppm)</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>20</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>MS1 (precursor) mass accuracy in ppm. Lower values are more stringent. DIA-NN command: --mass-acc-ms1</description>
+        <context>APPLICATION</context>
+        <enumeration>10</enumeration>
+        <enumeration>15</enumeration>
+        <enumeration>20</enumeration>
+        <enumeration>None</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>09_diann_mass_acc_ms1</key>
+        <label>MS1 Mass Accuracy (ppm)</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>15</value>
+    </parameter>
+
+    <!-- 10: Scoring and FDR -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>False Discovery Rate (FDR) threshold (q-value). Lower values are more stringent. Typical: 0.01 (1%). DIA-NN command: --qvalue</description>
+        <context>APPLICATION</context>
+        <enumeration>0.001</enumeration>
+        <enumeration>0.01</enumeration>
+        <enumeration>0.05</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>10_diann_scoring_qvalue</key>
+        <label>FDR Q-value</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>0.01</value>
+    </parameter>
+
+    <!-- 11: Protein Inference -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Protein grouping level: 0=genes, 1=protein names (default), 2=protein IDs. DIA-NN command: --pg-level</description>
+        <context>APPLICATION</context>
+        <enumeration>0</enumeration>
+        <enumeration>1</enumeration>
+        <enumeration>2</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>11a_diann_protein_pg_level</key>
+        <label>Protein Grouping Level</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>1</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Use relaxed protein inference (more permissive protein grouping). DIA-NN command: --relaxed-prot-inf</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>11b_diann_protein_relaxed_prot_inf</key>
+        <label>Relaxed Protein Inference</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+
+    <!-- 12: Quantification & Normalization -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Enable match-between-runs (MBR) and library refinement. DIA-NN command: --reanalyse</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>12a_diann_quantification_reanalyse</key>
+        <label>Enable Reanalyse (MBR)</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Disable cross-run normalization. DIA-NN command: --no-norm</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>12b_diann_quantification_no_norm</key>
+        <label>Disable Normalization</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+
+    <!-- 99: Other Settings -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Verbosity level for DIA-NN output. 0=minimal, 1=normal, 2=detailed, 3=debug. DIA-NN command: --verbose</description>
+        <context>APPLICATION</context>
+        <enumeration>0</enumeration>
+        <enumeration>1</enumeration>
+        <enumeration>2</enumeration>
+        <enumeration>3</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>99_other_verbose</key>
+        <label>Verbose Level</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>1</value>
+    </parameter>
+
+    <!-- 13: Freestyle Parameters -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --relaxed-prot-inf --rt-profiling</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>13_diann_freestyle</key>
+        <label>Freestyle Parameters</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>None</value>
+    </parameter>
+
+    <!-- Application Version -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>The version of the DIA-NN application to use</description>
+        <context>APPLICATION</context>
+        <enumeration>1.9.2</enumeration>
+        <enumeration>2.3.0</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>application_version</key>
+        <label>Application Version</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>1.9.2</value>
+    </parameter>
+
+    <statusmodified>2025-11-24T00:00:00.000</statusmodified>
+    <statusmodifiedby classname="user" id="3347"/>
+    <supervisor classname="user" id="3347"/>
+    <valid>true</valid>
+</executable>
