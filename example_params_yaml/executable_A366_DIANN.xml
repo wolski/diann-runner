@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<executable classname="executable" id="26960">
+    <deletable>false</deletable>
+    <updatable>true</updatable>
+    <created>2023-05-25 16:19:52</created>
+    <createdby>cpanse</createdby>
+    <modified>2023-05-25 16:19:52</modified>
+    <modifiedby>wolski</modifiedby>
+    <name>A366_DIANN</name>
+    <description>This executable configuration, derived from applicationid 312, defines the interface for the DIANN application in bfabric.</description>
+    <program>/home/bfabric/slurmworker/config/A366_DIANN/app.yml</program>
+    <filechecksum></filechecksum>
+    <size>0</size>
+    <status>available</status>
+    <context>APPLICATION</context>
+    <enabled>true</enabled>
+    <parameter classname="parameter" id="171595">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>specify msconvert options. used when having Orbitrap raw files as input. default is not demux; see also https://github.com/vdemichev/DiaNN/issues/439</description>
+        <context>APPLICATION</context>
+        <enumeration>chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"</enumeration>
+        <enumeration>chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --mzML --64 --zlib --filter "peakPicking vendor msLevel=1-" --filter 'demultiplex optimization=overlap_only massError=10.0ppm'"</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>01|msconvertopts</key>
+        <label>pwiz msconvert options</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>chambm/pwiz-skyline-i-agree-to-the-vendor-licenses wine msconvert --mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"</value>
+    </parameter>
+    <parameter classname="parameter" id="171593">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <created>2023-05-25 16:19:52</created>
+        <createdby>wolski</createdby>
+        <modified>2023-08-17 16:19:52</modified>
+        <modifiedby>jonas</modifiedby>
+        <description>defines FASTA or speclib. only forward and contaminants.</description>
+        <context>APPLICATION</context>
+        <enumeration>/misc/fasta/fgcz_9606_reviewed_cnl_20230330.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9606_UP000005640_20230824.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9606_1spg_20230330.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10090_1spg_20230405.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10090_UP000000589_Musm_1spg_20241112.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10090_UP000000589_20240130.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_7227_1spg_20230515.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_7955_1spg_20230515.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_83333_EcoliK12_20230516.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_208964_PAO1_UP000002438_20240627.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_8355_UP000186698_Xenopus_20240502.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_4932_UP000002311_yeast_20250325.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_4932_ensembl_R64_1_1_20171115.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_5076_UP000076449_Penicillium_20240320.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_6239_1spg_20230516.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_6239_UP000001940_20230516.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_3702_AraUniprot_1spg_20230811.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_3702_AraUniprot_cnl_20230811.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9031_UP000000539_gallus_1spg_20231130.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9986_1spg_rabbit_20230615.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10116_1spg_rat_20240418.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_246196_UP000000757_20230921.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9913_UP000009136_bos_taurus_spg_20240711.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_swissprot_20230328.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_tripleProteome_HYC_1SpG_20230609.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_twoProteome_HY_1SpG_20230609.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_507601_UP000005641_ToxoplGond_20241112.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9823_UP000008227_1spg_pig_20231017.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9823_UP000008227_susScorfa_1spg_20241113.fasta</enumeration>
+        <enumeration>/misc/fasta/Homo_sapiens.GRCh38.pep.all.fasta</enumeration>
+        <enumeration>/misc/fasta/p1511_db3_20180323.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_tripleProt_HYE_large_20230714.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_UP000005640_9606_I2L_entrapment.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_tripleProt_HYE_medium_20230714.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_db5_SA_JE2_modNmoreTranslations_20221124.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_db5_SA_6850_modNmoreTranslations_20221124.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_SA6850_2024_Genbank_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_SA6850_2024_REFSEQ_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_SAreference_UP000008816_93061_20240830.fasta</enumeration>
+        <enumeration>/misc/fasta/p3234_db1_ensemblPlants_20230426.fasta</enumeration>
+        <enumeration>/misc/fasta/p23580_db3_CCCannotated_20230405.fasta</enumeration>
+        <enumeration>/misc/fasta/p24227_canislupus_UP000002254_9615_20230511.fasta</enumeration>
+        <enumeration>/misc/fasta/p27160_eHOMD2022_9606_cont_20220131.fasta</enumeration>
+        <enumeration>/misc/fasta/p27865_db1_threeColis_20230831.fasta</enumeration>
+        <enumeration>/misc/fasta/p28488_db1_orcaNdwnSzdUniref100_20220610.fasta</enumeration>
+        <enumeration>/misc/fasta/p30301_db2_ZE04MAR21_20230927.fasta</enumeration>
+        <enumeration>/misc/fasta/p30301_db3_ZE04JUN21_20230927.fasta</enumeration>
+        <enumeration>/misc/fasta/p30301_db4_concatDB2nDB3.fasta</enumeration>
+        <enumeration>/misc/fasta/o30380_db_1_UP000031872_UP000001811_cont_IDs_43743.fasta</enumeration>
+        <enumeration>/misc/fasta/p30335_db1_PfalciNhuman_20230329.fasta</enumeration>
+        <enumeration>/misc/fasta/p30383_db1_Pfalciparum3D7_20230112.fasta</enumeration>
+        <enumeration>/misc/fasta/p30383_db2_Pfalicparum_n_Human_20250730.fasta</enumeration>
+        <enumeration>/misc/fasta/p30604_dbUP29799nUP268571_nr_20241120.fasta</enumeration>
+        <enumeration>/misc/fasta/p31434_db2_20230706.fasta</enumeration>
+        <enumeration>/misc/fasta/p31434_db2_20230706.fasta</enumeration>
+        <enumeration>/misc/fasta/p31540_db1_NCBI_20230622.fasta</enumeration>
+        <enumeration>/misc/fasta/p31540_db2_Uniref100_n_NCBI_noDubs_20231025.fasta</enumeration>
+        <enumeration>/misc/fasta/p31540_db3_Uniref100_n_NCBI_wDescriptionNoDubsCut60_20231031.fasta</enumeration>
+        <enumeration>/misc/fasta/p31573_db2_IsoF_20240605.fasta</enumeration>
+        <enumeration>/misc/fasta/p32331_fgcz_9606_1spg_20230330_n_taxId_364106_20230814.fasta</enumeration>
+        <enumeration>/misc/fasta/p32624_UP000009136_UP000002032_db1_20230905.fasta</enumeration>
+        <enumeration>/misc/fasta/p32750_db1_MEcoli_ref_1_proteome_fixed_20231004.fasta</enumeration>
+        <enumeration>/misc/fasta/p32750_db2_MEcoli_ref_2_proteome_fixed_20231004.fasta</enumeration>
+        <enumeration>/misc/fasta/p32750_db3_MEvo1_0_proteome_fixed_20231004.fasta</enumeration>
+        <enumeration>/misc/fasta/p32808_db1_HaloBor_20230914.fasta</enumeration>
+        <enumeration>/misc/fasta/p33333_db1_UP001300_20231207.fasta</enumeration>
+        <enumeration>/misc/fasta/p33430_db1_UP000001014_SalmonellaTyphimurium_20240322.fasta</enumeration>
+        <enumeration>/misc/fasta/p34124_UP000002296_Trypanosoma_20240207.fasta</enumeration>
+        <enumeration>/misc/fasta/o34326_db1_20240229.fasta</enumeration>
+        <enumeration>/misc/fasta/p34435_db1_UPkb_taxID_388413_20240405.fasta</enumeration>
+        <enumeration>/misc/fasta/p35159_UP000008524_Trypanosomabb_db1_20240517.fasta</enumeration>
+        <enumeration>/misc/fasta/o34855_96061spg_n_83333EcoliK12_20240613.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta</enumeration>     
+        <enumeration>/misc/fasta/p35425_db1_Falocis_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p35425_db2_Falocis_UP000007468_546269_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p35425_db3_Falocis_db1n2_20241023.fasta</enumeration>
+        <enumeration>/misc/fasta/p35425_db4_Falocis_db1n2nHuman_20250730.fasta</enumeration>
+        <enumeration>/misc/fasta/p34548_SpringBloom2021_95MagSpeciesDB_15JUL24_20240726.fasta</enumeration>
+        <enumeration>/misc/fasta/p33688_db1_UP000005640_9606_20241015.fasta</enumeration>
+        <enumeration>/misc/fasta/p33688_db2_uniprotkb_UP000005640_20241015.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <enumeration>/misc/fasta/p35134_db1_TripleProteome_HYE_20240918.fasta</enumeration>
+        <enumeration>/misc/fasta/p35134_db1_TripleProteome_HYE_20241112.fasta</enumeration>
+        <enumeration>/misc/fasta/p35269_db1_SA6850wPGAP_20250916.fasta</enumeration>
+        <enumeration>/misc/fasta/p35269_db2_SA6850wPGAPmod_20250917.fasta</enumeration>
+        <enumeration>/misc/fasta/p35269_db2_allNCBI_SAnVFdb_20251121.fasta</enumeration>
+        <enumeration>/misc/fasta/p36020_db2_MultispeciesNWheat_20240823.fasta</enumeration>
+        <enumeration>/misc/fasta/p36096_SA6850_db1_wPseudogenes_20241114.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db1_UP000002204_RhodococcusE_20240903.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db2_UP000197050_BrevundimonasV_20240903.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db3_ncbi_RhodococcusE_20241018.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db4_ncbi_BrevundimonasV_20241018.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db4_ncbi_BrevundimonasV_20241018.fasta</enumeration>
+        <enumeration>/misc/fasta/p36249_db1_pioneer_20250224.fasta</enumeration>
+        <enumeration>/misc/fasta/p36737_db3_Pfalicparum_n_Human_20250812.fasta</enumeration>
+        <enumeration>/misc/fasta/o36989_humanNmetaPrXDB_Colon_epicXS_20241121.fasta</enumeration>
+        <enumeration>/misc/fasta/o37736_UP000005641-UP000005640-Contam_spikein_20250527.fasta</enumeration>
+        <enumeration>/misc/fasta/p37616_db1_Tenacibaculum_UP000231564_20250305.fasta</enumeration>
+        <enumeration>/misc/fasta/p38645_db1_HumanNEBVG_1spg_20250523.fasta</enumeration>
+        <enumeration>/misc/fasta/p38902_db2_BoaNReptaVir_20251014.fasta</enumeration>
+        <enumeration>/misc/fasta/p38815_db1_Popeye_AraUniprot_20250819.fasta</enumeration>
+        <enumeration>/misc/fasta/p38815_db2_Popeye_Araport_20250819.fasta</enumeration>
+        <enumeration>/misc/fasta/p38815_db3_DAF_SSTDB2AraUniprot_20250829.fasta</enumeration>
+        <enumeration>/misc/fasta/p38815_db4_DAFplusFernDB_20250829.fasta</enumeration>
+        <enumeration>/misc/fasta/p39154_db1_UP000001449_Thalassiosira_20250814.fasta</enumeration>
+        <enumeration>/misc/fasta/p39466_db1_UP000000532_300852_20250820.fasta</enumeration>
+        <enumeration>/misc/fasta/p39466_db2_uniprotkb_UP000000532_20250820.fasta</enumeration>
+        <enumeration>/misc/fasta/o39513_db1_UP000019116_TriticumAestivum_20250904.fasta</enumeration>
+        <enumeration>/misc/fasta/o39709_db1_PA_UP000829686_unipark_20250904.fasta</enumeration>
+        <enumeration>/misc/fasta/p39912_db1_SnowMetaPrX_20251014.fasta</enumeration>
+        <enumeration>/misc/fasta/p40021_db1_metaPrXDB_20251015.fasta</enumeration>
+        <enumeration>/misc/fasta/p40285_db1_MycoBovis_UP000001419_20251118.fasta</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>DIANNFASTA0</key>
+        <label>database</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>/misc/fasta/fgcz_9606_1spg_20230330.fasta</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Inject additional FASTA from order.</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>DIANNCUSTOMSEQ</key>
+        <label>add order AA sequence</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>false</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+    <parameter classname="parameter" id="171594">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Choose variable modifications: Oxidation, Phospho, or DiGly</description>
+        <context>APPLICATION</context>
+        <enumeration>--var-mods 1 --var-mod UniMod:35,15.994915,M</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:35,15.994915,M</enumeration>
+        <enumeration>--var-mods 1 --var-mod UniMod:21,79.966331,STY --monitor-mod UniMod:21</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:21,79.966331,STY --monitor-mod UniMod:21</enumeration>
+        <enumeration>--var-mods 3 --var-mod UniMod:21,79.966331,STY --monitor-mod UniMod:21 --var-mod UniMod:35,15.994915,M</enumeration>
+        <enumeration>--var-mods 1 --var-mod UniMod:121,114.042927,K --monitor-mod UniMod:121</enumeration>
+        <enumeration>--var-mods 2 --var-mod UniMod:35,15.994915,M --var-mod UniMod:121,114.042927,K</enumeration>
+        <enumeration>None</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>DIANNVARMOD</key>
+        <label>--var-mods [N] --var-mod [name],[mass],[sites],[optional: 'label'] </label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--var-mods 1 --var-mod UniMod:35,15.994915,M</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets the minimum/maximum precursor charge for the in silico library generation or library-free search</description>
+        <context>APPLICATION</context>
+        <enumeration>--min-pr-charge 2 --max-pr-charge 2</enumeration>
+        <enumeration>--min-pr-charge 2 --max-pr-charge 3</enumeration>
+        <enumeration>--min-pr-charge 1 --max-pr-charge 4</enumeration>
+        <enumeration>None</enumeration>
+        <inUse>true</inUse>
+        <key>DIANNCFG0</key>
+        <label>--min-pr-charge [N] --max-pr-charge [N]</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--min-pr-charge 2 --max-pr-charge 3</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets the minimum/maximum precursor m/z for the in silico library generation or library-free search</description>
+        <context>APPLICATION</context>
+        <enumeration>--min-pr-mz 400 --max-pr-mz 1500</enumeration>
+        <enumeration>--min-pr-mz 350 --max-pr-mz 1500</enumeration>
+        <enumeration>--min-pr-mz 350 --max-pr-mz 1050</enumeration>
+        <enumeration>None</enumeration>
+        <inUse>true</inUse>
+        <key>DIANNCFG1</key>
+        <label>--min-pr-mz [N] --max-pr-mz[N]</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--min-pr-mz 400 --max-pr-mz 1500</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets the minimum/maximum</description>
+        <context>APPLICATION</context>
+        
+        <enumeration>--min-fr-mz 200 --max-fr-mz 1800</enumeration>
+        <enumeration>None</enumeration>
+        
+        <inUse>true</inUse>
+        <key>DIANNCFG2</key>
+        <label>--min-fr-mz [N] --max-fr-mz[N]</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>false</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--min-fr-mz 200 --max-fr-mz 1800</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>fix unimod4</description>
+        <context>APPLICATION</context>
+        
+        <enumeration>--verbose 1 --unimod4</enumeration>
+        <enumeration>--verbose 1</enumeration>
+        <enumeration>None</enumeration>
+        
+        <inUse>true</inUse>
+        <key>DIANNCFG4</key>
+        <label>--unimod4</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--unimod4</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets the maximum number of missed cleavages</description>
+        <context>APPLICATION</context>
+        
+        <enumeration>None</enumeration>
+        <enumeration>--missed-cleavages 1</enumeration>
+        <enumeration>--missed-cleavages 0</enumeration>
+
+        <inUse>true</inUse>
+        <key>DIANNCFG5</key>
+        <label>--missed-cleavages [N]</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--missed-cleavages 1</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets the MS2 mass accuracy to N ppm</description>
+        <context>APPLICATION</context>
+        
+        <enumeration>None</enumeration>
+        <enumeration>--mass-acc 10</enumeration>
+        <enumeration>--mass-acc 15</enumeration>
+        <enumeration>--mass-acc 20</enumeration>
+        
+        <inUse>true</inUse>
+        <key>DIANNCFG6</key>
+        <label>--mass-acc [N]</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--mass-acc 20</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets the MS1 mass accuracy to N ppm</description>
+        <context>APPLICATION</context>
+        
+        <enumeration>None</enumeration>
+        <enumeration>--mass-acc-ms1 10</enumeration>
+        <enumeration>--mass-acc-ms1 15</enumeration>
+        <enumeration>--mass-acc-ms1 20</enumeration>
+        
+        <inUse>true</inUse>
+        <key>DIANNCFG7</key>
+        <label>--mass-acc-ms1 [N]</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--mass-acc-ms1 15</value>
+    </parameter>
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>sets additional parameters for normalisation, protein inference and match-between-runs</description>
+        <context>APPLICATION</context>
+        
+        <enumeration>None</enumeration>
+        <enumeration>--reanalyse</enumeration>
+        <enumeration>--reanalyse --pg-level 0</enumeration>
+        <enumeration>--reanalyse --relaxed-prot-inf</enumeration>
+        <enumeration>--reanalyse --no-norm</enumeration>
+        <enumeration>--reanalyse --relaxed-prot-inf --no-norm</enumeration>
+        <enumeration>--reanalyse --relaxed-prot-inf --no-norm --pg-level 0</enumeration>
+        <enumeration>--reanalyse --relaxed-prot-inf --pg-level 0</enumeration>
+        <enumeration>--pg-level 0</enumeration>
+        <enumeration>--relaxed-prot-inf</enumeration>
+        <enumeration>--relaxed-prot-inf --pg-level 0</enumeration>
+        <enumeration>--no-norm</enumeration>
+        <enumeration>--no-norm --pg-level 0</enumeration>
+        
+        <inUse>true</inUse>
+        <key>DIANNCFG8</key>
+        <label>additional parameters</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>--reanalyse --pg-level 0</value>
+    </parameter>
+    <parameter>
+        <key>DIANNFreestyle</key>
+        <label>additional parameters freestyle</label>
+        <description>add additional parameters on your own risk</description>
+        <context>APPLICATION</context>
+        <required>true</required>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <inUse>true</inUse>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <type>STRING</type>
+        <value>None</value>
+    </parameter>
+
+    <parameter>
+        <key>application_version</key>
+        <label>Application Version</label>
+        <description>The version of the application to use</description>
+        <context>APPLICATION</context>
+        <required>true</required>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <inUse>true</inUse>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <type>STRING</type>
+        <value>1.9.2</value>
+    </parameter>
+    
+    <statusmodified>2023-05-25T16:19:38.279</statusmodified>
+    <statusmodifiedby classname="user" id="3347"/>
+    <supervisor classname="user" id="3347"/>
+    <valid>true</valid>
+</executable>

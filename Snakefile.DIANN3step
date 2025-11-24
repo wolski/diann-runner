@@ -103,12 +103,12 @@ rule convert_raw:
         file=RAW_DIR / "{sample}.mzML"
     params:
         msconvert_opts = config_dict["params"].get("msconvert_docker_image", "--mzML --64 --zlib --filter \"peakPicking vendor msLevel=1-\""),
-        docker_image = "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
+        docker_image = "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses timeout 7200 wine msconvert"
     retries: 3
     shell:
         """
         docker run -t --rm --network none -w $PWD -v $PWD:$PWD \
-            {params.docker_image} wine msconvert {params.msconvert_opts} {input.file};
+            {params.docker_image} {params.msconvert_opts} {input.file};
         """
 
 def get_converted_file(sample: str):
