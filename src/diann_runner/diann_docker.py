@@ -9,7 +9,7 @@ Note: Use relative paths or run from your data directory.
       Current directory is mounted to /work in the container.
 
 Env vars:
-  DIANN_DOCKER_IMAGE   (default: "diann:2.3.0")
+  DIANN_DOCKER_IMAGE   (default: "diann:2.3.1")
   DIANN_PLATFORM       (optional: override docker --platform)
   DIANN_EXTRA          (optional: extra docker run args)
 """
@@ -21,7 +21,7 @@ import subprocess
 import platform
 
 # --- Settings ---
-DEFAULT_IMAGE = os.environ.get("DIANN_DOCKER_IMAGE", "diann:2.3.0")
+DEFAULT_IMAGE = os.environ.get("DIANN_DOCKER_IMAGE", "diann:2.3.1")
 PLATFORM_OVERRIDE = os.environ.get("DIANN_PLATFORM", "")
 EXTRA_ARGS = shlex.split(os.environ.get("DIANN_EXTRA", ""))
 

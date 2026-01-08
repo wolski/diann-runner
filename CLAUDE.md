@@ -12,6 +12,20 @@ This is a Python package for running DIA-NN (mass spectrometry data analysis) wo
 
 The package uses `uv` for dependency management and `cyclopts` for CLI argument parsing.
 
+## CLI Entry Points
+
+All commands defined in `pyproject.toml`:
+
+| Command | Module | Purpose |
+|---------|--------|---------|
+| `diann-docker` | `docker.py` | Run DIA-NN in Docker container |
+| `diann-workflow` | `cli.py` | Generate three-stage workflow scripts |
+| `diann-cleanup` | `cleanup.py` | Clean up workflow output files |
+| `diann-qc` | `plotter.py` | Generate QC plots from DIA-NN results |
+| `diann-koina-adapter` | `koina_adapter.py` | Koina predictor integration |
+| `oktoberfest-docker` | `oktoberfest_docker.py` | Run Oktoberfest for spectral prediction |
+| `prolfquapp-docker` | `prolfquapp_docker.py` | Run prolfqua QC in Docker |
+
 ## Development Commands
 
 ### Installation
@@ -65,7 +79,7 @@ The script will:
 ### Docker Image
 ```bash
 # Build the DIA-NN Docker image
-docker build --platform linux/amd64 -f Dockerfile.diann -t diann:2.3.0 .
+docker build --platform linux/amd64 -f docker/Dockerfile.diann -t diann:2.3.0 .
 
 # Test the Docker wrapper
 diann-docker --help
@@ -131,21 +145,28 @@ All source modules are located in `src/diann_runner/`:
 - Preserves UID/GID on Unix systems for correct file permissions
 - Environment variables: `DIANN_DOCKER_IMAGE`, `DIANN_PLATFORM`, `DIANN_EXTRA`
 
-**`src/diann_runner/plotter.py`** - QC plotting utilities (referenced in Snakefile)
+**`src/diann_runner/plotter.py`** - QC plotting utilities (`diann-qc` command)
 
-**`src/diann_runner/cleanup.py`** - Cleanup utilities for workflow files
+**`src/diann_runner/cleanup.py`** - Cleanup utilities (`diann-cleanup` command)
 
-**`src/diann_runner/koina_adapter.py`** - Koina predictor integration (see docs/SPECTRAL_PREDICTION.md)
+**`src/diann_runner/koina_adapter.py`** - Koina predictor integration (`diann-koina-adapter` command, see docs/SPECTRAL_PREDICTION.md)
 
-**`src/diann_runner/oktoberfest_docker.py`** - Oktoberfest integration for spectral prediction (see docs/SPECTRAL_PREDICTION.md)
+**`src/diann_runner/oktoberfest_docker.py`** - Oktoberfest integration (`oktoberfest-docker` command, see docs/SPECTRAL_PREDICTION.md)
 
-**`src/diann_runner/prolfquapp_docker.py`** - Prolfqua QC integration
+**`src/diann_runner/prolfquapp_docker.py`** - Prolfqua QC integration (`prolfquapp-docker` command)
 
-**`src/diann_runner/scripts/`** - Helper shell scripts for external tools
+**`snakemake_helpers.py`** - Helper functions for Snakemake (at project root)
+- `detect_input_files()`: Detects .d.zip, .raw, or .mzML files with priority logic
+- `parse_flat_params()`: Transforms flat Bfabric XML keys to nested structure
+- `parse_var_mods_string()`: Parses modification strings into tuples
+- `create_diann_workflow()`: Factory function to initialize DiannWorkflow from parsed params
+- `get_final_quantification_outputs()`: Returns output paths based on Step B vs Step C
+- `convert_parquet_to_tsv()`: Converts DIA-NN 2.3+ parquet output to TSV
+- `build_oktoberfest_config()`: Builds Oktoberfest configuration dictionary
 
 ### Snakemake Workflow
 
-The `Snakefile` orchestrates the complete pipeline:
+The `Snakefile.DIANN3step.smk` orchestrates the complete pipeline:
 1. File conversion (`.raw` → `.mzML` or `.d.zip` → `.d`)
 2. DIA-NN execution (generates and runs bash script)
 3. QC report generation
@@ -153,9 +174,11 @@ The `Snakefile` orchestrates the complete pipeline:
 
 Key features:
 - Reads configuration from `params.yml` in the working directory
-- Dynamically detects input file types (`.raw` or `.d.zip`)
+- Dynamically detects input file types (`.raw`, `.d.zip`, or `.mzML`) via `detect_input_files()`
 - Integrates with FGCZ infrastructure (bfabric, prolfqua)
 - Uses Docker containers for msconvert and prolfqua
+- Supports optional Step C (controlled by `enable_step_c` parameter)
+- Supports alternative library predictors: DIA-NN (default) or Oktoberfest
 
 ### Bfabric Parameter Flow Architecture
 
@@ -250,22 +273,27 @@ By default, all workflow scripts use `diann-docker` as the DIA-NN binary. Overri
 
 ## Key Output Files
 
+DIA-NN 2.3+ outputs `.parquet` files by default. The workflow converts these to TSV for downstream tools.
+
 ```
 out-DIANN_libA/
-  ├── WU{id}_predicted.speclib         # Step A: Predicted library
-  └── WU{id}_predicted.speclib.config.json
+  ├── WU{id}_report-lib.predicted.speclib  # Step A: Predicted library
+  └── WU{id}_libA.config.json
 
 out-DIANN_quantB/
-  ├── WU{id}_refined.speclib           # Step B: Refined library
-  ├── WU{id}_refined.speclib.config.json
-  ├── WU{id}_reportB.tsv               # Optional quantification
-  └── WU{id}_reportB.pg_matrix.tsv
+  ├── WU{id}_report-lib.parquet        # Step B: Refined library (parquet format)
+  ├── WU{id}_quantB.config.json
+  ├── WU{id}_report.parquet            # Main report (parquet)
+  ├── WU{id}_report.tsv                # Converted for downstream tools
+  ├── WU{id}_report.pg_matrix.tsv      # Protein group matrix
+  └── WU{id}_report.stats.tsv          # Statistics
 
-out-DIANN_quantC/
-  ├── WU{id}_reportC.tsv               # ★ Main results
-  ├── WU{id}_reportC.pg_matrix.tsv     # ★ Protein matrix
-  ├── WU{id}_reportC.pr_matrix.tsv     # Precursor matrix
-  └── WU{id}_final.speclib
+out-DIANN_quantC/                      # Only if enable_step_c=True
+  ├── WU{id}_report-lib.parquet        # ★ Final library
+  ├── WU{id}_report.parquet            # ★ Main results (parquet)
+  ├── WU{id}_report.tsv                # ★ Converted for prolfqua/diann-qc
+  ├── WU{id}_report.pg_matrix.tsv      # ★ Protein matrix
+  └── WU{id}_report.stats.tsv          # Statistics
 ```
 
 **Note on FASTA files:**

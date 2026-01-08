@@ -76,6 +76,8 @@ class DiannWorkflow:
         max_pr_charge: int = 3,
         min_pr_mz: int = 400,
         max_pr_mz: int = 1500,
+        min_fr_mz: int = 200,
+        max_fr_mz: int = 1800,
         missed_cleavages: int = 1,
         cut: str = 'K*,R*',
         mass_acc: int = 20,
@@ -108,6 +110,8 @@ class DiannWorkflow:
             max_pr_charge: Maximum precursor charge
             min_pr_mz: Minimum precursor m/z
             max_pr_mz: Maximum precursor m/z
+            min_fr_mz: Minimum fragment m/z
+            max_fr_mz: Maximum fragment m/z
             missed_cleavages: Maximum number of missed cleavages
             cut: Protease specificity (e.g., 'K*,R*' for trypsin)
             mass_acc: MS2 mass accuracy (ppm)
@@ -142,6 +146,8 @@ class DiannWorkflow:
         self.max_pr_charge = max_pr_charge
         self.min_pr_mz = min_pr_mz
         self.max_pr_mz = max_pr_mz
+        self.min_fr_mz = min_fr_mz
+        self.max_fr_mz = max_fr_mz
         self.missed_cleavages = missed_cleavages
         self.cut = cut
         self.mass_acc = mass_acc
@@ -183,6 +189,8 @@ class DiannWorkflow:
             'max_pr_charge': self.max_pr_charge,
             'min_pr_mz': self.min_pr_mz,
             'max_pr_mz': self.max_pr_mz,
+            'min_fr_mz': self.min_fr_mz,
+            'max_fr_mz': self.max_fr_mz,
             'missed_cleavages': self.missed_cleavages,
             'cut': self.cut,
             'mass_acc': self.mass_acc,
@@ -256,6 +264,8 @@ class DiannWorkflow:
         params.append(f"--max-pr-charge {self.max_pr_charge}")
         params.append(f"--min-pr-mz {self.min_pr_mz}")
         params.append(f"--max-pr-mz {self.max_pr_mz}")
+        params.append(f"--min-fr-mz {self.min_fr_mz}")
+        params.append(f"--max-fr-mz {self.max_fr_mz}")
         params.append(f"--missed-cleavages {self.missed_cleavages}")
         params.append(f"--mass-acc {self.mass_acc}")
         params.append(f"--mass-acc-ms1 {self.mass_acc_ms1}")
@@ -658,96 +668,3 @@ class DiannWorkflow:
         print(f"  - TSV matrices:      {self.quant_c_dir}/{self.workunit_id}_report.pg_matrix.tsv")
         
         return scripts
-
-
-def main():
-    """
-    Example usage demonstrating the three-stage workflow with flexible file lists.
-    """
-    # Variable modifications
-    var_mods = [
-        ('35', '15.994915', 'M'),  # Oxidation of Methionine
-    ]
-    
-    # Initialize workflow with shared parameters only
-    workflow = DiannWorkflow(
-        workunit_id='WU336182',
-        output_base_dir='out-DIANN',
-        var_mods=var_mods,
-        diann_bin='/usr/diann/diann-2.3.0/diann-linux',
-        threads=64,
-        qvalue=0.01,
-        is_dda=False,  # Set to True if analyzing DDA data
-    )
-    
-    # Example 1: Simple workflow - same files for all steps
-    print("=" * 60)
-    print("Example 1: Standard workflow - same files for B and C")
-    print("=" * 60)
-    
-    all_files = [
-        '24P64-plasma05.mzML',
-        '24P64-plasma01.mzML',
-        '24P64-plasma16.mzML',
-        '24P64-plasma09.mzML',
-    ]
-    
-    workflow.generate_all_scripts(
-        fasta_path='/misc/fasta/fgcz_10116_1spg_rat_20240418.fasta',
-        raw_files_step_b=all_files,
-        raw_files_step_c=all_files,  # Same files (can omit, this is default)
-        quantify_step_b=True
-    )
-    
-    # Example 2: Fast library building - subset in B, all files in C
-    print("\n" + "=" * 60)
-    print("Example 2: Fast library building strategy")
-    print("=" * 60)
-    
-    # Use just 2 files to build refined library quickly
-    subset_files = [
-        '24P64-plasma05.mzML',
-        '24P64-plasma01.mzML',
-    ]
-    
-    # Then quantify all files with the refined library
-    all_files_extended = [
-        '24P64-plasma05.mzML',
-        '24P64-plasma01.mzML',
-        '24P64-plasma16.mzML',
-        '24P64-plasma09.mzML',
-        '24P64-plasma11.mzML',
-        '24P64-plasma22.mzML',
-    ]
-    
-    workflow.generate_all_scripts(
-        fasta_path='/misc/fasta/fgcz_10116_1spg_rat_20240418.fasta',
-        raw_files_step_b=subset_files,      # Fast library building
-        raw_files_step_c=all_files_extended, # Full quantification
-        quantify_step_b=False  # Skip quantification in B, just build library
-    )
-    
-    # Example 3: Manual individual step generation for maximum flexibility
-    print("\n" + "=" * 60)
-    print("Example 3: Manual step-by-step generation")
-    print("=" * 60)
-    
-    # Step A: Generate library
-    workflow.generate_step_a_library(
-        fasta_path='/misc/fasta/fgcz_10116_1spg_rat_20240418.fasta'
-    )
-    
-    # Step B: Refine library with subset
-    workflow.generate_step_b_quantification_with_refinement(
-        raw_files=subset_files,
-        quantify=False  # Just library building, no quantification
-    )
-    
-    # Step C: Full quantification with all files
-    workflow.generate_step_c_final_quantification(
-        raw_files=all_files_extended
-    )
-
-
-if __name__ == '__main__':
-    main()

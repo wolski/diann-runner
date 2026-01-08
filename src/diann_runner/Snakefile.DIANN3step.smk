@@ -10,12 +10,17 @@ import datetime
 import re
 from pathlib import Path
 
-# Import the workflow generator and helpers
-SNAKEFILE_DIR = Path(workflow.basedir)
-sys.path.insert(0, str(SNAKEFILE_DIR / 'src'))
-sys.path.insert(0, str(SNAKEFILE_DIR))  # For snakemake_helpers
+# Import the workflow generator and helpers from diann_runner package
 from diann_runner.workflow import DiannWorkflow
-from snakemake_helpers import build_oktoberfest_config, get_final_quantification_outputs, parse_flat_params, create_diann_workflow, detect_input_files
+from diann_runner.snakemake_helpers import (
+    build_oktoberfest_config,
+    get_final_quantification_outputs,
+    parse_flat_params,
+    create_diann_workflow,
+    detect_input_files,
+    convert_parquet_to_tsv,
+    zip_diann_results,
+)
 
 # Plotter is now available as diann-qc command via pyproject.toml entry point
 
@@ -37,11 +42,14 @@ DIANNTEMP = "temp-DIANN"
 OUTPUT_PREFIX = "out-DIANN"
 
 # Parse all workflow parameters in one place
-params = parse_flat_params(config_dict["params"])
+# Note: Use WORKFLOW_PARAMS instead of "params" to avoid conflict with Snakemake's
+# built-in params object inside rule `run:` blocks
+WORKFLOW_PARAMS = parse_flat_params(config_dict["params"])
 
 # Only create globals needed for Snakemake wildcards and conditionals
-LIBRARY_PREDICTOR = params["library_predictor"]
-ENABLE_STEP_C = params["enable_step_c"]
+LIBRARY_PREDICTOR = WORKFLOW_PARAMS["library_predictor"]
+ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
+fasta_config = WORKFLOW_PARAMS["fasta"]  # Alias for fasta parameters used in rules
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
@@ -65,19 +73,29 @@ rule convert_d_zip:
         """
 
 rule convert_raw:
-    """Convert *.raw -> *.mzML using msconvert."""
+    """Convert *.raw -> *.mzML using ThermoRawFileParser.
+
+    Uses native binary if raw_converter_binary is set (for ARM Mac),
+    otherwise uses Docker (for x86_64 servers).
+    """
     input:
         file=RAW_DIR / "{sample}.raw"
     output:
         file=RAW_DIR / "{sample}.mzML"
     params:
-        msconvert_opts = config_dict["params"].get("msconvert_docker_image", "--mzML --64 --zlib --filter \"peakPicking vendor msLevel=1-\""),
-        docker_image = "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses timeout 7200 wine msconvert"
+        converter_binary = config_dict["params"].get("raw_converter_binary", ""),
+        docker_image = config_dict["params"].get("raw_converter_docker", "thermorawfileparser:2.0.0")
     retries: 3
     shell:
         """
-        docker run -t --rm --network none -w $PWD -v $PWD:$PWD \
-            {params.docker_image} {params.msconvert_opts} {input.file};
+        if [ -n "{params.converter_binary}" ] && [ -x "{params.converter_binary}" ]; then
+            # Use native binary (for ARM Mac local testing)
+            {params.converter_binary} -i {input.file} -o . -f 2
+        else
+            # Use Docker (for x86_64 servers)
+            docker run --rm -v $PWD:/data {params.docker_image} \
+                -i /data/{wildcards.sample}.raw -o /data -f 2
+        fi
         """
 
 def get_converted_file(sample: str):
@@ -115,14 +133,19 @@ rule diann_generate_scripts:
         config_b=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json",
         config_c=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_quantC.config.json"
     run:
-        # Initialize workflow with all parameters from params via helper function
+        # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
         workflow = create_diann_workflow(
             WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-            params["fasta"]["database_path"], params["var_mods"], params["diann"]
+            WORKFLOW_PARAMS["fasta"]["database_path"], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"]
         )
 
         # Convert input mzML files to list of strings
         raw_files = [str(f) for f in input.mzml_files]
+
+        # Determine FASTA path (custom order.fasta or configured database)
+        fasta_path = WORKFLOW_PARAMS["fasta"]["database_path"]
+        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
+            fasta_path = str(RAW_DIR / "order.fasta")
 
         # Generate all three scripts
         scripts = workflow.generate_all_scripts(
@@ -150,8 +173,8 @@ rule generate_oktoberfest_config:
         import json
 
         # Determine FASTA path
-        fasta_path = params["fasta"]["database_path"]
-        if params["fasta"].get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
+        fasta_path = WORKFLOW_PARAMS["fasta"]["database_path"]
+        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
             fasta_path = str(RAW_DIR / "order.fasta")
 
         # Build Oktoberfest config using helper function
@@ -160,7 +183,7 @@ rule generate_oktoberfest_config:
             workunit_id=str(WORKUNITID),
             fasta_path=fasta_path,
             output_dir=f"{OUTPUT_PREFIX}_libA",
-            diann_params=params["diann"]
+            diann_params=WORKFLOW_PARAMS["diann"]
         )
 
         # Write config to file
@@ -282,9 +305,8 @@ rule convert_parquet_to_tsv:
     output:
         tsv=FINAL_QUANT_OUTPUTS["report_tsv"]
     params:
-        is_dda=config_dict["params"]["diann"].get("is_dda", False)
+        is_dda=WORKFLOW_PARAMS["diann"].get("is_dda", False)
     run:
-        from snakemake_helpers import convert_parquet_to_tsv
         convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv), params.is_dda)
 
 rule diannqc:
@@ -311,7 +333,6 @@ rule zip_diann_result:
         output_dir=lambda wildcards, input: str(Path(input[0]).parent),
         workunit_id=WORKUNITID
     run:
-        from snakemake_helpers import zip_diann_results
         zip_diann_results(
             output_dir=params.output_dir,
             zip_path=output.zip,

@@ -2,7 +2,7 @@
 name = "diann-runner"
 version = "0.1.0"
 description = "Tools for running DIA-NN workflows"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # Install with: uv pip install -e .
 dependencies = [
     "snakemake>=8.0.0",
@@ -16,15 +16,19 @@ dependencies = [
 ]
 
 [project.scripts]
-diann-docker = "diann_runner.docker:main"
+diann-docker = "diann_runner.diann_docker:main"
 diann-workflow = "diann_runner.cli:app"
 diann-cleanup = "diann_runner.cleanup:main"
 diann-qc = "diann_runner.plotter:main"
 diann-koina-adapter = "diann_runner.koina_adapter:app"
 oktoberfest-docker = "diann_runner.oktoberfest_docker:main"
 prolfquapp-docker = "diann_runner.prolfquapp_docker:main"
+diann-snakemake = "diann_runner.snakemake_cli:main"
 
 [project.optional-dependencies]
 # Install with: uv pip install -e ".[test]"
 test = ["pytest>=7.0.0"]
+
+[tool.setuptools.package-data]
+diann_runner = ["Snakefile.DIANN3step.smk"]
 

@@ -338,6 +338,8 @@ class TestDiannWorkflow(unittest.TestCase):
             "--cut 'K*,R*'",
             '--min-pep-len 6',
             '--max-pep-len 30',
+            '--min-fr-mz 200',
+            '--max-fr-mz 1800',
             '--met-excision',
             '--unimod4',
         ]

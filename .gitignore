@@ -125,3 +125,8 @@ Icon
 
 # Thumbnails
 Thumbs.db
+.claude/
+AGENTS.md
+GEMINI.md
+tools/
+uv.lock

@@ -137,6 +137,8 @@ def parse_flat_params(flat_params):
     diann['max_pr_charge'] = int(flat_params.get('07_diann_peptide_precursor_charge_max', '3'))
     diann['min_pr_mz'] = int(flat_params.get('07_diann_peptide_precursor_mz_min', '400'))
     diann['max_pr_mz'] = int(flat_params.get('07_diann_peptide_precursor_mz_max', '1500'))
+    diann['min_fr_mz'] = int(flat_params.get('07_diann_peptide_fragment_mz_min', '200'))
+    diann['max_fr_mz'] = int(flat_params.get('07_diann_peptide_fragment_mz_max', '1800'))
 
     # Parse digestion
     diann['cut'] = flat_params.get('08_diann_digestion_cut', 'K*,R*')
@@ -237,6 +239,8 @@ def create_diann_workflow(
         max_pr_charge=diann_params.get("max_pr_charge", 3),
         min_pr_mz=diann_params.get("min_pr_mz", 400),
         max_pr_mz=diann_params.get("max_pr_mz", 1500),
+        min_fr_mz=diann_params.get("min_fr_mz", 200),
+        max_fr_mz=diann_params.get("max_fr_mz", 1800),
         missed_cleavages=diann_params.get("missed_cleavages", 1),
         cut=diann_params.get("cut", "K*,R*"),
         mass_acc=diann_params.get("mass_acc", 20),

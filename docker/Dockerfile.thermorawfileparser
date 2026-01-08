@@ -1,0 +1,26 @@
+# ThermoRawFileParser Docker image
+# Based on .NET 8 runtime - no Wine needed, works on ARM64
+FROM mcr.microsoft.com/dotnet/runtime:8.0
+
+LABEL maintainer="Witold Wolski"
+LABEL description="ThermoRawFileParser v2.0.0-dev for converting Thermo RAW files to mzML"
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and extract ThermoRawFileParser
+WORKDIR /opt
+RUN curl -L -o ThermoRawFileParser.zip \
+    "https://github.com/CompOmics/ThermoRawFileParser/releases/download/v.2.0.0-dev/ThermoRawFileParser-v.2.0.0-dev-net8.zip" \
+    && unzip ThermoRawFileParser.zip -d ThermoRawFileParser \
+    && rm ThermoRawFileParser.zip \
+    && chmod +x /opt/ThermoRawFileParser/ThermoRawFileParser.dll
+
+# Set working directory for data
+WORKDIR /data
+
+# Entry point - use dotnet to run the dll
+ENTRYPOINT ["dotnet", "/opt/ThermoRawFileParser/ThermoRawFileParser.dll"]

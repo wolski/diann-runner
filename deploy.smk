@@ -36,17 +36,26 @@ from pathlib import Path
 # Import deployment helpers
 from deploy import build_oktoberfest
 
+# Resolve base directory from the Snakefile location so paths are stable.
+BASE_DIR = Path(workflow.basedir).resolve() if "workflow" in globals() else Path.cwd().resolve()
+CONFIG_PATH = BASE_DIR / "deploy_config.yaml"
+
 # Load configuration
-configfile: "deploy_config.yaml" if os.path.exists("deploy_config.yaml") else "/dev/null"
+configfile: str(CONFIG_PATH) if CONFIG_PATH.exists() else "/dev/null"
+
+# Ensure all paths are relative to the directory containing deploy.smk
+workdir: str(BASE_DIR)
 
 # Configuration with defaults
 SKIP_OKTOBERFEST = config.get("skip_oktoberfest", False)
 FORCE_REBUILD = config.get("force_rebuild", False)
-DEPLOY_DIR = Path.cwd()
+DEPLOY_DIR = BASE_DIR
 
-# Deployment flags directory
+# Deployment flags and logs directories
 FLAGS_DIR = DEPLOY_DIR / ".deploy_flags"
+LOGS_DIR = DEPLOY_DIR / "logs"
 FLAGS_DIR.mkdir(exist_ok=True)
+LOGS_DIR.mkdir(exist_ok=True)
 
 ################################################################################
 # Helper Functions
@@ -78,7 +87,7 @@ rule check_prerequisites:
     output:
         flag = FLAGS_DIR / "prerequisites_checked.flag"
     log:
-        "logs/check_prerequisites.log"
+        LOGS_DIR / "check_prerequisites.log"
     run:
         print("=" * 70)
         print("Checking Prerequisites")
@@ -170,7 +179,7 @@ rule create_venv:
         venv_dir = directory(".venv"),
         flag = FLAGS_DIR / "venv_created.flag"
     log:
-        "logs/create_venv.log"
+        LOGS_DIR / "create_venv.log"
     shell:
         """
         if [ -d .venv ]; then
@@ -193,7 +202,7 @@ rule install_package:
     output:
         flag = FLAGS_DIR / "package_installed.flag"
     log:
-        "logs/install_package.log"
+        LOGS_DIR / "install_package.log"
     shell:
         """
         echo "Installing diann_runner package..."
@@ -205,19 +214,19 @@ rule install_package:
 rule build_diann_docker:
     """Build diann:2.3.0 Docker image (~10 minutes, 766MB)."""
     input:
-        dockerfile = "Dockerfile.diann",
+        dockerfile = "docker/Dockerfile.diann",
         flag = FLAGS_DIR / "package_installed.flag"
     output:
         flag = FLAGS_DIR / "diann_docker_built.flag"
     log:
-        "logs/build_diann_docker.log"
+        LOGS_DIR / "build_diann_docker.log"
     shell:
         """
         if docker images | grep -q "^diann.*2.3.0" && [ "{FORCE_REBUILD}" != "True" ]; then
             echo "✓ diann:2.3.0 already exists (use --config force_rebuild=true to rebuild)"
         else
             echo "Building diann:2.3.0 (this takes ~10 minutes)..."
-            docker build -f Dockerfile.diann -t diann:2.3.0 . 2>&1 | tee {log}
+            docker build -f docker/Dockerfile.diann -t diann:2.3.0 . 2>&1 | tee {log}
             echo "✓ diann:2.3.0 built successfully"
         fi
 
@@ -231,7 +240,7 @@ rule build_oktoberfest_docker:
     output:
         flag = FLAGS_DIR / "oktoberfest_docker_built.flag"
     log:
-        "logs/build_oktoberfest_docker.log"
+        LOGS_DIR / "build_oktoberfest_docker.log"
     run:
         build_oktoberfest(
             output_flag=Path(output.flag),
@@ -249,7 +258,7 @@ rule verify_installation:
     output:
         flag = FLAGS_DIR / "installation_verified.flag"
     log:
-        "logs/verify_installation.log"
+        LOGS_DIR / "verify_installation.log"
     run:
         print("\n" + "=" * 70)
         print("Verifying Installation")
@@ -304,7 +313,7 @@ rule configure_fgcz:
     output:
         flag = FLAGS_DIR / "fgcz_configured.flag"
     log:
-        "logs/configure_fgcz.log"
+        LOGS_DIR / "configure_fgcz.log"
     run:
         print("\n" + "=" * 70)
         print("FGCZ Configuration")

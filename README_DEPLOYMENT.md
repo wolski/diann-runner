@@ -157,7 +157,7 @@ This makes the following CLI tools available:
 #### DIA-NN (Required)
 Builds `diann:2.3.0` Docker image (~10 minutes, 766MB).
 
-**Dockerfile:** `Dockerfile.diann`
+**Dockerfile:** `docker/Dockerfile.diann`
 **Flag:** `.deploy_flags/diann_docker_built.flag`
 
 #### Oktoberfest (Optional)

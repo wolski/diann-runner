@@ -225,7 +225,8 @@ snakemake -s /path/to/diann_runner/Snakefile --cores 64
 ```
 diann_runner/
 ├── pyproject.toml           # Package configuration
-├── Dockerfile.diann         # Docker image for DIA-NN
+├── docker/                  # Docker images
+│   └── Dockerfile.diann     # Docker image for DIA-NN
 ├── Snakefile                # Snakemake workflow
 ├── docs/                    # Documentation
 │   ├── USAGE_EXAMPLES.md   # Usage guide and patterns

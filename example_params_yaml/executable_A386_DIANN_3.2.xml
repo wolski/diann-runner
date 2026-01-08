@@ -207,7 +207,6 @@
         <context>APPLICATION</context>
         <enumeration>6</enumeration>
         <enumeration>7</enumeration>
-        <enumeration>8</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_min_length</key>
@@ -226,7 +225,6 @@
         <context>APPLICATION</context>
         <enumeration>30</enumeration>
         <enumeration>40</enumeration>
-        <enumeration>50</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_max_length</key>
@@ -245,8 +243,6 @@
         <context>APPLICATION</context>
         <enumeration>1</enumeration>
         <enumeration>2</enumeration>
-        <enumeration>3</enumeration>
-        <enumeration>4</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_precursor_charge_min</key>
@@ -263,10 +259,8 @@
         <updatable>false</updatable>
         <description>Maximum precursor charge for in silico library generation or library-free search. DIA-NN command: --max-pr-charge</description>
         <context>APPLICATION</context>
-        <enumeration>2</enumeration>
         <enumeration>3</enumeration>
         <enumeration>4</enumeration>
-        <enumeration>5</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_precursor_charge_max</key>
@@ -283,10 +277,8 @@
         <updatable>false</updatable>
         <description>Minimum precursor m/z for in silico library generation or library-free search. DIA-NN command: --min-pr-mz</description>
         <context>APPLICATION</context>
-        <enumeration>300</enumeration>
         <enumeration>350</enumeration>
         <enumeration>400</enumeration>
-        <enumeration>450</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_precursor_mz_min</key>
@@ -303,11 +295,8 @@
         <updatable>false</updatable>
         <description>Maximum precursor m/z for in silico library generation or library-free search. DIA-NN command: --max-pr-mz</description>
         <context>APPLICATION</context>
-        <enumeration>1000</enumeration>
         <enumeration>1050</enumeration>
-        <enumeration>1200</enumeration>
         <enumeration>1500</enumeration>
-        <enumeration>1800</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_precursor_mz_max</key>
@@ -325,9 +314,8 @@
         <description>Minimum fragment m/z for spectral library and search. DIA-NN command: --min-fr-mz</description>
         <context>APPLICATION</context>
         <enumeration>100</enumeration>
+        <enumeration>150</enumeration>
         <enumeration>200</enumeration>
-        <enumeration>300</enumeration>
-        <enumeration>400</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_fragment_mz_min</key>
@@ -345,9 +333,8 @@
         <description>Maximum fragment m/z for spectral library and search. DIA-NN command: --max-fr-mz</description>
         <context>APPLICATION</context>
         <enumeration>1500</enumeration>
-        <enumeration>1600</enumeration>
-        <enumeration>1700</enumeration>
         <enumeration>1800</enumeration>
+        <enumeration>2000</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_fragment_mz_max</key>
