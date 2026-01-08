@@ -11,7 +11,8 @@ This guide explains how to deploy the `diann_runner` package to FGCZ Linux serve
 5. [Verification](#verification)
 6. [Troubleshooting](#troubleshooting)
 7. [Configuration](#configuration)
-8. [Cleanup](#cleanup)
+8. [Slurmworker Integration](#slurmworker-integration)
+9. [Cleanup](#cleanup)
 
 ---
 
@@ -155,10 +156,16 @@ This makes the following CLI tools available:
 ### 4. Build Docker Images
 
 #### DIA-NN (Required)
-Builds `diann:2.3.0` Docker image (~10 minutes, 766MB).
+Builds `diann:2.3.1` Docker image (~10 minutes, 766MB).
 
-**Dockerfile:** `docker/Dockerfile.diann`
+**Dockerfile:** `docker/Dockerfile.diann-2.3.1`
 **Flag:** `.deploy_flags/diann_docker_built.flag`
+
+#### ThermoRawFileParser (Required)
+Builds `thermorawfileparser:latest` Docker image for converting Thermo RAW files to mzML.
+
+**Dockerfile:** `docker/Dockerfile.thermorawfileparser`
+**Flag:** `.deploy_flags/thermorawfileparser_docker_built.flag`
 
 #### Oktoberfest (Optional)
 Builds `oktoberfest:latest` Docker image (~30-60 minutes, 4GB).
@@ -335,6 +342,154 @@ If deploying to a test server without BFabric:
 
 ---
 
+## Slurmworker Integration
+
+This section explains how `diann_runner` integrates with the FGCZ slurmworker infrastructure for automated Bfabric workunit processing.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Bfabric LIMS                                  │
+│                    (triggers workunit execution)                        │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  slurmworker/config/A386_DIANN_23/                                      │
+│  ├── app.yml          ← Defines versions & commands for bfabric-app-runner
+│  ├── dispatch.py      ← Creates params.yml + inputs.yml from workunit   │
+│  ├── pyproject.toml   ← Dependencies (includes diann-runner)            │
+│  └── pylock.toml      ← Locked deps (synced to server via git)          │
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  diann_runner (this repo)                                               │
+│  ├── src/diann_runner/       ← Python package (CLI tools)               │
+│  ├── Snakefile.DIANN3step.smk← Main workflow                            │
+│  └── docker/                 ← Dockerfiles                              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Slurmworker Config Files
+
+Located at `/home/bfabric/slurmworker/config/A386_DIANN_23/` on the server:
+
+| File | Purpose |
+|------|---------|
+| `app.yml` | Defines app versions and commands for bfabric-app-runner |
+| `dispatch.py` | Converts Bfabric workunit to `params.yml` + `inputs.yml` |
+| `pyproject.toml` | Python dependencies (references diann-runner) |
+| `pylock.toml` | Locked dependencies for reproducible environments |
+
+### Execution Flow
+
+When Bfabric triggers a workunit:
+
+**1. Dispatch phase** (`make dispatch`):
+- Runs `dispatch.py` which reads the workunit definition
+- Creates `work/params.yml` (workflow parameters from Bfabric GUI)
+- Creates `work/inputs.yml` (input files to fetch from storage)
+
+**2. Inputs phase** (`make inputs`):
+- Downloads dataset files from Bfabric storage
+- Fetches FASTA file for the order
+
+**3. Process phase** (`make process`):
+- Runs `python -m diann_runner.snakemake_cli --cores 64 -p all -d`
+- Executes `Snakefile.DIANN3step.smk` with the prepared inputs
+
+**4. Stage phase** (`make stage`):
+- Uploads results back to Bfabric
+
+### How diann_runner is Installed
+
+The `pyproject.toml` in slurmworker config references diann_runner:
+
+```toml
+dependencies = [
+    "diann-runner @ file:///home/bfabric/diann_runner",
+    # ... other deps
+]
+```
+
+When `bfabric-app-runner` creates the python environment, it:
+1. Reads `pylock.toml` for locked dependencies
+2. Creates an isolated environment with all packages
+3. Installs diann_runner from the local checkout
+
+### Updating diann_runner on Production
+
+**On your local machine:**
+
+```bash
+# 1. Make changes to diann_runner
+cd ~/projects/diann_runner
+# ... edit files ...
+
+# 2. Update lock file in slurmworker config
+cd ~/projects/slurmworker/config/A386_DIANN_23
+uv lock -U && uv sync
+uv export --format pylock.toml -o pylock.toml --no-emit-project
+
+# 3. Commit and push
+git add pylock.toml
+git commit -m "update pylock"
+git push
+```
+
+**On the server (fgcz-r-035):**
+
+```bash
+cd /home/bfabric/slurmworker
+git pull
+
+# Also update diann_runner if needed
+cd /home/bfabric/diann_runner
+git pull
+```
+
+### Development vs Production Versions
+
+The `app.yml` defines two versions:
+
+**Production (`version: "2.3"`):**
+- Uses `/home/bfabric/...` paths
+- Uses `python_env` type with `pylock.toml`
+- Runs with 64 cores
+
+**Development (`version: devel`):**
+- Uses local paths (e.g., `/Users/wolski/projects/...`)
+- Can use `uv run --script` for dispatch
+- Runs with fewer cores (8)
+
+### Local Testing
+
+Test the integration locally before deploying:
+
+```bash
+# Install bfabric-app-runner
+uv tool install -p 3.13 bfabric-app-runner
+
+# Prepare a workunit locally (read-only mode)
+bfabric-app-runner prepare workunit \
+  --app-spec ~/projects/slurmworker/config/A386_DIANN_23/app.yml \
+  --work-dir WU338923 --workunit-ref 338923 --read-only
+
+# Or force devel version
+bfabric-app-runner prepare workunit \
+  --app-spec ~/projects/slurmworker/config/A386_DIANN_23/app.yml \
+  --work-dir WU338923 --workunit-ref 338923 --read-only \
+  --force-app-version devel
+
+# Run the workunit (in the WU directory)
+cd WU338923
+make run-all  # or: make dispatch && make inputs && make process && make stage
+```
+
+---
+
 ## Cleanup
 
 ### Remove Deployment Flags Only
@@ -357,7 +512,7 @@ snakemake -s deploy.smk clean_all
 This will prompt for confirmation before removing:
 - `.deploy_flags/` - Deployment state
 - `.venv/` - Python virtual environment
-- Docker images: `diann:2.3.0`, `oktoberfest:latest`
+- Docker images: `diann:2.3.1`, `thermorawfileparser:latest`, `oktoberfest:latest`
 
 ---
 

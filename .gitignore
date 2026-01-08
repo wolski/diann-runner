@@ -130,3 +130,4 @@ AGENTS.md
 GEMINI.md
 tools/
 uv.lock
+tests/bfabric_integration/

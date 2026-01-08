@@ -22,20 +22,14 @@ import os
 import sys
 import shlex
 import subprocess
-import platform
 
 # --- Settings ---
 DEFAULT_VERSION = os.environ.get("PROLFQUAPP_IMAGE_VERSION", "0.1.8")
 DEFAULT_REPO = os.environ.get("PROLFQUAPP_IMAGE_REPO", "docker.io/prolfqua/prolfquapp")
 EXTRA_ARGS = shlex.split(os.environ.get("PROLFQUAPP_EXTRA", ""))
 
-def is_apple_silicon() -> bool:
-    m = platform.machine().lower()
-    return "arm" in m or "aarch64" in m
-
 def detect_platform_arg() -> list[str]:
-    # prolfquapp is R-based, should work on both architectures
-    # Only add platform override if needed
+    # prolfquapp is R-based, works on both x86_64 and ARM architectures
     return []
 
 def uid_gid_args() -> list[str]:

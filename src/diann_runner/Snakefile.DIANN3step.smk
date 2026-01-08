@@ -4,10 +4,7 @@
 #   snakemake -s Snakefile.DIANN3step --cores 64 -n  # dry run
 
 import sys
-import os
-import yaml
 import datetime
-import re
 from pathlib import Path
 
 # Import the workflow generator and helpers from diann_runner package
@@ -20,6 +17,8 @@ from diann_runner.snakemake_helpers import (
     detect_input_files,
     convert_parquet_to_tsv,
     zip_diann_results,
+    load_config,
+    write_outputs_yml,
 )
 
 # Plotter is now available as diann-qc command via pyproject.toml entry point
@@ -28,9 +27,8 @@ from diann_runner.snakemake_helpers import (
 RAW_DIR = Path(".")
 SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_DIR)
 
-# Load params
-with open(os.path.join(RAW_DIR, "params.yml")) as f:
-    config_dict = yaml.safe_load(f)
+# Load params (with optional deploy_config.yml overrides)
+config_dict = load_config(RAW_DIR)
 
 # Store variables from config
 WORKUNITID = config_dict["registration"]["workunit_id"]
@@ -58,18 +56,30 @@ def final_quant_outputs(wildcards):
     return get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
 # ============================================================================
-# File conversion rules (unchanged from old Snakefile)
+# Default target rule (must be first rule to be default)
+# ============================================================================
+
+rule all:
+    input:
+        qc_zip = f"Result_WU{WORKUNITID}.zip",
+        diann_zip = f"DIANN_Result_WU{WORKUNITID}.zip",
+        outputs_yml = "outputs.yml"
+
+# ============================================================================
+# File conversion rules
 # ============================================================================
 
 rule convert_d_zip:
     input:
-        file=RAW_DIR / "{sample}.d.zip"
+        file = RAW_DIR / "{sample}.d.zip"
     output:
-        file=directory(RAW_DIR / "{sample}.d")
+        outdir = directory(RAW_DIR / "{sample}.d")
+    log:
+        logfile = "logs/convert_d_zip_{sample}.log"
     shell:
         """
-        echo "Extracting {input.file} -> {output.file}"
-        unzip {input.file}
+        echo "Extracting {input.file:q} -> {output.outdir:q}"
+        unzip {input.file:q}
         """
 
 rule convert_raw:
@@ -79,9 +89,11 @@ rule convert_raw:
     otherwise uses Docker (for x86_64 servers).
     """
     input:
-        file=RAW_DIR / "{sample}.raw"
+        file = RAW_DIR / "{sample}.raw"
     output:
-        file=RAW_DIR / "{sample}.mzML"
+        file = RAW_DIR / "{sample}.mzML"
+    log:
+        logfile = "logs/convert_raw_{sample}.log"
     params:
         converter_binary = config_dict["params"].get("raw_converter_binary", ""),
         docker_image = config_dict["params"].get("raw_converter_docker", "thermorawfileparser:2.0.0")
@@ -90,10 +102,10 @@ rule convert_raw:
         """
         if [ -n "{params.converter_binary}" ] && [ -x "{params.converter_binary}" ]; then
             # Use native binary (for ARM Mac local testing)
-            {params.converter_binary} -i {input.file} -o . -f 2
+            {params.converter_binary} -i {input.file:q} -o . -f 2
         else
             # Use Docker (for x86_64 servers)
-            docker run --rm -v $PWD:/data {params.docker_image} \
+            docker run --rm -v "$PWD":/data {params.docker_image} \
                 -i /data/{wildcards.sample}.raw -o /data -f 2
         fi
         """
@@ -107,13 +119,15 @@ def get_converted_file(sample: str):
 
 rule convert:
     input:
-        [get_converted_file(sample) for sample in SAMPLES]
+        files = [get_converted_file(sample) for sample in SAMPLES]
     output:
-        "results.txt"
+        result = "results.txt"
+    log:
+        logfile = "logs/convert.log"
     shell:
         """
-        echo "Running analysis on {input} -> {output}"
-        touch {output}
+        echo "Running analysis on {input.files:q} -> {output.result:q}"
+        touch {output.result:q}
         """
 
 # ============================================================================
@@ -123,15 +137,17 @@ rule convert:
 rule diann_generate_scripts:
     """Generate DIA-NN workflow shell scripts using DiannWorkflow class."""
     input:
-        mzml_files=[get_converted_file(sample) for sample in SAMPLES],
-        fasta=RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        mzml_files = [get_converted_file(sample) for sample in SAMPLES],
+        fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
     output:
-        step_a_script="step_A_library_search.sh",
-        step_b_script="step_B_quantification_refinement.sh",
-        step_c_script="step_C_final_quantification.sh",
-        config_a=f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_libA.config.json",
-        config_b=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json",
-        config_c=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_quantC.config.json"
+        step_a_script = "step_A_library_search.sh",
+        step_b_script = "step_B_quantification_refinement.sh",
+        step_c_script = "step_C_final_quantification.sh",
+        config_a = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_libA.config.json",
+        config_b = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json",
+        config_c = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_quantC.config.json"
+    log:
+        logfile = "logs/diann_generate_scripts.log"
     run:
         # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
         workflow = create_diann_workflow(
@@ -166,9 +182,11 @@ rule diann_generate_scripts:
 rule generate_oktoberfest_config:
     """Generate Oktoberfest configuration from DIA-NN parameters."""
     input:
-        fasta=RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
     output:
-        config=f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
+        config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
+    log:
+        logfile = "logs/generate_oktoberfest_config.log"
     run:
         import json
 
@@ -195,16 +213,20 @@ rule generate_oktoberfest_config:
 rule run_oktoberfest_library:
     """Execute Oktoberfest library generation."""
     input:
-        config=rules.generate_oktoberfest_config.output.config,
-        fasta=RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        config = rules.generate_oktoberfest_config.output.config,
+        fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
     output:
-        speclib=f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_oktoberfest.speclib.msp",
-        log=f"{OUTPUT_PREFIX}_libA/oktoberfest.log.txt"
+        speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_oktoberfest.speclib.msp",
+        runlog = f"{OUTPUT_PREFIX}_libA/oktoberfest.log.txt"
+    log:
+        logfile = "logs/run_oktoberfest_library.log"
+    params:
+        output_prefix = OUTPUT_PREFIX
     shell:
         """
         echo "Running Oktoberfest library generation"
-        oktoberfest-docker -c {input.config} 2>&1 | tee {output.log}
-        mv {OUTPUT_PREFIX}_libA/speclib.msp {output.speclib}
+        oktoberfest-docker -c {input.config:q} 2>&1 | tee {output.runlog:q}
+        mv {params.output_prefix}_libA/speclib.msp {output.speclib:q}
         """
 
 def get_library_for_step_b():
@@ -217,51 +239,55 @@ def get_library_for_step_b():
 rule run_diann_step_a:
     """Execute Step A: Library Search."""
     input:
-        script=rules.diann_generate_scripts.output.step_a_script
+        script = rules.diann_generate_scripts.output.step_a_script
     output:
-        speclib=f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_report-lib.predicted.speclib",
-        log=f"{OUTPUT_PREFIX}_libA/diann_libA.log.txt"
+        speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_report-lib.predicted.speclib",
+        runlog = f"{OUTPUT_PREFIX}_libA/diann_libA.log.txt"
+    log:
+        logfile = "logs/run_diann_step_a.log"
     params:
-        fasta=lambda wildcards: fasta_config.get("database_path", ""),
-        output_dir=f"{OUTPUT_PREFIX}_libA"
+        fasta = lambda wildcards: fasta_config.get("database_path", ""),
+        output_dir = f"{OUTPUT_PREFIX}_libA"
     shell:
         """
         echo "Running Step A: Library Search"
-        echo "Command: bash {input.script}"
-        bash {input.script}
+        echo "Command: bash {input.script:q}"
+        bash {input.script:q}
 
         # Copy FASTA if none exists in output directory
-        if ! ls {params.output_dir}/*.fasta 1> /dev/null 2>&1; then
-            echo "Copying FASTA to {params.output_dir}"
-            cp "{params.fasta}" "{params.output_dir}/$(basename {params.fasta})"
+        if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
+            echo "Copying FASTA to {params.output_dir:q}"
+            cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
         fi
         """
 
 rule run_diann_step_b:
     """Execute Step B: Quantification with Refinement."""
     input:
-        script=rules.diann_generate_scripts.output.step_b_script,
-        predicted_lib=get_library_for_step_b()
+        script = rules.diann_generate_scripts.output.step_b_script,
+        predicted_lib = get_library_for_step_b()
     output:
         # DIA-NN 2.3.0 creates native .parquet library (with -lib insertion)
-        speclib=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report-lib.parquet",
-        report=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.parquet",
-        pg_matrix=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.pg_matrix.tsv",
-        stats=f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.stats.tsv",
-        log=f"{OUTPUT_PREFIX}_quantB/diann_quantB.log.txt"
+        speclib = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report-lib.parquet",
+        report = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.parquet",
+        pg_matrix = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.pg_matrix.tsv",
+        stats = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.stats.tsv",
+        runlog = f"{OUTPUT_PREFIX}_quantB/diann_quantB.log.txt"
+    log:
+        logfile = "logs/run_diann_step_b.log"
     params:
-        fasta=lambda wildcards: fasta_config.get("database_path", ""),
-        output_dir=f"{OUTPUT_PREFIX}_quantB"
+        fasta = lambda wildcards: fasta_config.get("database_path", ""),
+        output_dir = f"{OUTPUT_PREFIX}_quantB"
     shell:
         """
         echo "Running Step B: Quantification with Refinement"
-        echo "Command: bash {input.script}"
-        bash {input.script}
+        echo "Command: bash {input.script:q}"
+        bash {input.script:q}
 
         # Copy FASTA if none exists in output directory
-        if ! ls {params.output_dir}/*.fasta 1> /dev/null 2>&1; then
-            echo "Copying FASTA to {params.output_dir}"
-            cp "{params.fasta}" "{params.output_dir}/$(basename {params.fasta})"
+        if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
+            echo "Copying FASTA to {params.output_dir:q}"
+            cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
         fi
         """
 
@@ -273,39 +299,43 @@ rule run_diann_step_c:
     When enable_step_c=False, they depend on Step B outputs instead.
     """
     input:
-        script=rules.diann_generate_scripts.output.step_c_script,
-        refined_lib=rules.run_diann_step_b.output.speclib
+        script = rules.diann_generate_scripts.output.step_c_script,
+        refined_lib = rules.run_diann_step_b.output.speclib
     output:
         # DIA-NN 2.3.0 creates native .parquet library (same as Step B)
-        library=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report-lib.parquet",
-        report=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.parquet",
-        pg_matrix=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
-        stats=f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
-        log=f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
+        library = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report-lib.parquet",
+        report = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.parquet",
+        pg_matrix = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
+        stats = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
+        runlog = f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
+    log:
+        logfile = "logs/run_diann_step_c.log"
     params:
-        fasta=lambda wildcards: fasta_config.get("database_path", ""),
-        output_dir=f"{OUTPUT_PREFIX}_quantC"
+        fasta = lambda wildcards: fasta_config.get("database_path", ""),
+        output_dir = f"{OUTPUT_PREFIX}_quantC"
     shell:
         """
         echo "Running Step C: Final Quantification"
-        echo "Command: bash {input.script}"
-        bash {input.script}
+        echo "Command: bash {input.script:q}"
+        bash {input.script:q}
 
         # Copy FASTA if none exists in output directory
-        if ! ls {params.output_dir}/*.fasta 1> /dev/null 2>&1; then
-            echo "Copying FASTA to {params.output_dir}"
-            cp "{params.fasta}" "{params.output_dir}/$(basename {params.fasta})"
+        if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
+            echo "Copying FASTA to {params.output_dir:q}"
+            cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
         fi
         """
 
 rule convert_parquet_to_tsv:
     """Convert main parquet report to TSV format for prolfqua and diann-qc."""
     input:
-        report_parquet=FINAL_QUANT_OUTPUTS["report_parquet"]
+        report_parquet = FINAL_QUANT_OUTPUTS["report_parquet"]
     output:
-        tsv=FINAL_QUANT_OUTPUTS["report_tsv"]
+        tsv = FINAL_QUANT_OUTPUTS["report_tsv"]
+    log:
+        logfile = "logs/convert_parquet_to_tsv.log"
     params:
-        is_dda=WORKFLOW_PARAMS["diann"].get("is_dda", False)
+        is_dda = WORKFLOW_PARAMS["diann"].get("is_dda", False)
     run:
         convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv), params.is_dda)
 
@@ -314,10 +344,12 @@ rule diannqc:
     input:
         unpack(final_quant_outputs)
     output:
-        pdf=FINAL_QUANT_OUTPUTS["stats"].replace("_report.stats.tsv", "_qc_report.pdf")
+        pdf = FINAL_QUANT_OUTPUTS["stats"].replace("_report.stats.tsv", "_qc_report.pdf")
+    log:
+        logfile = "logs/diannqc.log"
     shell:
         """
-        diann-qc {input.stats} {input.report_tsv} {output.pdf}
+        diann-qc {input.stats:q} {input.report_tsv:q} {output.pdf:q}
         """
 
 # ============================================================================
@@ -326,12 +358,14 @@ rule diannqc:
 
 rule zip_diann_result:
     input:
-        rules.diannqc.output.pdf
+        pdf = rules.diannqc.output.pdf
     output:
-        zip=f"DIANN_Result_WU{WORKUNITID}.zip"
+        zip = f"DIANN_Result_WU{WORKUNITID}.zip"
+    log:
+        logfile = "logs/zip_diann_result.log"
     params:
-        output_dir=lambda wildcards, input: str(Path(input[0]).parent),
-        workunit_id=WORKUNITID
+        output_dir = lambda wildcards, input: str(Path(input.pdf).parent),
+        workunit_id = WORKUNITID
     run:
         zip_diann_results(
             output_dir=params.output_dir,
@@ -342,70 +376,59 @@ rule zip_diann_result:
 rule prolfqua_qc:
     input:
         unpack(final_quant_outputs),
-        dataset="dataset.csv"
+        dataset = "dataset.csv"
     output:
-        zip=f"Result_WU{WORKUNITID}.zip",
-        log1="Rqc.1.log"
+        zip = f"Result_WU{WORKUNITID}.zip",
+        runlog = "Rqc.1.log"
+    log:
+        logfile = "logs/prolfqua_qc.log"
     params:
         prolfquapp_version = config_dict["params"].get("prolfquapp_version", "0.1.8"),
-        indir=lambda wildcards, input: str(Path(input.report_tsv).parent)
+        indir = lambda wildcards, input: str(Path(input.report_tsv).parent),
+        container_id = CONTAINERID,
+        workunit_id = WORKUNITID
     shell:
         """
-    	prolfquapp-docker --image-version {params.prolfquapp_version} prolfqua_qc.sh \
-            --indir {params.indir} -s DIANN \
-            --dataset {input.dataset} \
-            --project {CONTAINERID} --order {CONTAINERID} --workunit {WORKUNITID} \
-            --outdir qc_result | tee {output.log1}
-	    zip -r {output.zip} qc_result
+        prolfquapp-docker --image-version {params.prolfquapp_version} prolfqua_qc.sh \
+            --indir {params.indir:q} -s DIANN \
+            --dataset {input.dataset:q} \
+            --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \
+            --outdir qc_result | tee {output.runlog:q}
+        zip -r {output.zip:q} qc_result
         """
 
 rule outputsyml:
     input:
         qc = rules.prolfqua_qc.output.zip,
         diann = rules.zip_diann_result.output.zip
-    params:
-        APP_RUNNER="/home/bfabric/slurmworker/bin/fgcz_app_runner 0.0.17"
     output:
-        yaml = 'outputs.yml'
+        yaml = "outputs.yml"
+    log:
+        logfile = "logs/outputsyml.log"
     run:
-        output1 = {
-           'local_path': str(Path(input.diann).resolve()),
-            'store_entry_path': input.diann,
-            'type': 'bfabric_copy_resource'
-        }
-        output2 = {
-           'local_path': str(Path(input.qc).resolve()),
-            'store_entry_path': input.qc,
-            'type': 'bfabric_copy_resource'
-        }
-        outputs_list = [output1, output2]
-
-        data = {
-            'outputs': outputs_list
-        }
-        print(f"YAML file {output.yaml} has been generated.")
-
-        with open(output.yaml, 'w') as file:
-            yaml.dump(data, file, default_flow_style=False)
+        write_outputs_yml(output.yaml, input.diann, input.qc)
 
 rule stageoutput:
     input:
-        yaml=rules.outputsyml.output.yaml
+        yaml = rules.outputsyml.output.yaml
     output:
-        log="staging.log"
+        runlog = "staging.log"
+    log:
+        logfile = "logs/stageoutput.log"
+    params:
+        app_runner = config_dict["params"].get("app_runner", "fgcz_app_runner"),
+        workunit_id = WORKUNITID
     shell:
         """
-         /home/bfabric/slurmworker/bin/fgcz_app_runner 0.0.17 outputs register --outputs-yaml {input.yaml} --workunit-ref {WORKUNITID} \
-         |tee {output.log}
+        {params.app_runner} outputs register --outputs-yaml {input.yaml:q} --workunit-ref {params.workunit_id} \
+            | tee {output.runlog:q}
         """
 
-rule all:
-    input:
-       f"Result_WU{WORKUNITID}.zip",
-       f"DIANN_Result_WU{WORKUNITID}.zip"
 
 rule print_config_dict:
-    """Print all keys and values from config_dict["params"]."""
+    """Print all keys and values from config_dict['params']."""
+    log:
+        logfile = "logs/print_config_dict.log"
     run:
         print("Printing configuration parameters from config_dict['params']:")
         for key, value in sorted(config_dict["params"].items()):

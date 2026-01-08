@@ -79,7 +79,7 @@ The script will:
 ### Docker Image
 ```bash
 # Build the DIA-NN Docker image
-docker build --platform linux/amd64 -f docker/Dockerfile.diann -t diann:2.3.0 .
+docker build --platform linux/amd64 -f docker/Dockerfile.diann-2.3.1 -t diann:2.3.1 .
 
 # Test the Docker wrapper
 diann-docker --help

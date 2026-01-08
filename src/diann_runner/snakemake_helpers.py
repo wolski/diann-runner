@@ -1,9 +1,48 @@
 """Helper functions for Snakemake workflow."""
 
+import os
+import yaml
 import pandas as pd
 import re
 from pathlib import Path
 from typing import Tuple, List, Dict
+
+
+def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str) -> None:
+    """Write outputs.yml for bfabric-app-runner staging."""
+    output1 = {
+        "local_path": str(Path(diann_zip).resolve()),
+        "store_entry_path": diann_zip,
+        "type": "bfabric_copy_resource"
+    }
+    output2 = {
+        "local_path": str(Path(qc_zip).resolve()),
+        "store_entry_path": qc_zip,
+        "type": "bfabric_copy_resource"
+    }
+    data = {"outputs": [output1, output2]}
+    with open(output_file, "w") as f:
+        yaml.dump(data, f, default_flow_style=False)
+    print(f"YAML file {output_file} has been generated.")
+
+
+def load_config(raw_dir: Path) -> dict:
+    """Load params.yml with optional deploy_config.yml overrides.
+
+    This keeps params.yml vanilla (bfabric-generated) while allowing
+    deployment-specific settings in deploy_config.yml.
+    """
+    with open(os.path.join(raw_dir, "params.yml")) as f:
+        config_dict = yaml.safe_load(f)
+
+    deploy_config_path = os.path.join(raw_dir, "deploy_config.yml")
+    if os.path.exists(deploy_config_path):
+        with open(deploy_config_path) as f:
+            deploy_config = yaml.safe_load(f) or {}
+        if "params" in deploy_config:
+            config_dict["params"].update(deploy_config["params"])
+
+    return config_dict
 
 
 def detect_input_files(raw_dir: Path) -> Tuple[List[str], str, Dict[str, List[Path]]]:
@@ -168,6 +207,7 @@ def parse_flat_params(flat_params):
     # Parse other settings
     diann['verbose'] = int(flat_params.get('99_other_verbose', '1'))
     diann['diann_bin'] = flat_params.get('98_diann_binary', 'diann-docker')
+    diann['threads'] = int(flat_params.get('threads', '64'))
 
     # Parse DDA mode
     diann['is_dda'] = flat_params.get('05_diann_is_dda', 'false').lower() == 'true'
