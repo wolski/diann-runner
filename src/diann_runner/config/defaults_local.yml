@@ -1,0 +1,4 @@
+# Local development defaults
+params:
+  10a_diann_threads: "8"
+  raw_converter_docker: "thermorawfileparser:latest"

@@ -247,16 +247,16 @@ rule run_diann_step_a:
         logfile = "logs/run_diann_step_a.log"
     params:
         fasta = lambda wildcards: fasta_config.get("database_path", ""),
-        output_dir = f"{OUTPUT_PREFIX}_libA"
+        output_dir = f"{OUTPUT_PREFIX}_libA",
+        docker_image = WORKFLOW_PARAMS["diann"].get("docker_image", "diann:2.3.1")
     shell:
         """
-        echo "Running Step A: Library Search"
-        echo "Command: bash {input.script:q}"
+        export DIANN_DOCKER_IMAGE={params.docker_image:q}
+        echo "Running Step A: Library Search (image: $DIANN_DOCKER_IMAGE)"
         bash {input.script:q}
 
         # Copy FASTA if none exists in output directory
         if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
-            echo "Copying FASTA to {params.output_dir:q}"
             cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
         fi
         """
@@ -277,16 +277,16 @@ rule run_diann_step_b:
         logfile = "logs/run_diann_step_b.log"
     params:
         fasta = lambda wildcards: fasta_config.get("database_path", ""),
-        output_dir = f"{OUTPUT_PREFIX}_quantB"
+        output_dir = f"{OUTPUT_PREFIX}_quantB",
+        docker_image = WORKFLOW_PARAMS["diann"].get("docker_image", "diann:2.3.1")
     shell:
         """
-        echo "Running Step B: Quantification with Refinement"
-        echo "Command: bash {input.script:q}"
+        export DIANN_DOCKER_IMAGE={params.docker_image:q}
+        echo "Running Step B: Quantification with Refinement (image: $DIANN_DOCKER_IMAGE)"
         bash {input.script:q}
 
         # Copy FASTA if none exists in output directory
         if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
-            echo "Copying FASTA to {params.output_dir:q}"
             cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
         fi
         """
@@ -312,16 +312,16 @@ rule run_diann_step_c:
         logfile = "logs/run_diann_step_c.log"
     params:
         fasta = lambda wildcards: fasta_config.get("database_path", ""),
-        output_dir = f"{OUTPUT_PREFIX}_quantC"
+        output_dir = f"{OUTPUT_PREFIX}_quantC",
+        docker_image = WORKFLOW_PARAMS["diann"].get("docker_image", "diann:2.3.1")
     shell:
         """
-        echo "Running Step C: Final Quantification"
-        echo "Command: bash {input.script:q}"
+        export DIANN_DOCKER_IMAGE={params.docker_image:q}
+        echo "Running Step C: Final Quantification (image: $DIANN_DOCKER_IMAGE)"
         bash {input.script:q}
 
         # Copy FASTA if none exists in output directory
         if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
-            echo "Copying FASTA to {params.output_dir:q}"
             cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
         fi
         """

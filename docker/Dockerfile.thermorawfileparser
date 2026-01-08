@@ -1,5 +1,5 @@
-# ThermoRawFileParser Docker image
-# Based on .NET 8 runtime - no Wine needed, works on ARM64
+# ThermoRawFileParser Docker image for ARM64 (Mac)
+# Uses .NET 8 runtime with net8 build
 FROM mcr.microsoft.com/dotnet/runtime:8.0
 
 LABEL maintainer="Witold Wolski"

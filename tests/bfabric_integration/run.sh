@@ -21,11 +21,17 @@ bfabric-app-runner prepare workunit \
 make run-all        # or run steps individually:
 make dispatch && make inputs && make process && make stage
 
-### UPDATE LOCK FILE & DEPLOY ###
+### DEPLOY ###
+# 1. Push diann_runner changes
+cd ~/projects/diann_runner
+git add -A && git commit -m "update" && git push
+
+# 2. Update lock in slurmworker
+cd ~/projects/slurmworker/config/A386_DIANN_23
 uv lock -U && uv sync
 uv export --format pylock.toml -o pylock.toml --no-emit-project
-git add pylock.toml && git commit -m "update pylock" && git push
+git add pylock.toml pyproject.toml && git commit -m "update pylock" && git push
 
-# On server (fgcz-r-035):
+# 3. On server (fgcz-r-035):
 # cd /home/bfabric/slurmworker && git pull
 

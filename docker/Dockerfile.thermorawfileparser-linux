@@ -1,0 +1,27 @@
+# ThermoRawFileParser Docker image for Linux x86_64
+# Uses self-contained linux build (no .NET runtime needed)
+FROM debian:bookworm-slim
+
+LABEL maintainer="Witold Wolski"
+LABEL description="ThermoRawFileParser v2.0.0-dev for converting Thermo RAW files to mzML"
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    unzip \
+    libicu72 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and extract ThermoRawFileParser (self-contained linux build)
+WORKDIR /opt
+RUN curl -L -o ThermoRawFileParser.zip \
+    "https://github.com/CompOmics/ThermoRawFileParser/releases/download/v.2.0.0-dev/ThermoRawFileParser-v.2.0.0-dev-linux.zip" \
+    && unzip ThermoRawFileParser.zip -d ThermoRawFileParser \
+    && rm ThermoRawFileParser.zip \
+    && chmod +x /opt/ThermoRawFileParser/ThermoRawFileParser
+
+# Set working directory for data
+WORKDIR /data
+
+# Entry point - run native binary directly
+ENTRYPOINT ["/opt/ThermoRawFileParser/ThermoRawFileParser"]

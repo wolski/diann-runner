@@ -1,0 +1,4 @@
+# Production server defaults (bfabric)
+params:
+  10a_diann_threads: "64"
+  raw_converter_docker: "thermorawfileparser:linux"

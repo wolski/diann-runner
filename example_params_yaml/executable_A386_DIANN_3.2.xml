@@ -8,7 +8,7 @@
     <modifiedby>wolski</modifiedby>
     <name>A386_DIANN_v2.3.0</name>
     <description>Updated executable configuration for DIANN with improved parameter organization and readability. Derived from params.yml structure.</description>
-    <program>/home/bfabric/slurmworker/config/A366_DIANN/app.yml</program>
+    <program>/home/bfabric/slurmworker/config/A386_DIANN_23/app.yml</program>
     <filechecksum></filechecksum>
     <size>0</size>
     <status>available</status>
@@ -559,8 +559,7 @@
         <updatable>false</updatable>
         <description>The version of the DIA-NN application to use</description>
         <context>APPLICATION</context>
-        <enumeration>1.9.2</enumeration>
-        <enumeration>2.3.0</enumeration>
+        <enumeration>2.3</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>application_version</key>
@@ -569,7 +568,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>1.9.2</value>
+        <value>2.3</value>
     </parameter>
 
     <statusmodified>2025-11-24T00:00:00.000</statusmodified>

@@ -146,9 +146,9 @@ rule build_diann_docker:
 
 
 rule build_thermorawfileparser_docker:
-    """Build thermorawfileparser:latest Docker image."""
+    """Build thermorawfileparser:linux Docker image for x86_64 servers."""
     input:
-        dockerfile = "docker/Dockerfile.thermorawfileparser",
+        dockerfile = "docker/Dockerfile.thermorawfileparser-linux",
         pkg_flag = FLAGS_DIR / "package_installed.flag"
     output:
         flag = FLAGS_DIR / "thermorawfileparser_docker_built.flag"
@@ -158,12 +158,12 @@ rule build_thermorawfileparser_docker:
         force_rebuild = FORCE_REBUILD
     shell:
         """
-        if docker images | grep -q "^thermorawfileparser.*latest" && [ "{params.force_rebuild}" != "True" ]; then
-            echo "thermorawfileparser:latest already exists (use --config force_rebuild=true to rebuild)"
+        if docker images | grep -q "^thermorawfileparser.*linux" && [ "{params.force_rebuild}" != "True" ]; then
+            echo "thermorawfileparser:linux already exists (use --config force_rebuild=true to rebuild)"
         else
-            echo "Building thermorawfileparser:latest..."
-            docker build -f {input.dockerfile:q} -t thermorawfileparser:latest . 2>&1 | tee {log.logfile:q}
-            echo "thermorawfileparser:latest built successfully"
+            echo "Building thermorawfileparser:linux..."
+            docker build -f {input.dockerfile:q} -t thermorawfileparser:linux . 2>&1 | tee {log.logfile:q}
+            echo "thermorawfileparser:linux built successfully"
         fi
         touch {output.flag:q}
         """
@@ -262,7 +262,7 @@ rule clean_all:
         echo "  - Deployment flags (.deploy_flags/)"
         echo "  - Virtual environment (.venv/)"
         echo "  - Oktoberfest build directory (oktoberfest_build/)"
-        echo "  - Docker images (diann:2.3.1, thermorawfileparser:latest, oktoberfest:latest)"
+        echo "  - Docker images (diann:2.3.1, thermorawfileparser:linux, oktoberfest:latest)"
         echo ""
         read -p "Continue? [y/N]: " -n 1 -r
         echo
@@ -278,7 +278,7 @@ rule clean_all:
 
             echo "Removing Docker images..."
             docker rmi diann:2.3.1 2>/dev/null || true
-            docker rmi thermorawfileparser:latest 2>/dev/null || true
+            docker rmi thermorawfileparser:linux 2>/dev/null || true
             docker rmi oktoberfest:latest 2>/dev/null || true
 
             echo "Cleanup complete"

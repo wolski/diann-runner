@@ -26,15 +26,44 @@ def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str) -> None:
     print(f"YAML file {output_file} has been generated.")
 
 
-def load_config(raw_dir: Path) -> dict:
-    """Load params.yml with optional deploy_config.yml overrides.
+def is_server_environment() -> bool:
+    """Detect if running on production server (as bfabric user)."""
+    import getpass
+    return getpass.getuser() == "bfabric" or os.path.exists("/home/bfabric")
 
-    This keeps params.yml vanilla (bfabric-generated) while allowing
-    deployment-specific settings in deploy_config.yml.
+
+def load_config(raw_dir: Path) -> dict:
+    """Load params.yml with environment-specific defaults.
+
+    Load order (later overrides earlier):
+    1. params.yml (bfabric-generated, required)
+    2. defaults_server.yml or defaults_local.yml (auto-detected)
+    3. deploy_config.yml (manual overrides)
+
+    Config files are searched in: raw_dir, then package config/ dir.
     """
     with open(os.path.join(raw_dir, "params.yml")) as f:
         config_dict = yaml.safe_load(f)
 
+    # Determine environment and config file
+    env = "server" if is_server_environment() else "local"
+    defaults_filename = f"defaults_{env}.yml"
+
+    # Search paths: raw_dir first, then package config dir
+    package_config_dir = Path(__file__).parent / "config"
+    search_paths = [Path(raw_dir), package_config_dir]
+
+    # Load environment defaults if found
+    for search_dir in search_paths:
+        defaults_path = search_dir / defaults_filename
+        if defaults_path.exists():
+            with open(defaults_path) as f:
+                defaults = yaml.safe_load(f) or {}
+            if "params" in defaults:
+                config_dict["params"].update(defaults["params"])
+            break
+
+    # Load deploy_config.yml overrides (highest priority)
     deploy_config_path = os.path.join(raw_dir, "deploy_config.yml")
     if os.path.exists(deploy_config_path):
         with open(deploy_config_path) as f:
@@ -208,6 +237,9 @@ def parse_flat_params(flat_params):
     diann['verbose'] = int(flat_params.get('99_other_verbose', '1'))
     diann['diann_bin'] = flat_params.get('98_diann_binary', 'diann-docker')
     diann['threads'] = int(flat_params.get('threads', '64'))
+
+    # Parse application version for Docker image selection (e.g., "2.3.1" -> "diann:2.3.1")
+    diann['docker_image'] = f"diann:{flat_params.get('application_version', '2.3.1')}"
 
     # Parse DDA mode
     diann['is_dda'] = flat_params.get('05_diann_is_dda', 'false').lower() == 'true'
