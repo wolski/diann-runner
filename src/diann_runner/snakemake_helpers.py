@@ -237,9 +237,7 @@ def parse_flat_params(flat_params):
     diann['verbose'] = int(flat_params.get('99_other_verbose', '1'))
     diann['diann_bin'] = flat_params.get('98_diann_binary', 'diann-docker')
     diann['threads'] = int(flat_params.get('threads', '64'))
-
-    # Parse application version for Docker image selection (e.g., "2.3.1" -> "diann:2.3.1")
-    diann['docker_image'] = f"diann:{flat_params.get('application_version', '2.3.1')}"
+    diann['docker_image'] = flat_params.get('diann_docker_image', 'diann:2.3.1')
 
     # Parse DDA mode
     diann['is_dda'] = flat_params.get('05_diann_is_dda', 'false').lower() == 'true'

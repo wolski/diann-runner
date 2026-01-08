@@ -2,3 +2,4 @@
 params:
   10a_diann_threads: "8"
   raw_converter_docker: "thermorawfileparser:latest"
+  diann_docker_image: "diann:2.3.1"

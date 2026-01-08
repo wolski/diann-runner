@@ -131,6 +131,22 @@ rule convert:
         """
 
 # ============================================================================
+# FASTA preparation (copy to work dir for Docker access)
+# ============================================================================
+
+rule copy_fasta:
+    """Copy FASTA database to work directory for Docker container access."""
+    output:
+        fasta = "database.fasta"
+    params:
+        source_fasta = fasta_config.get("database_path", "")
+    shell:
+        """
+        echo "Copying FASTA to work directory..."
+        cp {params.source_fasta:q} {output.fasta:q}
+        """
+
+# ============================================================================
 # DIA-NN 3-stage workflow using workflow.py
 # ============================================================================
 
@@ -138,7 +154,8 @@ rule diann_generate_scripts:
     """Generate DIA-NN workflow shell scripts using DiannWorkflow class."""
     input:
         mzml_files = [get_converted_file(sample) for sample in SAMPLES],
-        fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        fasta = "database.fasta",
+        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
     output:
         step_a_script = "step_A_library_search.sh",
         step_b_script = "step_B_quantification_refinement.sh",
@@ -149,19 +166,19 @@ rule diann_generate_scripts:
     log:
         logfile = "logs/diann_generate_scripts.log"
     run:
+        # Use local database.fasta (copied from remote path for Docker access)
+        fasta_path = str(input.fasta)
+        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and input.custom_fasta:
+            fasta_path = str(input.custom_fasta)
+
         # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
         workflow = create_diann_workflow(
             WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-            WORKFLOW_PARAMS["fasta"]["database_path"], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"]
+            fasta_path, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"]
         )
 
         # Convert input mzML files to list of strings
         raw_files = [str(f) for f in input.mzml_files]
-
-        # Determine FASTA path (custom order.fasta or configured database)
-        fasta_path = WORKFLOW_PARAMS["fasta"]["database_path"]
-        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
-            fasta_path = str(RAW_DIR / "order.fasta")
 
         # Generate all three scripts
         scripts = workflow.generate_all_scripts(
@@ -182,7 +199,8 @@ rule diann_generate_scripts:
 rule generate_oktoberfest_config:
     """Generate Oktoberfest configuration from DIA-NN parameters."""
     input:
-        fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        fasta = "database.fasta",
+        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
     output:
         config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
     log:
@@ -190,10 +208,10 @@ rule generate_oktoberfest_config:
     run:
         import json
 
-        # Determine FASTA path
-        fasta_path = WORKFLOW_PARAMS["fasta"]["database_path"]
-        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and (RAW_DIR / "order.fasta").exists():
-            fasta_path = str(RAW_DIR / "order.fasta")
+        # Use local database.fasta (copied from remote path for Docker access)
+        fasta_path = str(input.fasta)
+        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and input.custom_fasta:
+            fasta_path = str(input.custom_fasta)
 
         # Build Oktoberfest config using helper function
         # No oktoberfest_params needed - function uses defaults
@@ -214,7 +232,7 @@ rule run_oktoberfest_library:
     """Execute Oktoberfest library generation."""
     input:
         config = rules.generate_oktoberfest_config.output.config,
-        fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        fasta = "database.fasta"
     output:
         speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_oktoberfest.speclib.msp",
         runlog = f"{OUTPUT_PREFIX}_libA/oktoberfest.log.txt"
