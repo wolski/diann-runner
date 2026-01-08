@@ -1,6 +1,6 @@
 [project]
 name = "diann-runner"
-version = "0.2.0"
+version = "0.2.1"
 description = "Tools for running DIA-NN workflows"
 requires-python = ">=3.11"
 # Install with: uv pip install -e .
