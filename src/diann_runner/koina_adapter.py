@@ -9,7 +9,9 @@ predictions into the DIA-NN workflow.
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Any, Dict, List, Optional
+
+import cyclopts
 
 
 class KoinaConfigAdapter:
@@ -308,8 +310,6 @@ def main(
             oktoberfest_config,
         )
 
-
-import cyclopts
 
 app = cyclopts.App()
 

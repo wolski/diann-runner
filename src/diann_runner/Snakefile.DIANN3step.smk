@@ -3,14 +3,14 @@
 #   snakemake -s Snakefile.DIANN3step --cores 64 all
 #   snakemake -s Snakefile.DIANN3step --cores 64 -n  # dry run
 
+import json
 import sys
-import datetime
 from pathlib import Path
 
-# Import the workflow generator and helpers from diann_runner package
-from diann_runner.workflow import DiannWorkflow
+# Import helpers from diann_runner package
 from diann_runner.snakemake_helpers import (
     build_oktoberfest_config,
+    copy_fasta_if_missing,
     get_final_quantification_outputs,
     parse_flat_params,
     create_diann_workflow,
@@ -22,7 +22,8 @@ from diann_runner.snakemake_helpers import (
     write_outputs_yml,
 )
 
-# Plotter is now available as diann-qc command via pyproject.toml entry point
+# Local rules that don't need cluster execution
+localrules: all, print_config_dict, copy_fasta, diann_generate_scripts, generate_oktoberfest_config, outputsyml
 
 # Detect input files using helper function
 RAW_DIR = Path(".")
@@ -104,7 +105,7 @@ rule convert_raw:
     log:
         logfile = "logs/convert_raw_{sample}.log"
     params:
-        use_msconvert = deploy_dict["use_msconvert"].lower() == "true",
+        use_msconvert = deploy_dict["use_msconvert"],
         msconvert_docker = deploy_dict["msconvert_docker"],
         msconvert_options = deploy_dict["msconvert_options"],
         thermo_docker = deploy_dict["raw_converter_docker"],
@@ -115,7 +116,7 @@ rule convert_raw:
         if [ -n "{params.converter_binary}" ] && [ -x "{params.converter_binary}" ]; then
             # Use native binary (for ARM Mac local testing)
             {params.converter_binary} -i {input.file:q} -o . -f 2
-        elif [ "{params.use_msconvert}" = "True" ]; then
+        elif [ "{params.use_msconvert}" = "true" ]; then
             # Use msconvert via Docker (default)
             docker run --rm -v "$PWD":/data {params.msconvert_docker} \
                 wine msconvert /data/{wildcards.sample}.raw {params.msconvert_options} -o /data
@@ -130,19 +131,6 @@ def get_converted_file(sample: str):
     """Returns the formatted output file path for a given sample."""
     # All input types now convert to mzML
     return RAW_DIR / f"{sample}.mzML"
-
-rule convert:
-    input:
-        files = [get_converted_file(sample) for sample in SAMPLES]
-    output:
-        result = "results.txt"
-    log:
-        logfile = "logs/convert.log"
-    shell:
-        """
-        echo "Running analysis on {input.files:q} -> {output.result:q}"
-        touch {output.result:q}
-        """
 
 # ============================================================================
 # FASTA preparation (copy to work dir for Docker access)
@@ -221,8 +209,6 @@ rule generate_oktoberfest_config:
     log:
         logfile = "logs/generate_oktoberfest_config.log"
     run:
-        import json
-
         # Use local database.fasta (copied from remote path for Docker access)
         fasta_path = str(input.fasta)
         if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and input.custom_fasta:
@@ -281,17 +267,14 @@ rule run_diann_step_a:
     params:
         fasta = lambda wildcards: fasta_config["database_path"],
         output_dir = f"{OUTPUT_PREFIX}_libA",
-        docker_image = deploy_dict["diann_docker_image"]
+        docker_image = deploy_dict["diann_docker_image"],
+        copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_libA", fasta_config["database_path"])
     shell:
         """
         export DIANN_DOCKER_IMAGE={params.docker_image:q}
         echo "Running Step A: Library Search (image: $DIANN_DOCKER_IMAGE)"
         bash {input.script:q}
-
-        # Copy FASTA if none exists in output directory
-        if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
-            cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
-        fi
+        {params.copy_fasta_cmd}
         """
 
 rule run_diann_step_b:
@@ -309,19 +292,14 @@ rule run_diann_step_b:
     log:
         logfile = "logs/run_diann_step_b.log"
     params:
-        fasta = lambda wildcards: fasta_config["database_path"],
-        output_dir = f"{OUTPUT_PREFIX}_quantB",
-        docker_image = deploy_dict["diann_docker_image"]
+        docker_image = deploy_dict["diann_docker_image"],
+        copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
     shell:
         """
         export DIANN_DOCKER_IMAGE={params.docker_image:q}
         echo "Running Step B: Quantification with Refinement (image: $DIANN_DOCKER_IMAGE)"
         bash {input.script:q}
-
-        # Copy FASTA if none exists in output directory
-        if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
-            cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
-        fi
+        {params.copy_fasta_cmd}
         """
 
 rule run_diann_step_c:
@@ -344,19 +322,14 @@ rule run_diann_step_c:
     log:
         logfile = "logs/run_diann_step_c.log"
     params:
-        fasta = lambda wildcards: fasta_config["database_path"],
-        output_dir = f"{OUTPUT_PREFIX}_quantC",
-        docker_image = deploy_dict["diann_docker_image"]
+        docker_image = deploy_dict["diann_docker_image"],
+        copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantC", fasta_config["database_path"])
     shell:
         """
         export DIANN_DOCKER_IMAGE={params.docker_image:q}
         echo "Running Step C: Final Quantification (image: $DIANN_DOCKER_IMAGE)"
         bash {input.script:q}
-
-        # Copy FASTA if none exists in output directory
-        if ! ls {params.output_dir:q}/*.fasta 1> /dev/null 2>&1; then
-            cp {params.fasta:q} {params.output_dir:q}/$(basename {params.fasta:q})
-        fi
+        {params.copy_fasta_cmd}
         """
 
 rule convert_parquet_to_tsv:

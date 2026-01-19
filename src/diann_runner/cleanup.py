@@ -7,9 +7,8 @@ It removes temporary files, output directories, and caches that can
 become stale when libraries or parameters change.
 """
 
-import os
-import sys
 import shutil
+import sys
 from pathlib import Path
 
 

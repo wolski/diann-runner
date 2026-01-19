@@ -405,6 +405,24 @@ def zip_diann_results(output_dir: str, zip_path: str) -> None:
     print(f"Created {zip_path} with results from {output_dir}")
 
 
+def copy_fasta_if_missing(output_dir: str, fasta_path: str) -> str:
+    """
+    Generate shell command to copy FASTA to output directory if not already present.
+
+    Args:
+        output_dir: Output directory path
+        fasta_path: Source FASTA file path
+
+    Returns:
+        Shell command string for FASTA copy with existence check
+    """
+    return f'''
+# Copy FASTA if none exists in output directory
+if ! ls "{output_dir}"/*.fasta 1> /dev/null 2>&1; then
+    cp "{fasta_path}" "{output_dir}"/$(basename "{fasta_path}")
+fi'''
+
+
 def build_oktoberfest_config(
     workunit_id: str,
     fasta_path: str,
