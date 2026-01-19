@@ -24,7 +24,7 @@ import shlex
 import subprocess
 
 # --- Settings ---
-DEFAULT_VERSION = os.environ.get("PROLFQUAPP_IMAGE_VERSION", "0.1.8")
+DEFAULT_VERSION = os.environ.get("PROLFQUAPP_IMAGE_VERSION", "2.0.7")
 DEFAULT_REPO = os.environ.get("PROLFQUAPP_IMAGE_REPO", "docker.io/prolfqua/prolfquapp")
 EXTRA_ARGS = shlex.split(os.environ.get("PROLFQUAPP_EXTRA", ""))
 

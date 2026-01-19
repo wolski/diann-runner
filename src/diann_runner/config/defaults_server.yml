@@ -1,5 +1,14 @@
-# Production server defaults (bfabric)
-params:
-  10a_diann_threads: "64"
-  raw_converter_docker: "thermorawfileparser:linux"
-  diann_docker_image: "diann:2.3.1"
+# Production server deployment settings
+
+# DIA-NN settings
+threads: 64
+diann_docker_image: "diann:2.3.1"
+
+# File conversion
+raw_converter_docker: "thermorawfileparser:linux"
+use_msconvert: "true"
+msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
+
+# QC and staging
+prolfquapp_version: "2.0.7"
+app_runner: "fgcz_app_runner"

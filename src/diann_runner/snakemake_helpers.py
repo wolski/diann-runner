@@ -33,45 +33,38 @@ def is_server_environment() -> bool:
 
 
 def load_config(raw_dir: Path) -> dict:
-    """Load params.yml with environment-specific defaults.
+    """Load params.yml (bfabric-generated parameters).
 
-    Load order (later overrides earlier):
-    1. params.yml (bfabric-generated, required)
-    2. defaults_server.yml or defaults_local.yml (auto-detected)
-    3. deploy_config.yml (manual overrides)
-
-    Config files are searched in: raw_dir, then package config/ dir.
+    Returns:
+        config_dict with 'params' and 'registration' from params.yml
     """
     with open(os.path.join(raw_dir, "params.yml")) as f:
         config_dict = yaml.safe_load(f)
+    return config_dict
 
-    # Determine environment and config file
+
+def load_deploy_config(raw_dir: Path) -> dict:
+    """Load deployment config (docker images, threads, etc.).
+
+    Loads defaults_server.yml or defaults_local.yml based on environment.
+    Search order: raw_dir first, then package config/ dir.
+
+    Returns:
+        Dict with deployment settings from the yaml file.
+    """
     env = "server" if is_server_environment() else "local"
     defaults_filename = f"defaults_{env}.yml"
 
-    # Search paths: raw_dir first, then package config dir
     package_config_dir = Path(__file__).parent / "config"
     search_paths = [Path(raw_dir), package_config_dir]
 
-    # Load environment defaults if found
     for search_dir in search_paths:
         defaults_path = search_dir / defaults_filename
         if defaults_path.exists():
             with open(defaults_path) as f:
-                defaults = yaml.safe_load(f) or {}
-            if "params" in defaults:
-                config_dict["params"].update(defaults["params"])
-            break
+                return yaml.safe_load(f)
 
-    # Load deploy_config.yml overrides (highest priority)
-    deploy_config_path = os.path.join(raw_dir, "deploy_config.yml")
-    if os.path.exists(deploy_config_path):
-        with open(deploy_config_path) as f:
-            deploy_config = yaml.safe_load(f) or {}
-        if "params" in deploy_config:
-            config_dict["params"].update(deploy_config["params"])
-
-    return config_dict
+    raise FileNotFoundError(f"Deploy config not found: {defaults_filename} (searched: {search_paths})")
 
 
 def detect_input_files(raw_dir: Path) -> Tuple[List[str], str, Dict[str, List[Path]]]:
@@ -194,67 +187,59 @@ def parse_flat_params(flat_params):
     else:
         diann['var_mods'] = []
 
-    diann['no_peptidoforms'] = flat_params.get('06b_diann_mods_no_peptidoforms', 'false').lower() == 'true'
-    diann['unimod4'] = flat_params.get('06c_diann_mods_unimod4', 'true').lower() == 'true'
-    diann['met_excision'] = flat_params.get('06d_diann_mods_met_excision', 'true').lower() == 'true'
+    diann['no_peptidoforms'] = flat_params['06b_diann_mods_no_peptidoforms'].lower() == 'true'
+    diann['unimod4'] = flat_params['06c_diann_mods_unimod4'].lower() == 'true'
+    diann['met_excision'] = flat_params['06d_diann_mods_met_excision'].lower() == 'true'
 
     # Parse peptide constraints
-    diann['min_pep_len'] = int(flat_params.get('07_diann_peptide_min_length', '6'))
-    diann['max_pep_len'] = int(flat_params.get('07_diann_peptide_max_length', '30'))
-    diann['min_pr_charge'] = int(flat_params.get('07_diann_peptide_precursor_charge_min', '2'))
-    diann['max_pr_charge'] = int(flat_params.get('07_diann_peptide_precursor_charge_max', '3'))
-    diann['min_pr_mz'] = int(flat_params.get('07_diann_peptide_precursor_mz_min', '400'))
-    diann['max_pr_mz'] = int(flat_params.get('07_diann_peptide_precursor_mz_max', '1500'))
-    diann['min_fr_mz'] = int(flat_params.get('07_diann_peptide_fragment_mz_min', '200'))
-    diann['max_fr_mz'] = int(flat_params.get('07_diann_peptide_fragment_mz_max', '1800'))
+    diann['min_pep_len'] = int(flat_params['07_diann_peptide_min_length'])
+    diann['max_pep_len'] = int(flat_params['07_diann_peptide_max_length'])
+    diann['min_pr_charge'] = int(flat_params['07_diann_peptide_precursor_charge_min'])
+    diann['max_pr_charge'] = int(flat_params['07_diann_peptide_precursor_charge_max'])
+    diann['min_pr_mz'] = int(flat_params['07_diann_peptide_precursor_mz_min'])
+    diann['max_pr_mz'] = int(flat_params['07_diann_peptide_precursor_mz_max'])
+    diann['min_fr_mz'] = int(flat_params['07_diann_peptide_fragment_mz_min'])
+    diann['max_fr_mz'] = int(flat_params['07_diann_peptide_fragment_mz_max'])
 
     # Parse digestion
-    diann['cut'] = flat_params.get('08_diann_digestion_cut', 'K*,R*')
-    missed_cleavages_str = flat_params.get('08_diann_digestion_missed_cleavages', '1')
-    if missed_cleavages_str != 'None':
-        diann['missed_cleavages'] = int(missed_cleavages_str)
-    else:
-        diann['missed_cleavages'] = 1
+    diann['cut'] = flat_params['08_diann_digestion_cut']
+    missed_cleavages_str = flat_params['08_diann_digestion_missed_cleavages']
+    diann['missed_cleavages'] = int(missed_cleavages_str) if missed_cleavages_str != 'None' else 1
 
     # Parse mass accuracy
-    mass_acc_ms2_str = flat_params.get('09_diann_mass_acc_ms2', '20')
-    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'None' else 20
-    mass_acc_ms1_str = flat_params.get('09_diann_mass_acc_ms1', '15')
-    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'None' else 15
+    mass_acc_ms2_str = flat_params['09_diann_mass_acc_ms2']
+    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'None' else 0
+    mass_acc_ms1_str = flat_params['09_diann_mass_acc_ms1']
+    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'None' else 0
 
     # Parse scoring
-    diann['qvalue'] = float(flat_params.get('10_diann_scoring_qvalue', '0.01'))
+    diann['qvalue'] = float(flat_params['10_diann_scoring_qvalue'])
 
     # Parse protein inference
-    diann['pg_level'] = int(flat_params.get('11a_diann_protein_pg_level', '1'))
-    diann['relaxed_prot_inf'] = flat_params.get('11b_diann_protein_relaxed_prot_inf', 'false').lower() == 'true'
+    diann['pg_level'] = int(flat_params['11a_diann_protein_pg_level'])
+    diann['relaxed_prot_inf'] = flat_params['11b_diann_protein_relaxed_prot_inf'].lower() == 'true'
 
-    # Parse quantification & normalization (NEW SECTION 12)
-    diann['reanalyse'] = flat_params.get('12a_diann_quantification_reanalyse', 'true').lower() == 'true'
-    diann['no_norm'] = flat_params.get('12b_diann_quantification_no_norm', 'false').lower() == 'true'
+    # Parse quantification & normalization
+    diann['reanalyse'] = flat_params['12a_diann_quantification_reanalyse'].lower() == 'true'
+    diann['no_norm'] = flat_params['12b_diann_quantification_no_norm'].lower() == 'true'
 
     # Parse other settings
-    diann['verbose'] = int(flat_params.get('99_other_verbose', '1'))
-    diann['diann_bin'] = flat_params.get('98_diann_binary', 'diann-docker')
-    diann['threads'] = int(flat_params.get('threads', '64'))
-    diann['docker_image'] = flat_params.get('diann_docker_image', 'diann:2.3.1')
+    diann['verbose'] = int(flat_params['99_other_verbose'])
+    diann['diann_bin'] = flat_params['98_diann_binary']
 
     # Parse DDA mode
-    diann['is_dda'] = flat_params.get('05_diann_is_dda', 'false').lower() == 'true'
+    diann['is_dda'] = flat_params['05_diann_is_dda'].lower() == 'true'
 
     # Parse FASTA
-    fasta['database_path'] = flat_params.get('03_fasta_database_path', '')
-    fasta['use_custom_fasta'] = flat_params.get('03_fasta_use_custom', 'false').lower() == 'true'
+    fasta['database_path'] = flat_params['03_fasta_database_path']
+    fasta['use_custom_fasta'] = flat_params['03_fasta_use_custom'].lower() == 'true'
 
     # Convert var_mods to tuples for DiannWorkflow
-    var_mods_tuples = [tuple(mod) for mod in diann.get('var_mods', [])]
+    var_mods_tuples = [tuple(mod) for mod in diann['var_mods']]
 
-    # Parse workflow control parameters (not in Bfabric XML - use defaults)
-    # Library predictor: 'diann' (default) or 'oktoberfest'
-    library_predictor = flat_params.get('library_predictor', 'diann')
-
-    # Step C: disabled by default (false) - can be enabled via params.yml if needed
-    enable_step_c_str = flat_params.get('enable_step_c', 'false')
+    # Parse workflow control parameters
+    library_predictor = flat_params['library_predictor']
+    enable_step_c_str = flat_params['enable_step_c']
     enable_step_c = enable_step_c_str.lower() == 'true' if isinstance(enable_step_c_str, str) else bool(enable_step_c_str)
 
     return {
@@ -272,7 +257,8 @@ def create_diann_workflow(
     temp_dir_base: str,
     fasta_path: str,
     var_mods: list,
-    diann_params: dict
+    diann_params: dict,
+    deploy_params: dict
 ):
     """
     Create DiannWorkflow instance from parsed parameters.
@@ -288,6 +274,7 @@ def create_diann_workflow(
         fasta_path: Path to FASTA database file
         var_mods: List of variable modification tuples
         diann_params: Dictionary of DIA-NN parameters from parse_flat_params()
+        deploy_params: Dictionary of deployment settings from load_deploy_config()
 
     Returns:
         Initialized DiannWorkflow instance
@@ -300,29 +287,29 @@ def create_diann_workflow(
         temp_dir_base=temp_dir_base,
         fasta_file=fasta_path,
         var_mods=var_mods,
-        diann_bin=diann_params.get("diann_bin", "diann-docker"),
-        threads=diann_params.get("threads", 64),
-        qvalue=diann_params.get("qvalue", 0.01),
-        min_pep_len=diann_params.get("min_pep_len", 6),
-        max_pep_len=diann_params.get("max_pep_len", 30),
-        min_pr_charge=diann_params.get("min_pr_charge", 2),
-        max_pr_charge=diann_params.get("max_pr_charge", 3),
-        min_pr_mz=diann_params.get("min_pr_mz", 400),
-        max_pr_mz=diann_params.get("max_pr_mz", 1500),
-        min_fr_mz=diann_params.get("min_fr_mz", 200),
-        max_fr_mz=diann_params.get("max_fr_mz", 1800),
-        missed_cleavages=diann_params.get("missed_cleavages", 1),
-        cut=diann_params.get("cut", "K*,R*"),
-        mass_acc=diann_params.get("mass_acc", 20),
-        mass_acc_ms1=diann_params.get("mass_acc_ms1", 15),
-        verbose=diann_params.get("verbose", 1),
-        pg_level=diann_params.get("pg_level", 0),
-        is_dda=diann_params.get("is_dda", False),
-        unimod4=diann_params.get("unimod4", True),
-        met_excision=diann_params.get("met_excision", True),
-        relaxed_prot_inf=diann_params.get("relaxed_prot_inf", False),
-        reanalyse=diann_params.get("reanalyse", True),
-        no_norm=diann_params.get("no_norm", False),
+        diann_bin=diann_params["diann_bin"],
+        threads=deploy_params["threads"],
+        qvalue=diann_params["qvalue"],
+        min_pep_len=diann_params["min_pep_len"],
+        max_pep_len=diann_params["max_pep_len"],
+        min_pr_charge=diann_params["min_pr_charge"],
+        max_pr_charge=diann_params["max_pr_charge"],
+        min_pr_mz=diann_params["min_pr_mz"],
+        max_pr_mz=diann_params["max_pr_mz"],
+        min_fr_mz=diann_params["min_fr_mz"],
+        max_fr_mz=diann_params["max_fr_mz"],
+        missed_cleavages=diann_params["missed_cleavages"],
+        cut=diann_params["cut"],
+        mass_acc=diann_params["mass_acc"],
+        mass_acc_ms1=diann_params["mass_acc_ms1"],
+        verbose=diann_params["verbose"],
+        pg_level=diann_params["pg_level"],
+        is_dda=diann_params["is_dda"],
+        unimod4=diann_params["unimod4"],
+        met_excision=diann_params["met_excision"],
+        relaxed_prot_inf=diann_params["relaxed_prot_inf"],
+        reanalyse=diann_params["reanalyse"],
+        no_norm=diann_params["no_norm"],
     )
 
 
@@ -385,27 +372,21 @@ def convert_parquet_to_tsv(parquet_path: str, tsv_path: str, is_dda: bool = Fals
     # Copy PG.MaxLFQ to PG.Quantity for compatibility with both diann-qc and prolfqua
     if is_dda and 'PG.MaxLFQ' in df.columns and 'PG.Quantity' not in df.columns:
         df['PG.Quantity'] = df['PG.MaxLFQ']
-        print(f"Added PG.Quantity column from PG.MaxLFQ for DDA data compatibility")
+        print("Added PG.Quantity column from PG.MaxLFQ for DDA data compatibility")
 
     df.to_csv(tsv_path, sep='\t', index=False)
     print(f"Converted {parquet_path} -> {tsv_path}")
 
 
-def zip_diann_results(
-    output_dir: str,
-    zip_path: str,
-    workunit_id: str
-) -> None:
+def zip_diann_results(output_dir: str, zip_path: str) -> None:
     """
     Zip DIA-NN results directory.
 
     Args:
         output_dir: Output directory to zip (e.g., "out-DIANN_quantB")
         zip_path: Path to output zip file
-        workunit_id: Workunit ID for logging
     """
     import zipfile
-    import os
     from pathlib import Path
 
     output_path = Path(output_dir)
@@ -475,8 +456,8 @@ def build_oktoberfest_config(
             "fragmentation": oktoberfest_params.get("fragmentation", "HCD"),
             "collisionEnergy": oktoberfest_params.get("collision_energy", 25),
             "precursorCharge": list(range(
-                diann_params.get("min_pr_charge", 2),
-                diann_params.get("max_pr_charge", 3) + 1
+                diann_params["min_pr_charge"],
+                diann_params["max_pr_charge"] + 1
             )),
             "minIntensity": oktoberfest_params.get("min_intensity", 0.0005),
             "nrOx": oktoberfest_params.get("nr_ox", 1),
@@ -486,11 +467,11 @@ def build_oktoberfest_config(
         "fastaDigestOptions": {
             "fragmentation": oktoberfest_params.get("fragmentation", "HCD"),
             "digestion": oktoberfest_params.get("digestion", "full"),
-            "missedCleavages": diann_params.get("missed_cleavages", 1),
-            "minLength": diann_params.get("min_pep_len", 6),
-            "maxLength": diann_params.get("max_pep_len", 30),
+            "missedCleavages": diann_params["missed_cleavages"],
+            "minLength": diann_params["min_pep_len"],
+            "maxLength": diann_params["max_pep_len"],
             "enzyme": oktoberfest_params.get("enzyme", "trypsin"),
-            "specialAas": diann_params.get("cut", "K*,R*").replace("*", "").replace(",", ""),
+            "specialAas": diann_params["cut"].replace("*", "").replace(",", ""),
             "db": oktoberfest_params.get("db", "concat")
         }
     }

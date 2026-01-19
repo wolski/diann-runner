@@ -18,6 +18,7 @@ from diann_runner.snakemake_helpers import (
     convert_parquet_to_tsv,
     zip_diann_results,
     load_config,
+    load_deploy_config,
     write_outputs_yml,
 )
 
@@ -27,8 +28,9 @@ from diann_runner.snakemake_helpers import (
 RAW_DIR = Path(".")
 SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_DIR)
 
-# Load params (with optional deploy_config.yml overrides)
-config_dict = load_config(RAW_DIR)
+# Load configs separately for clarity
+config_dict = load_config(RAW_DIR)  # params.yml (bfabric parameters)
+deploy_dict = load_deploy_config(RAW_DIR)  # defaults_server.yml or defaults_local.yml (docker images, etc.)
 
 # Store variables from config
 WORKUNITID = config_dict["registration"]["workunit_id"]
@@ -70,23 +72,30 @@ rule all:
 # ============================================================================
 
 rule convert_d_zip:
+    """Extract .d.zip to .d folder, then convert to mzML using msconvert."""
     input:
         file = RAW_DIR / "{sample}.d.zip"
     output:
-        outdir = directory(RAW_DIR / "{sample}.d")
+        mzml = RAW_DIR / "{sample}.mzML"
     log:
         logfile = "logs/convert_d_zip_{sample}.log"
+    params:
+        msconvert_docker = deploy_dict["msconvert_docker"],
+        msconvert_options = deploy_dict["msconvert_options"]
+    retries: 3
     shell:
         """
-        echo "Extracting {input.file:q} -> {output.outdir:q}"
-        unzip {input.file:q}
+        echo "Extracting {input.file:q}"
+        unzip -o {input.file:q}
+        echo "Converting {wildcards.sample}.d -> {output.mzml:q} using msconvert"
+        docker run --rm -v "$PWD":/data {params.msconvert_docker} \
+            wine msconvert /data/{wildcards.sample}.d {params.msconvert_options} -o /data
         """
 
 rule convert_raw:
-    """Convert *.raw -> *.mzML using ThermoRawFileParser.
+    """Convert *.raw -> *.mzML.
 
-    Uses native binary if raw_converter_binary is set (for ARM Mac),
-    otherwise uses Docker (for x86_64 servers).
+    Uses msconvert (default) or ThermoRawFileParser based on use_msconvert parameter.
     """
     input:
         file = RAW_DIR / "{sample}.raw"
@@ -95,27 +104,32 @@ rule convert_raw:
     log:
         logfile = "logs/convert_raw_{sample}.log"
     params:
-        converter_binary = config_dict["params"].get("raw_converter_binary", ""),
-        docker_image = config_dict["params"].get("raw_converter_docker", "thermorawfileparser:2.0.0")
+        use_msconvert = deploy_dict["use_msconvert"].lower() == "true",
+        msconvert_docker = deploy_dict["msconvert_docker"],
+        msconvert_options = deploy_dict["msconvert_options"],
+        thermo_docker = deploy_dict["raw_converter_docker"],
+        converter_binary = deploy_dict["raw_converter_binary"]
     retries: 3
     shell:
         """
         if [ -n "{params.converter_binary}" ] && [ -x "{params.converter_binary}" ]; then
             # Use native binary (for ARM Mac local testing)
             {params.converter_binary} -i {input.file:q} -o . -f 2
+        elif [ "{params.use_msconvert}" = "True" ]; then
+            # Use msconvert via Docker (default)
+            docker run --rm -v "$PWD":/data {params.msconvert_docker} \
+                wine msconvert /data/{wildcards.sample}.raw {params.msconvert_options} -o /data
         else
-            # Use Docker (for x86_64 servers)
-            docker run --rm -v "$PWD":/data {params.docker_image} \
+            # Use ThermoRawFileParser via Docker
+            docker run --rm -v "$PWD":/data {params.thermo_docker} \
                 -i /data/{wildcards.sample}.raw -o /data -f 2
         fi
         """
 
 def get_converted_file(sample: str):
     """Returns the formatted output file path for a given sample."""
-    if INPUT_TYPE == "d.zip":
-        return RAW_DIR / f"{sample}.d"
-    else:  # raw or mzML
-        return RAW_DIR / f"{sample}.mzML"
+    # All input types now convert to mzML
+    return RAW_DIR / f"{sample}.mzML"
 
 rule convert:
     input:
@@ -139,7 +153,7 @@ rule copy_fasta:
     output:
         fasta = "database.fasta"
     params:
-        source_fasta = fasta_config.get("database_path", "")
+        source_fasta = fasta_config["database_path"]
     shell:
         """
         echo "Copying FASTA to work directory..."
@@ -155,7 +169,7 @@ rule diann_generate_scripts:
     input:
         mzml_files = [get_converted_file(sample) for sample in SAMPLES],
         fasta = "database.fasta",
-        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config["use_custom_fasta"] else []
     output:
         step_a_script = "step_A_library_search.sh",
         step_b_script = "step_B_quantification_refinement.sh",
@@ -168,13 +182,14 @@ rule diann_generate_scripts:
     run:
         # Use local database.fasta (copied from remote path for Docker access)
         fasta_path = str(input.fasta)
-        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and input.custom_fasta:
+        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and input.custom_fasta:
             fasta_path = str(input.custom_fasta)
 
         # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
         workflow = create_diann_workflow(
             WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-            fasta_path, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"]
+            fasta_path, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+            deploy_dict
         )
 
         # Convert input mzML files to list of strings
@@ -200,7 +215,7 @@ rule generate_oktoberfest_config:
     """Generate Oktoberfest configuration from DIA-NN parameters."""
     input:
         fasta = "database.fasta",
-        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config.get("use_custom_fasta", False) else []
+        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config["use_custom_fasta"] else []
     output:
         config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
     log:
@@ -210,7 +225,7 @@ rule generate_oktoberfest_config:
 
         # Use local database.fasta (copied from remote path for Docker access)
         fasta_path = str(input.fasta)
-        if WORKFLOW_PARAMS["fasta"].get("use_custom_fasta", False) and input.custom_fasta:
+        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and input.custom_fasta:
             fasta_path = str(input.custom_fasta)
 
         # Build Oktoberfest config using helper function
@@ -264,9 +279,9 @@ rule run_diann_step_a:
     log:
         logfile = "logs/run_diann_step_a.log"
     params:
-        fasta = lambda wildcards: fasta_config.get("database_path", ""),
+        fasta = lambda wildcards: fasta_config["database_path"],
         output_dir = f"{OUTPUT_PREFIX}_libA",
-        docker_image = WORKFLOW_PARAMS["diann"].get("docker_image", "diann:2.3.1")
+        docker_image = deploy_dict["diann_docker_image"]
     shell:
         """
         export DIANN_DOCKER_IMAGE={params.docker_image:q}
@@ -294,9 +309,9 @@ rule run_diann_step_b:
     log:
         logfile = "logs/run_diann_step_b.log"
     params:
-        fasta = lambda wildcards: fasta_config.get("database_path", ""),
+        fasta = lambda wildcards: fasta_config["database_path"],
         output_dir = f"{OUTPUT_PREFIX}_quantB",
-        docker_image = WORKFLOW_PARAMS["diann"].get("docker_image", "diann:2.3.1")
+        docker_image = deploy_dict["diann_docker_image"]
     shell:
         """
         export DIANN_DOCKER_IMAGE={params.docker_image:q}
@@ -329,9 +344,9 @@ rule run_diann_step_c:
     log:
         logfile = "logs/run_diann_step_c.log"
     params:
-        fasta = lambda wildcards: fasta_config.get("database_path", ""),
+        fasta = lambda wildcards: fasta_config["database_path"],
         output_dir = f"{OUTPUT_PREFIX}_quantC",
-        docker_image = WORKFLOW_PARAMS["diann"].get("docker_image", "diann:2.3.1")
+        docker_image = deploy_dict["diann_docker_image"]
     shell:
         """
         export DIANN_DOCKER_IMAGE={params.docker_image:q}
@@ -353,7 +368,7 @@ rule convert_parquet_to_tsv:
     log:
         logfile = "logs/convert_parquet_to_tsv.log"
     params:
-        is_dda = WORKFLOW_PARAMS["diann"].get("is_dda", False)
+        is_dda = WORKFLOW_PARAMS["diann"]["is_dda"]
     run:
         convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv), params.is_dda)
 
@@ -382,13 +397,11 @@ rule zip_diann_result:
     log:
         logfile = "logs/zip_diann_result.log"
     params:
-        output_dir = lambda wildcards, input: str(Path(input.pdf).parent),
-        workunit_id = WORKUNITID
+        output_dir = lambda wildcards, input: str(Path(input.pdf).parent)
     run:
         zip_diann_results(
             output_dir=params.output_dir,
-            zip_path=output.zip,
-            workunit_id=params.workunit_id
+            zip_path=output.zip
         )
 
 rule prolfqua_qc:
@@ -401,7 +414,7 @@ rule prolfqua_qc:
     log:
         logfile = "logs/prolfqua_qc.log"
     params:
-        prolfquapp_version = config_dict["params"].get("prolfquapp_version", "0.1.8"),
+        prolfquapp_version = deploy_dict["prolfquapp_version"],
         indir = lambda wildcards, input: str(Path(input.report_tsv).parent),
         container_id = CONTAINERID,
         workunit_id = WORKUNITID
@@ -434,7 +447,7 @@ rule stageoutput:
     log:
         logfile = "logs/stageoutput.log"
     params:
-        app_runner = config_dict["params"].get("app_runner", "fgcz_app_runner"),
+        app_runner = deploy_dict["app_runner"],
         workunit_id = WORKUNITID
     shell:
         """
