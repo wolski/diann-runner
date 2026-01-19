@@ -32,3 +32,6 @@ test = ["pytest>=7.0.0"]
 [tool.setuptools.package-data]
 diann_runner = ["Snakefile.DIANN3step.smk"]
 
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
