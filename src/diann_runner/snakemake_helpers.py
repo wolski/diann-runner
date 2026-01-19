@@ -1,11 +1,12 @@
 """Helper functions for Snakemake workflow."""
 
 import os
-import yaml
-import pandas as pd
 import re
 from pathlib import Path
-from typing import Tuple, List, Dict
+from typing import Dict, List, Tuple
+
+import pandas as pd
+import yaml
 
 
 def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str) -> None:
@@ -495,3 +496,12 @@ def build_oktoberfest_config(
     }
 
     return config
+
+
+# Helper function to create an input parameter for order.fasta if it's present and configured
+def get_custom_fasta_input(fasta_config: dict, raw_dir: Path) -> Path | list[None]:
+    path = raw_dir / "order.fasta"
+    if fasta_config["use_custom_fasta"] and path.exists() and path.stat().st_size > 0:
+        return path
+    else:
+        return []
