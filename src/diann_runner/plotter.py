@@ -1,356 +1,249 @@
 #!/usr/bin/python3
-# coding: utf-8
+"""QC plotting utilities for DIA-NN results.
 
-# In[1]:
+Generates multi-page PDF reports with various quality control plots
+including identification consistency, retention time accuracy, correlation
+matrices, and per-run statistics.
+"""
 
-
-import sys
-import warnings
-warnings.filterwarnings("ignore")
-
-import pandas as pd
-import numpy as np
-import math
-import copy
 import re
+import sys
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
-
 from scipy.stats import variation
 
-
-# In[2]:
-
-
-def split(obj, n):
-    res = []
-    if n == 0:
-        res.append(obj)
-        return res
-    pos = 0.0
-    length = float(len(obj)) / float(n)
-    while pos < len(obj):
-        res.append(obj[int(pos):int(pos + length)])
-        pos += length
-    return res
+# Import shared utilities and figure generation functions from report_figures
+from diann_runner.report_figures import (
+    create_consistency_histograms,
+    create_correlation_matrix,
+    create_cv_analysis_plots,
+    create_rt_heatmaps,
+    create_run_statistics_plots,
+    remove_common,
+)
 
 
-# In[3]:
+def _normalize_file_column(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize File.Name column for compatibility with DIA-NN 2.3+ parquet.
+
+    DIA-NN 2.3+ parquet files use 'Run' instead of 'File.Name'.
+    This function ensures the DataFrame has a 'File.Name' column.
+
+    Args:
+        df: DataFrame to normalize.
+
+    Returns:
+        DataFrame with 'File.Name' column.
+    """
+    if "File.Name" not in df.columns and "Run" in df.columns:
+        df = df.rename(columns={"Run": "File.Name"})
+    return df
 
 
-def max_prefix(strs):
-    if len(strs) == 0: return ""
-    res = strs[0]
-    for i in range(1, len(strs)):
-        while(strs[i].startswith(res) == False):
-            res = res[:-1]
-            if len(res) == 0: return ""
-    return res
+def _compute_cv_stats(
+    df: pd.DataFrame,
+    matrix: pd.DataFrame,
+    condition: str,
+    files: pd.Series,
+    prefix: str,
+) -> None:
+    """Compute CV statistics for a given matrix and update the stats DataFrame.
 
-def max_suffix(strs):
-    rev = [s[::-1] for s in strs]
-    return max_prefix(rev)
+    Args:
+        df: Stats DataFrame to update (modified in-place).
+        matrix: Pivot table (precursors, protein groups, or genes).
+        condition: Condition name to filter by.
+        files: File names belonging to this condition.
+        prefix: Column prefix ("Precursor", "PG", or "Gene").
+    """
+    matching_cols = [c for c in matrix.columns if c in list(files)]
+    if len(matching_cols) == 0:
+        return
 
-def remove_common(strs):
-    res = copy.deepcopy(strs)
-    prefix = len(max_prefix(res))
-    suffix = len(max_suffix(res))
-    for i in range(len(res)): res[i] = res[i][prefix:-suffix]
-    return res
+    cvs = np.ma.filled(
+        variation(matrix[files], axis=1, nan_policy="omit"), float("nan")
+    )
+    cvs[cvs == 0] = float("nan")
 
-
-# In[4]:
-
-
-def add_labels(bars, al = 1):
-    max_height = 0
-    if al == 1: als = 'center'
-    else:
-        if al == 0: als = 'left'
-        else: als = 'right'
-    for b in bars: 
-        if b.get_height() > max_height: 
-            max_height = b.get_height()
-    for b in bars:
-        height = b.get_height()
-        if height > 0.3 * max_height: plt.text(b.get_x() + b.get_width()/2.0, height - max_height * 0.01, ('%.2f' % height).rstrip('0').rstrip('.'), ha=als, va='top', rotation='vertical')
-        else: plt.text(b.get_x() + b.get_width()/2.0, height + max_height * 0.01, ('%.2f' % height).rstrip('0').rstrip('.'), ha=als, va='bottom', rotation='vertical') 
-        
-def bar_plot(title, x, y, axis = True, lab = False):
-    N = math.floor(len(x) / 40)
-    if N == 0: N = 1
-    xl = split(x, N)
-    yl = split(y, N)
-    if (len(xl) >= 2): axis = True
-    number = len(xl)
-    index = 0
-    if len(x) > 20: f = plt.figure(figsize = (20,5 * number))
-    else: f = plt.figure()
-    for i in range(0, len(xl)):
-        index = index + 1
-        s = f.add_subplot(number, 1, index)
-        p = plt.bar(xl[i], yl[i], color = 'grey', alpha=0.5, edgecolor = 'black')
-        if lab: add_labels(p)
-        plt.title(title)
-        if (axis == False): s.set_xticklabels(['']*len(xl[i]))
-        else: s.set_xticklabels(xl[i], rotation = 45, ha = 'right')
-        plt.tight_layout()
-        
-def double_bar_plot(title, x, y, z, legend_y, legend_z, axis = True, lab = False):
-    N = math.floor(len(x) / 40)
-    if N == 0: N = 1
-    xl = split(x, N)
-    yl = split(y, N)
-    zl = split(z, N)
-    if (len(xl) >= 2): axis = True
-    number = len(xl)
-    if len(x) > 20: f = plt.figure(figsize = (20,5 * number))
-    else: f = plt.figure()
-    for i in range(0, len(xl)):
-        s = f.add_subplot(number, 1, i + 1)
-        p1 = plt.bar(xl[i], yl[i], color = 'grey', alpha=0.5, edgecolor = 'black')
-        p2 = plt.bar(xl[i], zl[i], color = 'firebrick', alpha=0.5, edgecolor = 'black')
-        if lab: 
-            add_labels(p1,0)
-            add_labels(p2,2)
-        plt.legend((p1[0],p2[0]), (legend_y, legend_z))
-        plt.title(title)
-        if (axis == False): s.set_xticklabels(['']*len(xl[i]))
-        else: s.set_xticklabels(xl[i], rotation = 45, ha = 'right')
-        plt.tight_layout()
-        
-def triple_bar_plot(title, x, y, z, u, legend_y, legend_z, legend_u, axis = True, lab = False):
-    N = math.floor(len(x) / 40)
-    if N == 0: N = 1
-    xl = split(x, N)
-    yl = split(y, N)
-    zl = split(z, N)
-    ul = split(u, N)
-    if (len(xl) >= 2): axis = True
-    number = len(xl)
-    if len(x) > 20: f = plt.figure(figsize = (20,10 * number))
-    else: f = plt.figure()
-    for i in range(0, len(xl)):
-        s = f.add_subplot(number, 1, i + 1)
-        p1 = plt.bar(xl[i], yl[i], color = 'grey', alpha=0.5, edgecolor = 'black')
-        p2 = plt.bar(xl[i], zl[i], color = 'firebrick', alpha=0.5, edgecolor = 'black')
-        p3 = plt.bar(xl[i], ul[i], color = 'gold', alpha=0.5, edgecolor = 'black')
-        if lab: 
-            add_labels(p1,0)
-            add_labels(p2,2)
-            add_labels(p3,0)
-        plt.legend((p1[0],p2[0],p3[0]), (legend_y, legend_z, legend_u))
-        plt.title(title)
-        if (axis == False): s.set_xticklabels(['']*len(xl[i]))
-        else: s.set_xticklabels(xl[i], rotation = 45, ha = 'right')
-        plt.tight_layout()
-
-def corr_plot(x):
-    lg = x.applymap(np.log2)
-    f = plt.figure(figsize = (20.0, 20.0))
-    plt.matshow(lg.corr(), cmap=plt.cm.Reds)
-    fsize = min(10, 150 / len(lg.columns))
-    plt.gca().tick_params(width=min(1, 10.0 / len(lg.columns)))
-    if len(lg.columns) <= 50: plt.xticks(range(lg.shape[1]), lg.columns, rotation=45, fontsize = fsize)
-    else: plt.xticks(range(lg.shape[1]), lg.columns, rotation=90, fontsize = fsize)
-    plt.yticks(range(lg.shape[1]), lg.columns, fontsize = fsize)
-    cb = plt.colorbar()
+    df.loc[df["Condition"] == condition, f"{prefix}.CV"] = np.nanmedian(cvs)
+    df.loc[df["Condition"] == condition, f"{prefix}.CV.20"] = len(cvs[cvs <= 0.2])
+    df.loc[df["Condition"] == condition, f"{prefix}.CV.10"] = len(cvs[cvs <= 0.1])
+    df.loc[df["Condition"] == condition, f"{prefix}.N"] = np.mean(
+        matrix[files].count()
+    ).astype(int)
 
 
-# In[5]:
+def _plot_consistency_histograms(
+    pdf: PdfPages,
+    pr_ids: pd.Series,
+    pg_ids: pd.Series,
+    gene_ids: pd.Series,
+    fnames: int,
+    genes: pd.DataFrame,
+) -> None:
+    """Plot identification consistency histograms (CDFs) for precursors, proteins, genes."""
+    fig = create_consistency_histograms(pr_ids, pg_ids, gene_ids, fnames, len(genes) > 0)
+    if fig is not None:
+        pdf.savefig(fig)
+        plt.close(fig)
 
 
-def report(stats, main, out):
-    print("Generating report. Stats, main report, output file: " + stats + ", " + main + ", " + out)
-    df = pd.read_csv(stats,sep='\t')
-    df.loc[:,'File.Name'] = remove_common(df['File.Name'])
+def _plot_rt_heatmaps(pdf: PdfPages, quant: pd.DataFrame) -> None:
+    """Plot retention time and normalization factor heatmaps."""
+    fig = create_rt_heatmaps(quant)
+    if fig is not None:
+        pdf.savefig(fig)
+        plt.close(fig)
 
-    # Support both .parquet (DIA-NN 2.3+) and .tsv (older versions)
-    if main.endswith('.parquet'):
+
+def _plot_run_statistics(pdf: PdfPages, df: pd.DataFrame) -> None:
+    """Plot per-run statistics bar plots."""
+    plots = create_run_statistics_plots(df)
+    for fig, _ in plots:
+        pdf.savefig(fig)
+        plt.close(fig)
+
+
+def _plot_cv_analysis(pdf: PdfPages, df: pd.DataFrame) -> None:
+    """Plot CV analysis bar plots for precursors, protein groups, and genes."""
+    plots = create_cv_analysis_plots(df)
+    for fig, _ in plots:
+        pdf.savefig(fig)
+        plt.close(fig)
+
+
+def _load_report_data(stats: str, main: str) -> tuple[
+    pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame
+]:
+    """Load and prepare data for report generation.
+
+    Args:
+        stats: Path to the stats TSV file.
+        main: Path to the main report file (TSV or parquet).
+
+    Returns:
+        Tuple of (df, quant, pr, pg, genes) DataFrames.
+    """
+    df = pd.read_csv(stats, sep="\t")
+    df.loc[:, "File.Name"] = remove_common(df["File.Name"])
+
+    if main.endswith(".parquet"):
         quant = pd.read_parquet(main)
+        quant = _normalize_file_column(quant)
     else:
-        quant = pd.read_csv(main,sep='\t')
-    quant = quant[quant['Q.Value'] <= 0.01].reset_index(drop = True)
-    quant.loc[:,'File.Name'] = remove_common(quant['File.Name'])
-    quant_pg = quant[quant['PG.Q.Value'] <= 0.01][['File.Name','Protein.Group','PG.MaxLFQ']].drop_duplicates().reset_index(drop = True)
-    quant_gene = quant[quant['GG.Q.Value'] <= 0.01][['File.Name','Genes','Genes.MaxLFQ']].drop_duplicates().reset_index(drop = True)
-    
-    pr = quant.pivot_table(values = ['Precursor.Normalised'], columns = ['File.Name'], index = ['Precursor.Id'], aggfunc=sum)
-    pg = quant_pg.pivot_table(values = ['PG.MaxLFQ'], columns = ['File.Name'], index = ['Protein.Group'], aggfunc=sum)
-    genes = quant_gene.pivot_table(values = ['Genes.MaxLFQ'], columns = ['File.Name'], index = ['Genes'], aggfunc=sum)
-    pr.columns, pg.columns, genes.columns = pr.columns.droplevel(), pg.columns.droplevel(), genes.columns.droplevel()
-    totals = pr.sum(axis = 0, skipna = True)
-    
+        quant = pd.read_csv(main, sep="\t")
+    quant = quant[quant["Q.Value"] <= 0.01].reset_index(drop=True)
+    quant.loc[:, "File.Name"] = remove_common(quant["File.Name"])
+
+    quant_pg = (
+        quant[quant["PG.Q.Value"] <= 0.01][["File.Name", "Protein.Group", "PG.MaxLFQ"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    quant_gene = (
+        quant[quant["GG.Q.Value"] <= 0.01][["File.Name", "Genes", "Genes.MaxLFQ"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+
+    pr = quant.pivot_table(
+        values=["Precursor.Normalised"],
+        columns=["File.Name"],
+        index=["Precursor.Id"],
+        aggfunc="sum",
+    )
+    pg = quant_pg.pivot_table(
+        values=["PG.MaxLFQ"],
+        columns=["File.Name"],
+        index=["Protein.Group"],
+        aggfunc="sum",
+    )
+    genes = quant_gene.pivot_table(
+        values=["Genes.MaxLFQ"],
+        columns=["File.Name"],
+        index=["Genes"],
+        aggfunc="sum",
+    )
+    pr.columns, pg.columns, genes.columns = (
+        pr.columns.droplevel(),
+        pg.columns.droplevel(),
+        genes.columns.droplevel(),
+    )
+
+    return df, quant, pr, pg, genes
+
+
+def report(stats: str, main: str, out: str) -> None:
+    """Generate a QC report PDF from DIA-NN output files.
+
+    Args:
+        stats: Path to the stats TSV file (e.g., report.stats.tsv).
+        main: Path to the main report file (TSV or parquet).
+        out: Path for the output PDF file.
+    """
+    print(f"Generating report. Stats, main report, output file: {stats}, {main}, {out}")
+
+    # Load and prepare data
+    df, quant, pr, pg, genes = _load_report_data(stats, main)
+
+    # Calculate missing value counts for histograms
     fnames = len(pg.columns)
-    pr_ids = fnames - pr.count(axis = 1)
-    pg_ids = fnames - pg.count(axis = 1)
-    gene_ids = fnames - genes.count(axis = 1)
-    
+    pr_ids = fnames - pr.count(axis=1)
+    pg_ids = fnames - pg.count(axis=1)
+    gene_ids = fnames - genes.count(axis=1)
+
+    # Compute CV statistics per condition
     skip_conditions = False
     try:
-        df['Replicate'] = [re.findall(r'\d+', file)[-1] for file in df['File.Name']]
-        df['Condition'] = [file[:file.rfind(re.findall(r'\d+', file)[-1])] + file[file.rfind(re.findall(r'\d+', file)[-1]) + len(re.findall(r'\d+', file)[-1]):] for file in df['File.Name']]
-        conditions = df['Condition'].unique()
-        df['Precursor.CV'] = 0
-        df['Precursor.CV.20'] = 0
-        df['Precursor.CV.10'] = 0
-        df['PG.CV'] = 0
-        df['PG.CV.20'] = 0
-        df['PG.CV.10'] = 0
-        df['Gene.CV'] = 0
-        df['Gene.CV.20'] = 0
-        df['Gene.CV.10'] = 0
-        df['Precursor.N'] = 0
-        df['PG.N'] = 0
-        df['Gene.N'] = 0
+        df["Replicate"] = [re.findall(r"\d+", file)[-1] for file in df["File.Name"]]
+        df["Condition"] = [
+            file[: file.rfind(re.findall(r"\d+", file)[-1])]
+            + file[
+                file.rfind(re.findall(r"\d+", file)[-1])
+                + len(re.findall(r"\d+", file)[-1]) :
+            ]
+            for file in df["File.Name"]
+        ]
+        conditions = df["Condition"].unique()
+        for col in ["Precursor.CV", "Precursor.CV.20", "Precursor.CV.10", "Precursor.N",
+                    "PG.CV", "PG.CV.20", "PG.CV.10", "PG.N",
+                    "Gene.CV", "Gene.CV.20", "Gene.CV.10", "Gene.N"]:
+            df[col] = 0
         for condition in conditions:
-            files = df['File.Name'][df['Condition'] == condition]
-            if len([c for c in pr.columns if c in list(files)]) > 0:
-                pr_cvs = np.ma.filled(variation(pr[files],axis = 1,nan_policy='omit'), float('nan'))
-                pr_cvs[pr_cvs == 0] = float('nan')
-                df.loc[df['Condition'] == condition,'Precursor.CV'] = np.nanmedian(pr_cvs)
-                df.loc[df['Condition'] == condition,'Precursor.CV.20'] = len(pr_cvs[pr_cvs <= 0.2])
-                df.loc[df['Condition'] == condition,'Precursor.CV.10'] = len(pr_cvs[pr_cvs <= 0.1])
-                df.loc[df['Condition'] == condition,'Precursor.N'] = np.mean(pr[files].count()).astype(int)
-            if len([c for c in pg.columns if c in list(files)]) > 0:
-                pg_cvs = np.ma.filled(variation(pg[files],axis = 1,nan_policy='omit'), float('nan'))
-                pg_cvs[pg_cvs == 0] = float('nan')
-                df.loc[df['Condition'] == condition,'PG.CV'] = np.nanmedian(pg_cvs)
-                df.loc[df['Condition'] == condition,'PG.CV.20'] = len(pg_cvs[pg_cvs <= 0.2])
-                df.loc[df['Condition'] == condition,'PG.CV.10'] = len(pg_cvs[pg_cvs <= 0.1])
-                df.loc[df['Condition'] == condition,'PG.N'] = np.mean(pg[files].count()).astype(int)
-            if len([c for c in genes.columns if c in list(files)]) > 0:
-                gene_cvs = np.ma.filled(variation(genes[files],axis = 1,nan_policy='omit'), float('nan'))
-                gene_cvs[gene_cvs == 0] = float('nan')
-                df.loc[df['Condition'] == condition,'Gene.CV'] = np.nanmedian(gene_cvs)
-                df.loc[df['Condition'] == condition,'Gene.CV.20'] = len(gene_cvs[gene_cvs <= 0.2])
-                df.loc[df['Condition'] == condition,'Gene.CV.10'] = len(gene_cvs[gene_cvs <= 0.1])
-                df.loc[df['Condition'] == condition,'Gene.N'] = np.mean(genes[files].count()).astype(int)
-    except: 
-        print("Cannot infer conditions/replicates")
+            files = df["File.Name"][df["Condition"] == condition]
+            _compute_cv_stats(df, pr, condition, files, "Precursor")
+            _compute_cv_stats(df, pg, condition, files, "PG")
+            _compute_cv_stats(df, genes, condition, files, "Gene")
+    except (KeyError, IndexError, ValueError) as e:
+        print(f"Cannot infer conditions/replicates: {e}")
         skip_conditions = True
 
-    
-    with PdfPages(out) as pdf:        
-        try:
-            f = plt.figure(figsize = (20, 5))
-            f.add_subplot(131)
-            p1 = plt.hist(pr_ids, bins = fnames, cumulative = True, histtype = 'stepfilled', color = 'grey', alpha = 0.5, edgecolor = 'black')
-            plt.title("Identification consistency: precursors, CDF")
-            plt.xlabel("Missing values")
-            plt.ylabel("IDs")
-            f.add_subplot(132)
-            p1 = plt.hist(pg_ids, bins = fnames, cumulative = True, histtype = 'stepfilled', color = 'grey', alpha = 0.5, edgecolor = 'black')
-            plt.title("Identification consistency: protein groups, CDF")
-            plt.xlabel("Missing values")
-            plt.ylabel("IDs")
-            f.add_subplot(133)
-            if len(genes) > 0:
-                p1 = plt.hist(gene_ids, bins = fnames, cumulative = True, histtype = 'stepfilled', color = 'grey', alpha = 0.5, edgecolor = 'black')
-                plt.title("Identification consistency: genes groups, CDF")
-                plt.xlabel("Missing values")
-                plt.ylabel("IDs")
-                pdf.savefig()
-        except: pass
+    # Generate PDF report
+    with PdfPages(out) as pdf:
+        _plot_consistency_histograms(pdf, pr_ids, pg_ids, gene_ids, fnames, genes)
+        _plot_rt_heatmaps(pdf, quant)
 
         try:
-            f = plt.figure(figsize = (20, 20.0/3.0))
-            f.add_subplot(131)
-            hmp, ex, ey = np.histogram2d(quant['iRT'], quant['RT'], bins=250)
-            plt.imshow(hmp.T, origin='lower', cmap = 'binary', extent = [ex[0], ex[-1], ey[0], ey[-1]], aspect = 'auto',interpolation='none')
-            plt.title("Retention times heatmap, all runs")
-            plt.xlabel("Library iRT")
-            plt.ylabel("RT")
-            f.add_subplot(132)
-            hmp, ex, ey = np.histogram2d(quant['Predicted.RT'], quant['RT'], bins=250)
-            plt.imshow(hmp.T, origin='lower', cmap = 'binary', extent = [ex[0], ex[-1], ey[0], ey[-1]], aspect = 'auto',interpolation='none')
-            plt.title("Retention time accuracy heatmap, all runs")
-            plt.xlabel("Predicted RT")
-            plt.ylabel("RT")
-            f.add_subplot(133)
-            ratio = quant['Precursor.Normalised'] / quant['Precursor.Quantity']
-            hmp, ex, ey = np.histogram2d(quant['RT'][ratio > 0], ratio[ratio > 0], bins=250)
-            plt.imshow(hmp.T, origin='lower', cmap = 'binary', extent = [ex[0], ex[-1], ey[0], ey[-1]], aspect = 'auto',interpolation='none')
-            plt.title("Normalisation factor heatmap, all runs")
-            plt.xlabel("RT")
-            plt.ylabel("Normalisation factor")
-            pdf.savefig()
-        except: pass
-        
-        try:
-            corr_plot(pg)
-            pdf.savefig(bbox_inches='tight')
-        except: pass
-        
-        try:
-            bar_plot("Total quantity, 1% FDR", df['File.Name'], df['Total.Quantity'])
-            pdf.savefig()
-            bar_plot("MS1 signal", df['File.Name'], df['MS1.Signal'])
-            pdf.savefig()
-            bar_plot("MS2 signal", df['File.Name'], df['MS2.Signal'])
-            pdf.savefig()
-            r = [x/y if y > 0 else 0 for x,y in zip(df['Total.Quantity'], df['MS2.Signal'])]
-            bar_plot("Total quantity/MS2 signal ratio", df['File.Name'], r, lab = True)
-            pdf.savefig()
-            r = [x/y if y > 0 else 0 for x,y in zip(df['MS1.Signal'], df['MS2.Signal'])]
-            bar_plot("MS1/MS2 signal ratio", df['File.Name'], r, lab = True)
-            pdf.savefig()
-            bar_plot("Precursors, 1% FDR", df['File.Name'], df['Precursors.Identified'], lab = True)
-            pdf.savefig()
-            if max(df['Proteins.Identified']) > 0:
-                bar_plot("Unique proteins, 1% protein-level FDR", df['File.Name'], df['Proteins.Identified'], lab = True)
-                pdf.savefig()
-            bar_plot("Mean peak FWHM, in minutes", df['File.Name'], df['FWHM.RT'], lab = True)
-            pdf.savefig()
-            bar_plot("Mean peak FWHM, in MS2 scans", df['File.Name'], df['FWHM.Scans'], lab = True)
-            pdf.savefig()
-            bar_plot("Median RT prediction accuracy, minutes", df['File.Name'], df['Median.RT.Prediction.Acc'], lab = True)
-            pdf.savefig()
-            double_bar_plot("Median mass accuracy, MS2, ppm", df['File.Name'], df['Median.Mass.Acc.MS2'], df['Median.Mass.Acc.MS2.Corrected'], "Without correction","Corrected")
-            pdf.savefig()
-            double_bar_plot("Median mass accuracy, MS1, ppm", df['File.Name'], df['Median.Mass.Acc.MS1'], df['Median.Mass.Acc.MS1.Corrected'], "Without correction","Corrected")
-            pdf.savefig()
-            double_bar_plot("Peptide characteristics", df['File.Name'], df['Average.Peptide.Length'], df['Average.Peptide.Charge'], "Average length","Average charge")
-            pdf.savefig()
-            bar_plot("Average missed tryptic cleavages", df['File.Name'], df['Average.Missed.Tryptic.Cleavages'], lab = True)
-            pdf.savefig()
-        except: pass
-        
-        if skip_conditions == False:
-            try:
-                cvs = copy.deepcopy(df)[['Condition','Precursor.N','Precursor.CV','Precursor.CV.20','Precursor.CV.10','PG.N','PG.CV','PG.CV.20','PG.CV.10','Gene.N','Gene.CV','Gene.CV.20','Gene.CV.10']].drop_duplicates()
-                cvs = cvs[cvs['Precursor.N'] > 0]
-                cvs = cvs[cvs['Precursor.CV'] > 0.0]
-                if len(cvs) > 0:
-                    triple_bar_plot("Precursors, 1% FDR", cvs['Condition'], cvs['Precursor.N'], cvs['Precursor.CV.20'], cvs['Precursor.CV.10'], "Average", "CV < 20%", "CV < 10%", lab = True)
-                    pdf.savefig()
-                    bar_plot("Median precursor CV, 1% FDR", cvs['Condition'], cvs['Precursor.CV'], lab = True)
-                    pdf.savefig()
-                    cvs = cvs[cvs['PG.N'] > 0]
-                    cvs = cvs[cvs['PG.CV'] > 0.0]
-                    if len(cvs) > 0:
-                        triple_bar_plot("Protein groups, 1% FDR", cvs['Condition'], cvs['PG.N'], cvs['PG.CV.20'], cvs['PG.CV.10'], "Average", "CV < 20%", "CV < 10%", lab = True)
-                        pdf.savefig()
-                        bar_plot("Median protein group CV, 1% FDR", cvs['Condition'], cvs['PG.CV'], lab = True)
-                        pdf.savefig()
-                        cvs = cvs[cvs['Gene.N'] > 0]
-                        cvs = cvs[cvs['Gene.CV'] > 0.0]
-                        if len(cvs) > 0:
-                            triple_bar_plot("Gene groups, 1% FDR", cvs['Condition'], cvs['Gene.N'], cvs['Gene.CV.20'], cvs['Gene.CV.10'], "Average", "CV < 20%", "CV < 10%", lab = True)
-                            pdf.savefig()
-                            bar_plot("Median gene group CV, 1% FDR", cvs['Condition'], cvs['Gene.CV'], lab = True)
-                            pdf.savefig()
-            except: pass
+            fig = create_correlation_matrix(pg)
+            if fig is not None:
+                pdf.savefig(fig, bbox_inches="tight")
+                plt.close(fig)
+        except (KeyError, ValueError, TypeError, IndexError):
+            pass
+
+        _plot_run_statistics(pdf, df)
+
+        if not skip_conditions:
+            _plot_cv_analysis(pdf, df)
 
 
-# In[ ]:
-
-def main():
+def main() -> None:
     """Main entry point for the diann-qc command."""
-    # "H:\tmp\report.stats.tsv" "H:\tmp\report.tsv" "H:\tmp\report.pdf"
     report(sys.argv[1], sys.argv[2], sys.argv[3])
+
 
 if __name__ == "__main__":
     main()
-
