@@ -11,6 +11,7 @@ from pathlib import Path
 from diann_runner.snakemake_helpers import (
     build_oktoberfest_config,
     copy_fasta_if_missing,
+    get_custom_fasta_input,
     get_final_quantification_outputs,
     parse_flat_params,
     create_diann_workflow,
@@ -58,13 +59,6 @@ def final_quant_outputs(wildcards):
     """Snakemake input function wrapper for get_final_quantification_outputs."""
     return get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
-# Helper function to create an input parameter for order.fasta if it's present and configured
-def get_custom_fasta_input():
-    path = RAW_DIR / "order.fasta"
-    if fasta_config["use_custom_fasta"] and path.exists() and path.stat().st_size > 0:
-        return path
-    else:
-        return []
 
 
 # ============================================================================
@@ -166,7 +160,7 @@ rule diann_generate_scripts:
     input:
         mzml_files = [get_converted_file(sample) for sample in SAMPLES],
         fasta = "database.fasta",
-        custom_fasta = get_custom_fasta_input(),
+        custom_fasta = get_custom_fasta_input(fasta_config, RAW_DIR),
     output:
         step_a_script = "step_A_library_search.sh",
         step_b_script = "step_B_quantification_refinement.sh",
@@ -212,7 +206,7 @@ rule generate_oktoberfest_config:
     """Generate Oktoberfest configuration from DIA-NN parameters."""
     input:
         fasta = "database.fasta",
-        custom_fasta = get_custom_fasta_input(),
+        custom_fasta = get_custom_fasta_input(fasta_config, RAW_DIR),
     output:
         config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
     log:
