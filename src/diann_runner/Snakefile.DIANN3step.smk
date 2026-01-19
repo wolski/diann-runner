@@ -26,7 +26,7 @@ from diann_runner.snakemake_helpers import (
 localrules: all, print_config_dict, copy_fasta, diann_generate_scripts, generate_oktoberfest_config, outputsyml
 
 # Detect input files using helper function
-RAW_DIR = Path(".")
+RAW_DIR = Path("input/raw")
 SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_DIR)
 
 # Load configs separately for clarity
@@ -57,6 +57,15 @@ FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID
 def final_quant_outputs(wildcards):
     """Snakemake input function wrapper for get_final_quantification_outputs."""
     return get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
+
+# Helper function to create an input parameter for order.fasta if it's present and configured
+def get_custom_fasta_input():
+    path = RAW_DIR / "order.fasta"
+    if fasta_config["use_custom_fasta"] and path.exists() and path.stat().st_size > 0:
+        return path
+    else:
+        return []
+
 
 # ============================================================================
 # Default target rule (must be first rule to be default)
@@ -157,7 +166,7 @@ rule diann_generate_scripts:
     input:
         mzml_files = [get_converted_file(sample) for sample in SAMPLES],
         fasta = "database.fasta",
-        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config["use_custom_fasta"] else []
+        custom_fasta = get_custom_fasta_input(),
     output:
         step_a_script = "step_A_library_search.sh",
         step_b_script = "step_B_quantification_refinement.sh",
@@ -203,7 +212,7 @@ rule generate_oktoberfest_config:
     """Generate Oktoberfest configuration from DIA-NN parameters."""
     input:
         fasta = "database.fasta",
-        custom_fasta = RAW_DIR / "order.fasta" if (RAW_DIR / "order.fasta").exists() and fasta_config["use_custom_fasta"] else []
+        custom_fasta = get_custom_fasta_input(),
     output:
         config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
     log:
@@ -377,10 +386,19 @@ rule zip_diann_result:
             zip_path=output.zip
         )
 
+rule dataset_csv:
+    input:
+        parquet="input/raw/dataset.parquet",
+    output:
+        csv="dataset.csv",
+    run:
+        pl.read_parquet(input.parquet).write_csv(output.csv)
+
+
 rule prolfqua_qc:
     input:
         unpack(final_quant_outputs),
-        dataset = "dataset.csv"
+        dataset = rules.dataset_csv.output.csv,
     output:
         zip = f"Result_WU{WORKUNITID}.zip",
         runlog = "Rqc.1.log"
