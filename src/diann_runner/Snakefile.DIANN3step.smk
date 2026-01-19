@@ -30,8 +30,8 @@ RAW_DIR = Path("input/raw")
 SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_DIR)
 
 # Load configs separately for clarity
-config_dict = load_config(RAW_DIR)  # params.yml (bfabric parameters)
-deploy_dict = load_deploy_config(RAW_DIR)  # defaults_server.yml or defaults_local.yml (docker images, etc.)
+config_dict = load_config(".")  # params.yml (bfabric parameters)
+deploy_dict = load_deploy_config(".")  # defaults_server.yml or defaults_local.yml (docker images, etc.)
 
 # Store variables from config
 WORKUNITID = config_dict["registration"]["workunit_id"]
