@@ -3,8 +3,11 @@
 Command-line interface for DIA-NN workflow generation using cyclopts.
 """
 
+from __future__ import annotations
+
+import json
 from pathlib import Path
-from typing import List, Optional
+
 import cyclopts
 
 from .workflow import DiannWorkflow
@@ -16,13 +19,13 @@ app = cyclopts.App(
 
 
 def _load_workflow_from_defaults(
-    config_defaults: Optional[Path],
-    workunit_id: Optional[str] = None,
-    output_dir: Optional[Path] = None,
-    var_mods: Optional[List[str]] = None,
-    threads: Optional[int] = None,
-    qvalue: Optional[float] = None,
-    diann_bin: Optional[str] = None,
+    config_defaults: Path | None,
+    workunit_id: str | None = None,
+    output_dir: Path | None = None,
+    var_mods: list[str] | None = None,
+    threads: int | None = None,
+    qvalue: float | None = None,
+    diann_bin: str | None = None,
 ) -> DiannWorkflow:
     """
     Load DiannWorkflow with parameters from config defaults and CLI overrides.
@@ -39,8 +42,6 @@ def _load_workflow_from_defaults(
     Returns:
         Initialized DiannWorkflow instance
     """
-    import json
-    
     # Load defaults from config if provided
     defaults = {}
     if config_defaults:
@@ -127,14 +128,14 @@ def _load_workflow_from_defaults(
 @app.command
 def library_search(
     fasta: Path,
-    output_dir: Optional[Path] = None,
-    workunit_id: Optional[str] = None,
-    var_mods: Optional[List[str]] = None,
-    threads: Optional[int] = None,
-    qvalue: Optional[float] = None,
-    diann_bin: Optional[str] = None,
+    output_dir: Path | None = None,
+    workunit_id: str | None = None,
+    var_mods: list[str] | None = None,
+    threads: int | None = None,
+    qvalue: float | None = None,
+    diann_bin: str | None = None,
     script_name: str = "step_A_library_search.sh",
-    config_defaults: Optional[Path] = None,
+    config_defaults: Path | None = None,
 ):
     """
     Generate Step A: Library search script (predicted library from FASTA).
@@ -185,7 +186,7 @@ def library_search(
 def quantification_refinement(
     config: Path,
     predicted_lib: Path,
-    raw_files: List[Path],
+    raw_files: list[Path],
     quantify: bool = True,
     script_name: str = "step_B_quantification_refinement.sh",
 ):
@@ -237,7 +238,7 @@ def quantification_refinement(
 def final_quantification(
     config: Path,
     refined_lib: Path,
-    raw_files: List[Path],
+    raw_files: list[Path],
     force: bool = False,
     script_name: str = "step_C_final_quantification.sh",
 ):
@@ -271,11 +272,8 @@ def final_quantification(
 
     # Check if Step B already did quantification
     if not force:
-        import json
-        from pathlib import Path as PathLib
-
         # Check for Step B report files indicating quantification was done
-        quant_b_dir = PathLib(workflow.quant_b_dir)
+        quant_b_dir = Path(workflow.quant_b_dir)
         report_file = quant_b_dir / f"{workflow.workunit_id}_reportB.tsv"
         matrix_file = quant_b_dir / f"{workflow.workunit_id}_reportB.pg_matrix.tsv"
 
@@ -306,13 +304,13 @@ def final_quantification(
 @app.command
 def all_stages(
     fasta: Path,
-    raw_files: List[Path],
-    workunit_id: Optional[str] = None,
-    var_mods: Optional[List[str]] = None,
-    threads: Optional[int] = None,
-    qvalue: Optional[float] = None,
-    diann_bin: Optional[str] = None,
-    config_defaults: Optional[Path] = None,
+    raw_files: list[Path],
+    workunit_id: str | None = None,
+    var_mods: list[str] | None = None,
+    threads: int | None = None,
+    qvalue: float | None = None,
+    diann_bin: str | None = None,
+    config_defaults: Path | None = None,
 ):
     """
     Generate all three workflow stages at once.
@@ -375,7 +373,7 @@ def create_config(
     output: Path = Path("diann_config.json"),
     workunit_id: str = "WU001",
     output_base_dir: str = "out-DIANN",
-    var_mods: Optional[List[str]] = None,
+    var_mods: list[str] | None = None,
     diann_bin: str = "diann-docker",
     threads: int = 64,
     qvalue: float = 0.01,
@@ -444,8 +442,6 @@ def create_config(
             --config-defaults my_defaults.json \\
             --fasta db.fasta
     """
-    import json
-    
     # Parse variable modifications
     parsed_var_mods = []
     if var_mods:

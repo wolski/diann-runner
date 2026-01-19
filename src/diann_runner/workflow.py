@@ -46,9 +46,11 @@ Usage:
     )
 """
 
+from __future__ import annotations
+
+import json
 import os
 from pathlib import Path
-from typing import List, Tuple, Dict
 
 
 class DiannWorkflow:
@@ -65,9 +67,9 @@ class DiannWorkflow:
         self,
         workunit_id: str,
         output_base_dir: str = 'out-DIANN',
-        var_mods: List[Tuple[str, str, str]] = None,
+        var_mods: tuple[tuple[str, str, str], ...] = (),
         diann_bin: str = 'diann-docker',
-        fasta_file: str = None,
+        fasta_file: str | None = None,
         threads: int = 64,
         qvalue: float = 0.01,
         min_pep_len: int = 6,
@@ -135,7 +137,7 @@ class DiannWorkflow:
         self.fasta_file = fasta_file
 
         # Variable modifications
-        self.var_mods = var_mods if var_mods is not None else []
+        self.var_mods = var_mods
         
         # DIA-NN parameters (shared across all steps)
         self.threads = threads
@@ -216,9 +218,6 @@ class DiannWorkflow:
         Returns:
             Path to the created config JSON file
         """
-        import json
-        from pathlib import Path
-        
         config_path = f"{output_path}.config.json"
         
         # Ensure the directory exists
@@ -240,12 +239,11 @@ class DiannWorkflow:
         Returns:
             DiannWorkflow instance initialized with parameters from config
         """
-        import json
         with open(config_path, 'r') as f:
             config = json.load(f)
         return cls(**config)
     
-    def _build_common_params(self) -> List[str]:
+    def _build_common_params(self) -> list[str]:
         """
         Build common DIA-NN parameters shared across all steps.
         
@@ -292,9 +290,9 @@ class DiannWorkflow:
     def _write_shell_script(
         self,
         script_path: str,
-        commands: List[str],
-        temp_dirs: List[str],
-        output_dirs: List[str],
+        commands: list[str],
+        temp_dirs: list[str],
+        output_dirs: list[str],
         log_file: str = None
     ) -> None:
         """
@@ -394,7 +392,7 @@ class DiannWorkflow:
     def generate_quantification_step(
         self,
         step_name: str,
-        raw_files: List[str],
+        raw_files: list[str],
         input_lib_path: str,
         generate_library: bool = True,
         use_quant: bool = False,
@@ -512,7 +510,7 @@ class DiannWorkflow:
 
     def generate_step_b_quantification_with_refinement(
         self,
-        raw_files: List[str],
+        raw_files: list[str],
         predicted_lib_path: str = None,
         quantify: bool = True,
         script_name: str = 'step_B_quantification_refinement.sh'
@@ -556,7 +554,7 @@ class DiannWorkflow:
     
     def generate_step_c_final_quantification(
         self,
-        raw_files: List[str],
+        raw_files: list[str],
         refined_lib_path: str = None,
         use_quant: bool = True,
         save_library: bool = True,
@@ -604,12 +602,12 @@ class DiannWorkflow:
     def generate_all_scripts(
         self,
         fasta_path: str,
-        raw_files_step_b: List[str],
-        raw_files_step_c: List[str] = None,
+        raw_files_step_b: list[str],
+        raw_files_step_c: list[str] = None,
         quantify_step_b: bool = True,
         use_quant_step_c: bool = True,
         save_library_step_c: bool = True
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Generate all three workflow scripts.
         

@@ -62,7 +62,7 @@ class TestDiannWorkflow(unittest.TestCase):
         workflow = DiannWorkflow(workunit_id='TEST002')
         self.assertEqual(workflow.threads, 64)
         self.assertEqual(workflow.qvalue, 0.01)
-        self.assertEqual(workflow.var_mods, [])
+        self.assertEqual(workflow.var_mods, ())
         self.assertEqual(workflow.is_dda, False)
     
     def test_step_a_generation(self):

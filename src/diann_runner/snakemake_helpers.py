@@ -1,9 +1,10 @@
 """Helper functions for Snakemake workflow."""
 
+from __future__ import annotations
+
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import pandas as pd
 import yaml
@@ -68,7 +69,7 @@ def load_deploy_config(raw_dir: Path) -> dict:
     raise FileNotFoundError(f"Deploy config not found: {defaults_filename} (searched: {search_paths})")
 
 
-def detect_input_files(raw_dir: Path) -> Tuple[List[str], str, Dict[str, List[Path]]]:
+def detect_input_files(raw_dir: Path) -> tuple[list[str], str, dict[str, list[Path]]]:
     """
     Detect and validate input mass spectrometry files in a directory.
 
@@ -499,9 +500,8 @@ def build_oktoberfest_config(
 
 
 # Helper function to create an input parameter for order.fasta if it's present and configured
-def get_custom_fasta_input(fasta_config: dict, raw_dir: Path) -> Path | list[None]:
+def get_custom_fasta_input(fasta_config: dict, raw_dir: Path) -> Path | None:
     path = raw_dir / "order.fasta"
     if fasta_config["use_custom_fasta"] and path.exists() and path.stat().st_size > 0:
         return path
-    else:
-        return []
+    return None
