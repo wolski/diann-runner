@@ -40,9 +40,6 @@ def main() -> int:
     # Pass through all user arguments, prepending -s with our Snakefile path
     cmd = ["snakemake", "-s", snakefile_path] + sys.argv[1:]
 
-    print(f"Running: {' '.join(cmd)}")
-
-    # Execute snakemake
     result = subprocess.run(cmd)
     return result.returncode
 

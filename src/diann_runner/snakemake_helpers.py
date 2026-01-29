@@ -263,7 +263,8 @@ def parse_flat_params(flat_params):
     enable_step_c = enable_step_c_str.lower() == 'true' if isinstance(enable_step_c_str, str) else bool(enable_step_c_str)
 
     # Parse conversion/runtime parameters
-    msconvert_options = flat_params.get('97_msconvert_options', '--mzML --64 --zlib')
+    # raw_converter: thermoraw (default), msconvert, msconvert-demultiplex
+    raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
     diann_binary = flat_params.get('98_diann_binary', 'diann-docker')
 
     return {
@@ -272,7 +273,7 @@ def parse_flat_params(flat_params):
         'var_mods': var_mods_tuples,
         'library_predictor': library_predictor,
         'enable_step_c': enable_step_c,
-        'msconvert_options': msconvert_options,
+        'raw_converter': raw_converter,
         'diann_binary': diann_binary,
     }
 

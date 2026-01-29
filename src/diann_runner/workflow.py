@@ -358,7 +358,8 @@ class DiannWorkflow:
         output_file = f"{self.lib_dir}/{self.workunit_id}_report.parquet"
 
         # Build command
-        cmd = [f'"{self.diann_bin}"']
+        # Use -- to separate diann-docker options from DIA-NN arguments
+        cmd = [f'"{self.diann_bin}"', '--']
 
         # FASTA search mode
         cmd.append("--fasta-search")
@@ -440,7 +441,8 @@ class DiannWorkflow:
         log_file = f"{output_dir}/diann_quant{step_name}.log.txt"
 
         # Build command (same for both steps!)
-        cmd = [f'"{self.diann_bin}"']
+        # Use -- to separate diann-docker options from DIA-NN arguments
+        cmd = [f'"{self.diann_bin}"', '--']
 
         # Library
         cmd.append(f'--lib "{input_lib_path}"')

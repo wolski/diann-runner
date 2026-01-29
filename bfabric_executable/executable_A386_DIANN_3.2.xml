@@ -15,23 +15,24 @@
     <context>APPLICATION</context>
     <enabled>true</enabled>
 
-    <!-- 97: MSConvert Configuration -->
+    <!-- 97: RAW File Converter Configuration -->
     <parameter classname="parameter" id="171595">
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Specify msconvert command-line options for raw file conversion. Used when having Orbitrap raw files as input. Docker image is fixed: chambm/pwiz-skyline-i-agree-to-the-vendor-licenses</description>
+        <description>Converter for Thermo RAW files. thermoraw: ThermoRawFileParser (fastest, recommended). msconvert: standard conversion. msconvert-demultiplex: for overlapping DIA windows (multiplexed acquisition).</description>
         <context>APPLICATION</context>
-        <enumeration>--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"</enumeration>
-        <enumeration>--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-" --filter "demultiplex optimization=overlap_only massError=10.0ppm"</enumeration>
+        <enumeration>thermoraw</enumeration>
+        <enumeration>msconvert</enumeration>
+        <enumeration>msconvert-demultiplex</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>97_msconvert_options</key>
-        <label>MSConvert Options</label>
+        <key>97_raw_converter</key>
+        <label>RAW File Converter</label>
         <modifiable>true</modifiable>
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"</value>
+        <value>thermoraw</value>
     </parameter>
 
     <!-- 02: Workflow Control -->

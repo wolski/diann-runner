@@ -102,9 +102,9 @@ rule convert_d_zip:
         """
 
 rule convert_raw:
-    """Convert *.raw -> *.mzML.
+    """Convert *.raw -> *.mzML using thermoraw CLI.
 
-    Uses msconvert (default) or ThermoRawFileParser based on use_msconvert parameter.
+    Converter options: thermoraw (default), msconvert, msconvert-demultiplex
     """
     input:
         file = RAW_DIR / "{sample}.raw"
@@ -113,26 +113,11 @@ rule convert_raw:
     log:
         logfile = "logs/convert_raw_{sample}.log"
     params:
-        use_msconvert = deploy_dict["use_msconvert"],
-        msconvert_docker = deploy_dict["msconvert_docker"],
-        msconvert_options = WORKFLOW_PARAMS["msconvert_options"],
-        thermo_docker = deploy_dict["raw_converter_docker"],
-        converter_binary = deploy_dict["raw_converter_binary"]
+        converter = WORKFLOW_PARAMS["raw_converter"]
     retries: 3
     shell:
         """
-        if [ -n "{params.converter_binary}" ] && [ -x "{params.converter_binary}" ]; then
-            # Use native binary (for ARM Mac local testing)
-            {params.converter_binary} -i {input.file:q} -o input/raw -f 2
-        elif [ "{params.use_msconvert}" = "true" ]; then
-            # Use msconvert via Docker (default)
-            docker run --rm -v "$PWD":/data {params.msconvert_docker} \
-                wine msconvert /data/input/raw/{wildcards.sample}.raw {params.msconvert_options} -o /data/input/raw
-        else
-            # Use ThermoRawFileParser via Docker
-            docker run --rm -v "$PWD":/data {params.thermo_docker} \
-                -i /data/input/raw/{wildcards.sample}.raw -o /data/input/raw -f 2
-        fi
+        thermoraw -i {input.file:q} -o {input.file:q}/../ --converter {params.converter}
         """
 
 def get_converted_file(sample: str):

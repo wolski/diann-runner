@@ -1,164 +1,204 @@
 #!/usr/bin/env python3
 """
-thermoraw_docker.py — Run ThermoRawFileParser (native or Docker).
+thermoraw_docker.py — Convert Thermo RAW files to mzML format.
 
-Converts Thermo RAW files to mzML format.
+Provides 3 converter options:
+- thermoraw: ThermoRawFileParser (native on macOS ARM, Docker elsewhere)
+- msconvert: msconvert standard conversion (x86/Linux only)
+- msconvert-demultiplex: msconvert with demultiplex filter (x86/Linux only)
 
 Usage:
-  thermoraw -i input.raw -o output_dir -f 2
-  thermoraw --help
-
-Execution order:
-  1. Native binary (if THERMORAW_BINARY is set or found in standard locations)
-  2. Docker container (thermorawfileparser:2.0.0)
-
-Env vars:
-  THERMORAW_BINARY         Path to native ThermoRawFileParser binary
-  THERMORAW_DOCKER_IMAGE   Docker image (default: "thermorawfileparser:2.0.0")
-  THERMORAW_USE_DOCKER     Force Docker even if native available ("true"/"false")
+  thermoraw -i sample.raw -o output/
+  thermoraw -i sample.raw -o output/ --converter msconvert
+  thermoraw -i sample.raw -o output/ --converter msconvert-demultiplex
 """
 
 import os
-import sys
-import shlex
-import shutil
-import subprocess
 import platform
+import subprocess
+import sys
 from pathlib import Path
+from typing import Annotated
 
-# --- Settings ---
-DEFAULT_IMAGE = os.environ.get("THERMORAW_DOCKER_IMAGE", "thermorawfileparser:2.0.0")
-NATIVE_BINARY_ENV = os.environ.get("THERMORAW_BINARY", "")
-FORCE_DOCKER = os.environ.get("THERMORAW_USE_DOCKER", "").lower() == "true"
+import cyclopts
 
-# Standard locations to search for native binary
-def _get_search_paths() -> list[Path]:
-    """Get list of paths to search for native binary."""
-    # Find project root (where pyproject.toml is)
+from diann_runner.docker_utils import (
+    DockerCommandBuilder,
+    is_apple_silicon,
+    print_command,
+    run_container,
+)
+
+# --- Default Docker Images ---
+DEFAULT_THERMORAW_IMAGE = os.environ.get(
+    "THERMORAW_DOCKER_IMAGE", "thermorawfileparser:2.0.0"
+)
+DEFAULT_MSCONVERT_IMAGE = os.environ.get(
+    "MSCONVERT_DOCKER_IMAGE", "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
+)
+
+# --- msconvert options (hardcoded for consistency) ---
+MSCONVERT_BASE_OPTIONS = '--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"'
+MSCONVERT_DEMUX_FILTER = '--filter "demultiplex optimization=overlap_only massError=10.0ppm"'
+
+app = cyclopts.App(
+    name="thermoraw",
+    help="Convert Thermo RAW files to mzML format",
+)
+
+
+def _get_native_binary() -> Path | None:
+    """Get path to native ThermoRawFileParser binary on macOS, None elsewhere."""
+    if platform.system() != "Darwin":
+        return None
+
+    # Find package root (where pyproject.toml is)
     current = Path(__file__).parent
     while current != current.parent:
         if (current / "pyproject.toml").exists():
-            project_bin = current / "bin" / "ThermoRawFileParser"
+            binary = current / "tools" / "ThermoRawFileParser-osx" / "ThermoRawFileParser"
+            if binary.is_file():
+                return binary
             break
         current = current.parent
-    else:
-        project_bin = Path("/nonexistent")
-
-    return [
-        project_bin,
-        Path.home() / ".local" / "bin" / "ThermoRawFileParser",
-        Path("/usr/local/bin/ThermoRawFileParser"),
-    ]
-
-NATIVE_SEARCH_PATHS = _get_search_paths()
-
-
-def is_apple_silicon() -> bool:
-    """Check if running on Apple Silicon."""
-    m = platform.machine().lower()
-    return ("arm" in m or "aarch64" in m) and platform.system() == "Darwin"
-
-
-def find_native_binary() -> str | None:
-    """Find native ThermoRawFileParser binary."""
-    # Check env var first
-    if NATIVE_BINARY_ENV:
-        if Path(NATIVE_BINARY_ENV).is_file():
-            return NATIVE_BINARY_ENV
-        print(f"Warning: THERMORAW_BINARY={NATIVE_BINARY_ENV} not found", file=sys.stderr)
-
-    # Search standard locations
-    for path in NATIVE_SEARCH_PATHS:
-        if path.is_file() and os.access(path, os.X_OK):
-            return str(path)
 
     return None
 
 
-def run_native(binary: str, argv: list[str]) -> int:
+NATIVE_BINARY = _get_native_binary()
+
+
+def _run_thermoraw_native(input_file: Path, output_dir: Path) -> int:
     """Run ThermoRawFileParser using native binary."""
-    cmd = [binary] + argv
-    print(f"→ Running (native): {' '.join(shlex.quote(x) for x in cmd)}", file=sys.stderr)
+    cmd = [
+        str(NATIVE_BINARY),
+        "-i", str(input_file),
+        "-o", str(output_dir),
+        "-f", "2",  # indexed mzML format
+    ]
+    print_command(cmd, label="Running (native ThermoRawFileParser)")
     result = subprocess.run(cmd)
     return result.returncode
 
 
-def run_docker(argv: list[str]) -> int:
+def _run_thermoraw_docker(input_file: Path, output_dir: Path, image: str) -> int:
     """Run ThermoRawFileParser using Docker."""
-    cmd = ["docker", "run", "--rm"]
+    cwd = os.getcwd()
+    # Paths relative to mount point
+    container_input = f"/data/{input_file.relative_to(cwd)}"
+    container_output = f"/data/{output_dir.relative_to(cwd)}"
 
-    # Platform for Apple Silicon
-    if is_apple_silicon():
-        cmd += ["--platform", "linux/amd64"]
+    cmd = (
+        DockerCommandBuilder(image)
+        .with_cleanup()
+        .with_platform(force_amd64_on_arm=True)
+        .with_uid_gid()
+        .with_mount(cwd, "/data")
+        .with_workdir("/data")
+        .build(["-i", container_input, "-o", container_output, "-f", "2"])
+    )
 
-    # UID/GID for file permissions (Unix only)
-    try:
-        cmd += ["-u", f"{os.getuid()}:{os.getgid()}"]
-    except AttributeError:
-        pass  # Windows
-
-    # Mount current directory
-    cmd += ["-v", f"{os.getcwd()}:/data", "-w", "/data"]
-
-    cmd += [DEFAULT_IMAGE]
-    cmd += argv
-
-    print(f"→ Running (docker): {' '.join(shlex.quote(x) for x in cmd)}", file=sys.stderr)
-    result = subprocess.run(cmd)
-    return result.returncode
+    return run_container(cmd, label="Running (ThermoRawFileParser Docker)")
 
 
-def print_help():
-    """Print usage information."""
-    print("""ThermoRawFileParser wrapper - converts Thermo RAW files to mzML
+def _run_msconvert_docker(
+    input_file: Path,
+    output_dir: Path,
+    image: str,
+    demultiplex: bool = False,
+) -> int:
+    """Run msconvert using Docker (requires Wine, x86 only)."""
+    cwd = os.getcwd()
+    container_input = f"/data/{input_file.relative_to(cwd)}"
+    container_output = f"/data/{output_dir.relative_to(cwd)}"
 
-Usage: thermoraw [options]
+    # Build msconvert options
+    options = MSCONVERT_BASE_OPTIONS
+    if demultiplex:
+        options = f"{options} {MSCONVERT_DEMUX_FILTER}"
 
-Common options:
-  -i, --input=FILE          Input RAW file (required)
-  -d, --input_directory=DIR Input directory containing RAW files
-  -o, --output_directory=DIR Output directory (default: input directory)
-  -f, --format=FORMAT       Output format:
-                              0 = MGF
-                              1 = mzML
-                              2 = indexed mzML (default)
-                              3 = Parquet
-  -h, --help                Show help
+    # msconvert via Wine in Docker
+    # Note: The image entrypoint expects "wine msconvert" as the command
+    msconvert_cmd = f"wine msconvert {container_input} {options} -o {container_output}"
 
-Examples:
-  # Convert single file to indexed mzML
-  thermoraw -i sample.raw -o output/ -f 2
+    cmd = (
+        DockerCommandBuilder(image)
+        .with_cleanup()
+        .with_mount(cwd, "/data")
+        .with_workdir("/data")
+        .build(["sh", "-c", msconvert_cmd])
+    )
 
-  # Convert all files in directory
-  thermoraw -d raw_files/ -o converted/ -f 2
+    return run_container(cmd, label="Running (msconvert Docker)")
 
-Environment variables:
-  THERMORAW_BINARY         Path to native binary (auto-detected on Mac)
-  THERMORAW_DOCKER_IMAGE   Docker image (default: thermorawfileparser:2.0.0)
-  THERMORAW_USE_DOCKER     Force Docker even if native available
-""")
+
+@app.default
+def run(
+    input_file: Annotated[Path, cyclopts.Parameter(name=["-i", "--input"])],
+    output_dir: Annotated[Path, cyclopts.Parameter(name=["-o", "--output"])],
+    converter: Annotated[
+        str,
+        cyclopts.Parameter(
+            help="Converter: thermoraw, msconvert, msconvert-demultiplex"
+        ),
+    ] = "thermoraw",
+    image: Annotated[
+        str | None,
+        cyclopts.Parameter(help="Docker image override"),
+    ] = None,
+) -> None:
+    """
+    Convert Thermo RAW files to mzML format.
+
+    Converter options:
+      thermoraw           ThermoRawFileParser (native on ARM Mac, Docker elsewhere)
+      msconvert           msconvert standard conversion (x86/Linux only)
+      msconvert-demultiplex  msconvert with demultiplex for overlapping DIA windows
+
+    Examples:
+        thermoraw -i sample.raw -o output/
+        thermoraw -i sample.raw -o output/ --converter msconvert
+        thermoraw -i sample.raw -o output/ --converter msconvert-demultiplex
+    """
+    # Validate converter option
+    valid_converters = ("thermoraw", "msconvert", "msconvert-demultiplex")
+    if converter not in valid_converters:
+        print(f"Error: Invalid converter '{converter}'", file=sys.stderr)
+        print(f"Valid options: {', '.join(valid_converters)}", file=sys.stderr)
+        sys.exit(1)
+
+    # Check ARM Mac compatibility for msconvert
+    if converter in ("msconvert", "msconvert-demultiplex") and is_apple_silicon():
+        print(
+            "Error: msconvert requires Wine which doesn't run on ARM Mac.",
+            file=sys.stderr,
+        )
+        print("Use --converter thermoraw instead.", file=sys.stderr)
+        sys.exit(1)
+
+    # Ensure output directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Route to appropriate converter
+    if converter == "thermoraw":
+        # Use native binary on macOS if available
+        if NATIVE_BINARY:
+            sys.exit(_run_thermoraw_native(input_file, output_dir))
+        else:
+            img = image or DEFAULT_THERMORAW_IMAGE
+            sys.exit(_run_thermoraw_docker(input_file, output_dir, img))
+
+    elif converter == "msconvert":
+        img = image or DEFAULT_MSCONVERT_IMAGE
+        sys.exit(_run_msconvert_docker(input_file, output_dir, img, demultiplex=False))
+
+    elif converter == "msconvert-demultiplex":
+        img = image or DEFAULT_MSCONVERT_IMAGE
+        sys.exit(_run_msconvert_docker(input_file, output_dir, img, demultiplex=True))
 
 
 def main():
-    if len(sys.argv) == 1 or sys.argv[1] in ("-h", "--help"):
-        print_help()
-        sys.exit(0 if len(sys.argv) > 1 else 2)
-
-    argv = sys.argv[1:]
-
-    # Try native binary first (unless forced to use Docker)
-    if not FORCE_DOCKER:
-        native = find_native_binary()
-        if native:
-            sys.exit(run_native(native, argv))
-
-    # Fall back to Docker
-    if not shutil.which("docker"):
-        print("Error: Neither native binary nor Docker found.", file=sys.stderr)
-        print("Install Docker or set THERMORAW_BINARY environment variable.", file=sys.stderr)
-        sys.exit(127)
-
-    sys.exit(run_docker(argv))
+    app()
 
 
 if __name__ == "__main__":

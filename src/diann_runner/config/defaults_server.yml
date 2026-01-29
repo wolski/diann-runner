@@ -4,10 +4,7 @@
 threads: 64
 diann_docker_image: "diann:2.3.1"
 
-# File conversion
-raw_converter_docker: "thermorawfileparser:linux"
-raw_converter_binary: ""  # Not used on server (Docker only)
-use_msconvert: "true"
+# File conversion (Docker images for thermoraw CLI)
 msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
 
 # QC and staging

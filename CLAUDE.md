@@ -20,7 +20,7 @@ All commands defined in `pyproject.toml`:
 |---------|--------|---------|
 | `diann-docker` | `docker.py` | Run DIA-NN in Docker container |
 | `diann-workflow` | `cli.py` | Generate three-stage workflow scripts |
-| `diann-cleanup` | `cleanup.py` | Clean up workflow output files |
+| `diann-cleanup` | `cleanup.py` | Alias for `snakemake --delete-all-output` |
 | `diann-qc` | `plotter.py` | Generate QC plots from DIA-NN results |
 | `prolfquapp-docker` | `prolfquapp_docker.py` | Run prolfqua QC in Docker |
 
@@ -216,9 +216,25 @@ Bfabric XML (executable.xml)
 
 ## Important Patterns
 
+### No Print Statements for Logging
+
+**NEVER use `print()` for debugging or informational output.** If logging is truly needed, use `loguru`. Most CLI tools should run silently - let the underlying tools (Snakemake, DIA-NN, etc.) produce their own output.
+
 ### File Management Policy
 
 **NEVER use symlinks.** Always use direct file references. This project policy prohibits symlinks in all scenarios - they add unnecessary complexity and can cause issues with some tools.
+
+### Fail Fast on Bad Config
+
+**NEVER use `.get()` with default values for required config parameters.** If the YAML/config is malformed or missing a required key, the app should fail immediately with a clear KeyError. Silent defaults hide configuration errors and make debugging harder.
+
+```python
+# WRONG - hides missing config
+converter = WORKFLOW_PARAMS.get("raw_converter", "thermoraw")
+
+# CORRECT - fails fast if key missing
+converter = WORKFLOW_PARAMS["raw_converter"]
+```
 
 ### Flexible File Lists Between Stages
 
