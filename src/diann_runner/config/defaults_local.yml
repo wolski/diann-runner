@@ -4,9 +4,10 @@
 threads: 8
 diann_docker_image: "diann:2.3.1"
 
-# File conversion
-raw_converter_docker: "thermorawfileparser:latest"
-use_msconvert: "true"
+# File conversion (msconvert doesn't work on ARM Mac, use ThermoRawFileParser)
+raw_converter_docker: "thermorawfileparser:2.0.0"
+raw_converter_binary: "/Users/wolski/projects/diann_runner/bin/ThermoRawFileParser"
+use_msconvert: "false"
 msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
 
 # QC and staging

@@ -23,10 +23,10 @@ if not test -d $WORK_DIR
     echo "✓ Setup complete!"
     echo ""
     echo "To run the workflow:"
-    echo "  cd $WORK_DIR && ../run_snakemake_workflow.fish --cores 8"
+    echo "  cd $WORK_DIR && diann-snakemake --cores 8 -p all"
 else
     echo "✓ $WORK_DIR already exists"
     echo ""
     echo "To run the workflow:"
-    echo "  cd $WORK_DIR && ../run_snakemake_workflow.fish --cores 8"
+    echo "  cd $WORK_DIR && diann-snakemake --cores 8 -p all"
 end

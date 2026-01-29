@@ -22,9 +22,9 @@ All commands defined in `pyproject.toml`:
 | `diann-workflow` | `cli.py` | Generate three-stage workflow scripts |
 | `diann-cleanup` | `cleanup.py` | Clean up workflow output files |
 | `diann-qc` | `plotter.py` | Generate QC plots from DIA-NN results |
-| `diann-koina-adapter` | `koina_adapter.py` | Koina predictor integration |
-| `oktoberfest-docker` | `oktoberfest_docker.py` | Run Oktoberfest for spectral prediction |
 | `prolfquapp-docker` | `prolfquapp_docker.py` | Run prolfqua QC in Docker |
+
+**Optional (in contrib/oktoberfest/):** Koina/Oktoberfest integration for alternative spectral predictors.
 
 ## Development Commands
 
@@ -52,29 +52,19 @@ python3 -m pytest tests/
 
 **Snakemake Workflow Execution:**
 
-Use `run_snakemake_workflow.fish` to execute the complete Snakemake workflow:
+Use `diann-snakemake` to execute the workflow:
 
 ```bash
 # Navigate to your data directory containing .raw/.mzML/.d.zip files
 cd /path/to/your/data
 
-# Ensure params.yml exists (copy from example_params_yaml/params.yml and customize)
-# The script will auto-generate dataset.csv if missing
-
+# Ensure params.yml and dataset.csv exist
 # Run the workflow
-/path/to/diann-runner/run_snakemake_workflow.fish --cores 8
+diann-snakemake --cores 8 -p all
 
-# To continue from a previous run without cleanup:
-/path/to/diann-runner/run_snakemake_workflow.fish --no-cleanup --cores 8
+# Or use snakemake directly
+snakemake -s /path/to/Snakefile.DIANN3step.smk --cores 8 all
 ```
-
-The script will:
-1. Auto-generate `dataset.csv` from data files if missing
-2. Verify `params.yml` exists (error if not found)
-3. Run `diann-cleanup` (unless `--no-cleanup` specified)
-4. Execute Snakemake workflow with proper environment activation
-5. Log all output to `workflow.log`
-6. Report success/failure with correct exit codes
 
 ### Docker Image
 ```bash
@@ -149,11 +139,9 @@ All source modules are located in `src/diann_runner/`:
 
 **`src/diann_runner/cleanup.py`** - Cleanup utilities (`diann-cleanup` command)
 
-**`src/diann_runner/koina_adapter.py`** - Koina predictor integration (`diann-koina-adapter` command, see docs/SPECTRAL_PREDICTION.md)
-
-**`src/diann_runner/oktoberfest_docker.py`** - Oktoberfest integration (`oktoberfest-docker` command, see docs/SPECTRAL_PREDICTION.md)
-
 **`src/diann_runner/prolfquapp_docker.py`** - Prolfqua QC integration (`prolfquapp-docker` command)
+
+**`contrib/oktoberfest/`** - Optional Koina/Oktoberfest integration (see `contrib/oktoberfest/README.md`)
 
 **`snakemake_helpers.py`** - Helper functions for Snakemake (at project root)
 - `detect_input_files()`: Detects .d.zip, .raw, or .mzML files with priority logic
@@ -162,7 +150,6 @@ All source modules are located in `src/diann_runner/`:
 - `create_diann_workflow()`: Factory function to initialize DiannWorkflow from parsed params
 - `get_final_quantification_outputs()`: Returns output paths based on Step B vs Step C
 - `convert_parquet_to_tsv()`: Converts DIA-NN 2.3+ parquet output to TSV
-- `build_oktoberfest_config()`: Builds Oktoberfest configuration dictionary
 
 ### Snakemake Workflow
 
@@ -196,7 +183,7 @@ Bfabric XML (executable.xml)
 
 **Key Components:**
 
-1. **XML Definition** (`example_params_yaml/executable_new.xml`)
+1. **XML Definition** (`bfabric_executable/executable_new.xml`)
    - Defines GUI parameters with flat keys like `06a_diann_mods_variable`
    - Uses hierarchical numbering (06a, 06b, 06c) for logical grouping
    - Parameter order affects GUI layout in Bfabric
@@ -374,11 +361,10 @@ diann-workflow final-quantification \
 
 Additional documentation is available in the `docs/` directory:
 - `docs/USAGE_EXAMPLES.md` - **Usage guide with quick reference and detailed patterns**
-- `docs/SPECTRAL_PREDICTION.md` - Koina/Oktoberfest integration for spectral library generation
-- `docs/COMPARING_PREDICTORS.md` - Running parallel workflows with different predictors
 - `docs/DIANN_PARAMETERS.md` - **Comprehensive DIA-NN parameter reference** (compiled from GitHub repo, issues, and discussions)
 - `docs/default_config.json` - Default configuration template
 - `README_DEPLOYMENT.md` - Deployment guide for production servers
+- `contrib/oktoberfest/docs/` - Koina/Oktoberfest integration (optional)
 
 **When troubleshooting DIA-NN issues**: Consult `docs/DIANN_PARAMETERS.md` for parameter explanations, common issues, and links to relevant GitHub discussions.
 

@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 # Import helpers from diann_runner package
 from diann_runner.snakemake_helpers import (
     build_oktoberfest_config,
@@ -21,6 +23,7 @@ from diann_runner.snakemake_helpers import (
     load_config,
     load_deploy_config,
     write_outputs_yml,
+    resolve_fasta_path,
 )
 
 # Local rules that don't need cluster execution
@@ -52,6 +55,8 @@ WORKFLOW_PARAMS = parse_flat_params(config_dict["params"])
 LIBRARY_PREDICTOR = WORKFLOW_PARAMS["library_predictor"]
 ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
 fasta_config = WORKFLOW_PARAMS["fasta"]  # Alias for fasta parameters used in rules
+# Resolve FASTA path (handles /misc/fasta/... paths that don't exist locally)
+fasta_config["database_path"] = str(resolve_fasta_path(fasta_config["database_path"]))
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
@@ -85,7 +90,7 @@ rule convert_d_zip:
         logfile = "logs/convert_d_zip_{sample}.log"
     params:
         msconvert_docker = deploy_dict["msconvert_docker"],
-        msconvert_options = deploy_dict["msconvert_options"]
+        msconvert_options = WORKFLOW_PARAMS["msconvert_options"]
     retries: 3
     shell:
         """
@@ -110,7 +115,7 @@ rule convert_raw:
     params:
         use_msconvert = deploy_dict["use_msconvert"],
         msconvert_docker = deploy_dict["msconvert_docker"],
-        msconvert_options = deploy_dict["msconvert_options"],
+        msconvert_options = WORKFLOW_PARAMS["msconvert_options"],
         thermo_docker = deploy_dict["raw_converter_docker"],
         converter_binary = deploy_dict["raw_converter_binary"]
     retries: 3
@@ -118,15 +123,15 @@ rule convert_raw:
         """
         if [ -n "{params.converter_binary}" ] && [ -x "{params.converter_binary}" ]; then
             # Use native binary (for ARM Mac local testing)
-            {params.converter_binary} -i {input.file:q} -o . -f 2
+            {params.converter_binary} -i {input.file:q} -o input/raw -f 2
         elif [ "{params.use_msconvert}" = "true" ]; then
             # Use msconvert via Docker (default)
             docker run --rm -v "$PWD":/data {params.msconvert_docker} \
-                wine msconvert /data/{wildcards.sample}.raw {params.msconvert_options} -o /data
+                wine msconvert /data/input/raw/{wildcards.sample}.raw {params.msconvert_options} -o /data/input/raw
         else
             # Use ThermoRawFileParser via Docker
             docker run --rm -v "$PWD":/data {params.thermo_docker} \
-                -i /data/{wildcards.sample}.raw -o /data -f 2
+                -i /data/input/raw/{wildcards.sample}.raw -o /data/input/raw -f 2
         fi
         """
 
@@ -173,8 +178,8 @@ rule diann_generate_scripts:
     run:
         # Use local database.fasta (copied from remote path for Docker access)
         fasta_path = str(input.fasta)
-        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and input.custom_fasta:
-            fasta_path = str(input.custom_fasta)
+        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and len(input.custom_fasta) > 0:
+            fasta_path = str(input.custom_fasta[0])
 
         # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
         workflow = create_diann_workflow(
@@ -214,8 +219,8 @@ rule generate_oktoberfest_config:
     run:
         # Use local database.fasta (copied from remote path for Docker access)
         fasta_path = str(input.fasta)
-        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and input.custom_fasta:
-            fasta_path = str(input.custom_fasta)
+        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and len(input.custom_fasta) > 0:
+            fasta_path = str(input.custom_fasta[0])
 
         # Build Oktoberfest config using helper function
         # No oktoberfest_params needed - function uses defaults
@@ -386,7 +391,7 @@ rule dataset_csv:
     output:
         csv="dataset.csv",
     run:
-        pl.read_parquet(input.parquet).write_csv(output.csv)
+        pd.read_parquet(input.parquet).to_csv(output.csv, index=False)
 
 
 rule prolfqua_qc:

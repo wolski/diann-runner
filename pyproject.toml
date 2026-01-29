@@ -21,10 +21,10 @@ diann-workflow = "diann_runner.cli:app"
 diann-cleanup = "diann_runner.cleanup:main"
 diann-qc = "diann_runner.plotter:main"
 diann-qc-report = "diann_runner.qc_report:app"
-diann-koina-adapter = "diann_runner.koina_adapter:app"
-oktoberfest-docker = "diann_runner.oktoberfest_docker:main"
 prolfquapp-docker = "diann_runner.prolfquapp_docker:main"
 diann-snakemake = "diann_runner.snakemake_cli:main"
+thermoraw = "diann_runner.thermoraw_docker:main"
+# Oktoberfest tools moved to contrib/oktoberfest/
 
 [project.optional-dependencies]
 # Install with: uv pip install -e ".[test]"

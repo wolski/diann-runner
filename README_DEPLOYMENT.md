@@ -51,14 +51,14 @@ cd diann_runner
 ### 2. Run Deployment
 
 ```bash
-# Default deployment (includes oktoberfest)
+# Default deployment
 snakemake -s deploy.smk --cores 1
-
-# Faster deployment (skip oktoberfest)
-snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=true
 
 # Dry run first to see what will happen
 snakemake -s deploy.smk --cores 1 --dry-run
+
+# Optional: include Oktoberfest (~4GB, see contrib/oktoberfest/)
+snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=false
 ```
 
 ### 3. Activate Environment
@@ -88,7 +88,7 @@ docker images | grep diann
 Edit `deploy_config.yaml`:
 
 ```yaml
-skip_oktoberfest: false  # Set to true to skip Oktoberfest build
+skip_oktoberfest: true   # Default: skip (tools in contrib/oktoberfest/)
 force_rebuild: false     # Set to true to force Docker image rebuilds
 ```
 
@@ -103,14 +103,11 @@ snakemake -s deploy.smk --cores 1
 Override settings directly:
 
 ```bash
-# Skip Oktoberfest (faster, saves 4GB)
-snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=true
-
 # Force rebuild of Docker images
 snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 
-# Combine options
-snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=true force_rebuild=true
+# Include Oktoberfest (optional, adds ~4GB)
+snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=false
 ```
 
 ---
@@ -148,8 +145,9 @@ This makes the following CLI tools available:
 - `diann-workflow` - Workflow generation CLI
 - `diann-cleanup` - Cleanup utility
 - `diann-qc` - QC plotting tool
-- `oktoberfest-docker` - Oktoberfest wrapper
 - `prolfquapp-docker` - Prolfqua wrapper
+
+**Optional:** Oktoberfest tools available in `contrib/oktoberfest/`
 
 **Flag:** `.deploy_flags/package_installed.flag`
 
@@ -346,6 +344,8 @@ If deploying to a test server without BFabric:
 
 This section explains how `diann_runner` integrates with the FGCZ slurmworker infrastructure for automated Bfabric workunit processing.
 
+**Note:** The slurmworker configuration files (`app.yml`, `dispatch.py`, etc.) are maintained in a **separate repository**: [slurmworker](https://github.com/fgcz/slurmworker). The `diann_runner` package is referenced as a dependency by slurmworker, not the other way around.
+
 ### Architecture Overview
 
 ```
@@ -356,16 +356,17 @@ This section explains how `diann_runner` integrates with the FGCZ slurmworker in
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  slurmworker/config/A386_DIANN_23/                                      │
+│  SLURMWORKER REPO (github.com/fgcz/slurmworker)                         │
+│  config/A386_DIANN_23/                                                  │
 │  ├── app.yml          ← Defines versions & commands for bfabric-app-runner
 │  ├── dispatch.py      ← Creates params.yml + inputs.yml from workunit   │
 │  ├── pyproject.toml   ← Dependencies (includes diann-runner)            │
 │  └── pylock.toml      ← Locked deps (synced to server via git)          │
 └───────────────────────────────┬─────────────────────────────────────────┘
-                                │
+                                │ references as dependency
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  diann_runner (this repo)                                               │
+│  DIANN_RUNNER REPO (this repo)                                          │
 │  ├── src/diann_runner/       ← Python package (CLI tools)               │
 │  ├── Snakefile.DIANN3step.smk← Main workflow                            │
 │  └── docker/                 ← Dockerfiles                              │
@@ -374,7 +375,9 @@ This section explains how `diann_runner` integrates with the FGCZ slurmworker in
 
 ### Slurmworker Config Files
 
-Located at `/home/bfabric/slurmworker/config/A386_DIANN_23/` on the server:
+These files are in the **slurmworker repository** (not diann_runner):
+- Local development: `~/projects/slurmworker/config/A386_DIANN_23/`
+- Production server: `/home/bfabric/slurmworker/config/A386_DIANN_23/`
 
 | File | Purpose |
 |------|---------|
@@ -421,31 +424,33 @@ When `bfabric-app-runner` creates the python environment, it:
 
 ### Updating diann_runner on Production
 
-**On your local machine:**
+**On your local machine (two repositories involved):**
 
 ```bash
-# 1. Make changes to diann_runner
+# 1. Make changes to diann_runner repo
 cd ~/projects/diann_runner
 # ... edit files ...
+git add -A && git commit -m "your changes" && git push
 
-# 2. Update lock file in slurmworker config
+# 2. Update lock file in slurmworker repo (separate repository!)
 cd ~/projects/slurmworker/config/A386_DIANN_23
 uv lock -U && uv sync
 uv export --format pylock.toml -o pylock.toml --no-emit-project
 
-# 3. Commit and push
+# 3. Commit and push slurmworker changes
 git add pylock.toml
 git commit -m "update pylock"
 git push
 ```
 
-**On the server (fgcz-r-035):**
+**On the server (fgcz-c-073) - pull both repositories:**
 
 ```bash
+# Pull slurmworker repo (contains app.yml, dispatch.py, pylock.toml)
 cd /home/bfabric/slurmworker
 git pull
 
-# Also update diann_runner if needed
+# Pull diann_runner repo (contains the actual workflow code)
 cd /home/bfabric/diann_runner
 git pull
 ```
@@ -466,13 +471,16 @@ The `app.yml` defines two versions:
 
 ### Local Testing
 
-Test the integration locally before deploying:
+Test the integration locally before deploying. Requires both repositories cloned:
+- `~/projects/diann_runner` - this repo
+- `~/projects/slurmworker` - the slurmworker repo
 
 ```bash
 # Install bfabric-app-runner
 uv tool install -p 3.13 bfabric-app-runner
 
 # Prepare a workunit locally (read-only mode)
+# Note: --app-spec points to the slurmworker repo, not diann_runner
 bfabric-app-runner prepare workunit \
   --app-spec ~/projects/slurmworker/config/A386_DIANN_23/app.yml \
   --work-dir WU338923 --workunit-ref 338923 --read-only
@@ -533,7 +541,7 @@ cp /path/to/your/database.fasta .
 
 ```bash
 # Copy example params.yml
-cp ../example_params_yaml/params.yml .
+cp ../bfabric_executable/params.yml .
 
 # Edit to match your data
 nano params.yml
@@ -547,19 +555,13 @@ Key settings to configure:
 
 ### 3. Run Workflow
 
-#### Option A: Use Existing Fish Scripts
+#### Option A: Use diann-snakemake
 
 ```bash
-fish ../run_snakefile_workflow.fish --cores 64
+diann-snakemake --cores 64 -p all
 ```
 
-#### Option B: Use Snakemake Directly
-
-```bash
-snakemake -s ../Snakefile.DIANN3step --cores 64 all
-```
-
-#### Option C: Use CLI for Custom Workflows
+#### Option B: Use CLI for Custom Workflows
 
 ```bash
 # Activate venv first
@@ -663,15 +665,13 @@ For issues or questions:
 ```bash
 git clone https://github.com/fgcz/diann_runner.git
 cd diann_runner
-snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=true
+snakemake -s deploy.smk --cores 1
 ```
 
-**Total time:**
-- With Oktoberfest: ~40-70 minutes
-- Without Oktoberfest: ~10-15 minutes
+**Total time:** ~10-15 minutes
 
-**Disk space:**
-- With Oktoberfest: ~5GB
-- Without Oktoberfest: ~1GB
+**Disk space:** ~1GB
+
+**Optional Oktoberfest:** See `contrib/oktoberfest/` for alternative spectral predictor integration (~4GB additional).
 
 Ready to analyze your mass spectrometry data!

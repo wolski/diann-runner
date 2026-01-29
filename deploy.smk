@@ -9,11 +9,11 @@ Prerequisites:
     - uv (package manager)
 
 Usage:
-    # Default deployment (includes oktoberfest)
+    # Default deployment (skips oktoberfest)
     snakemake -s deploy.smk --cores 1
 
-    # Skip oktoberfest build (faster)
-    snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=true
+    # Include oktoberfest build (optional, adds ~4GB)
+    snakemake -s deploy.smk --cores 1 --config skip_oktoberfest=false
 
     # Dry run to see what will be executed
     snakemake -s deploy.smk --cores 1 --dry-run
@@ -23,8 +23,10 @@ Usage:
 
 Configuration:
     Set via --config or in deploy_config.yaml:
-    - skip_oktoberfest: Skip oktoberfest Docker build (default: false)
+    - skip_oktoberfest: Skip oktoberfest Docker build (default: true)
     - force_rebuild: Force rebuild of Docker images (default: false)
+
+Note: Oktoberfest tools have been moved to contrib/oktoberfest/ as an optional subproject.
 """
 
 from pathlib import Path
@@ -49,7 +51,7 @@ if CONFIG_PATH.exists():
 workdir: str(BASE_DIR)
 
 # Configuration with defaults
-SKIP_OKTOBERFEST = config.get("skip_oktoberfest", False)
+SKIP_OKTOBERFEST = config.get("skip_oktoberfest", True)  # Oktoberfest moved to contrib/
 FORCE_REBUILD = config.get("force_rebuild", False)
 DEPLOY_DIR = BASE_DIR
 

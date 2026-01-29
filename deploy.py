@@ -213,8 +213,8 @@ def verify_installation(deploy_dir: Path, output_flag: Path) -> None:
         "diann-workflow",
         "diann-cleanup",
         "diann-qc",
-        "oktoberfest-docker",
         "prolfquapp-docker"
+        # Note: oktoberfest-docker moved to contrib/oktoberfest/
     ]
 
     for tool in tools:
@@ -306,14 +306,11 @@ def print_deployment_complete(deploy_dir: Path, output_flag: Path) -> None:
     print("   diann-docker --help")
     print("   diann-workflow --help")
 
-    print("\n3. Run a workflow with existing Fish scripts:")
+    print("\n3. Run a workflow:")
     print("   cd WU_YOURPROJECT")
-    print(f"   fish ../run_snakefile_workflow.fish --cores {cores}")
+    print(f"   diann-snakemake --cores {cores} -p all")
 
-    print("\n4. Or use Snakemake directly:")
-    print(f"   snakemake -s ../Snakefile.DIANN3step --cores {cores} all")
-
-    print("\n5. Or use CLI for custom workflows:")
+    print("\n4. Or use CLI for custom workflows:")
     print("   diann-workflow all-stages \\")
     print("       --fasta db.fasta \\")
     print("       --raw-files *.mzML \\")
