@@ -85,8 +85,8 @@ def _run_thermoraw_docker(input_file: Path, output_dir: Path, image: str) -> int
     """Run ThermoRawFileParser using Docker."""
     cwd = os.getcwd()
     # Paths relative to mount point
-    container_input = f"/data/{input_file.relative_to(cwd)}"
-    container_output = f"/data/{output_dir.relative_to(cwd)}"
+    container_input = f"/data/{input_file.resolve().relative_to(cwd)}"
+    container_output = f"/data/{output_dir.resolve().relative_to(cwd)}"
 
     cmd = (
         DockerCommandBuilder(image)
@@ -109,8 +109,8 @@ def _run_msconvert_docker(
 ) -> int:
     """Run msconvert using Docker (requires Wine, x86 only)."""
     cwd = os.getcwd()
-    container_input = f"/data/{input_file.relative_to(cwd)}"
-    container_output = f"/data/{output_dir.relative_to(cwd)}"
+    container_input = f"/data/{input_file.resolve().relative_to(cwd)}"
+    container_output = f"/data/{output_dir.resolve().relative_to(cwd)}"
 
     # Build msconvert options
     options = MSCONVERT_BASE_OPTIONS
