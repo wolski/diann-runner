@@ -23,7 +23,12 @@ def main():
     snakefile_path = get_snakefile_path()
 
     # Build snakemake command with --delete-all-output
-    cmd = ["snakemake", "-s", snakefile_path, "--delete-all-output"]
+    # --rerun-incomplete handles killed jobs that left incomplete files
+    # --unlock handles killed jobs that left directory locked
+    cmd = ["snakemake", "-s", snakefile_path, "--unlock"]
+    subprocess.run(cmd, capture_output=True)  # Unlock first, ignore errors if not locked
+
+    cmd = ["snakemake", "-s", snakefile_path, "--delete-all-output", "--rerun-incomplete"]
 
     # Pass through any additional arguments (e.g., -n for dry-run)
     cmd.extend(sys.argv[1:])

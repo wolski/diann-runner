@@ -25,6 +25,7 @@ Configuration:
     Set via --config or in deploy_config.yaml:
     - skip_oktoberfest: Skip oktoberfest Docker build (default: true)
     - force_rebuild: Force rebuild of Docker images (default: false)
+    - diann_version: DIA-NN version to build (default: 2.3.2)
 
 Note: Oktoberfest tools have been moved to contrib/oktoberfest/ as an optional subproject.
 """
@@ -53,6 +54,7 @@ workdir: str(BASE_DIR)
 # Configuration with defaults
 SKIP_OKTOBERFEST = config.get("skip_oktoberfest", True)  # Oktoberfest moved to contrib/
 FORCE_REBUILD = config.get("force_rebuild", False)
+DIANN_VERSION = config.get("diann_version", "2.3.2")
 DEPLOY_DIR = BASE_DIR
 
 # Deployment flags and logs directories
@@ -124,24 +126,26 @@ rule install_package:
 
 
 rule build_diann_docker:
-    """Build diann:2.3.1 Docker image (~10 minutes, 766MB)."""
+    """Build DIA-NN Docker image (~10 minutes, 766MB). Version configurable via --config diann_version=X.Y.Z"""
     input:
-        dockerfile = "docker/Dockerfile.diann-2.3.1",
+        dockerfile = "docker/Dockerfile.diann",
         pkg_flag = FLAGS_DIR / "package_installed.flag"
     output:
         flag = FLAGS_DIR / "diann_docker_built.flag"
     log:
         logfile = LOGS_DIR / "build_diann_docker.log"
     params:
-        force_rebuild = FORCE_REBUILD
+        force_rebuild = FORCE_REBUILD,
+        version = DIANN_VERSION
     shell:
         """
-        if docker images | grep -q "^diann.*2.3.1" && [ "{params.force_rebuild}" != "True" ]; then
-            echo "diann:2.3.1 already exists (use --config force_rebuild=true to rebuild)"
+        if docker images | grep -q "^diann.*{params.version}" && [ "{params.force_rebuild}" != "True" ]; then
+            echo "diann:{params.version} already exists (use --config force_rebuild=true to rebuild)"
         else
-            echo "Building diann:2.3.1 (this takes ~10 minutes)..."
-            docker build -f {input.dockerfile:q} -t diann:2.3.1 . 2>&1 | tee {log.logfile:q}
-            echo "diann:2.3.1 built successfully"
+            echo "Building diann:{params.version} (this takes ~10 minutes)..."
+            docker build --build-arg DIANN_VERSION={params.version} \
+                -f {input.dockerfile:q} -t diann:{params.version} . 2>&1 | tee {log.logfile:q}
+            echo "diann:{params.version} built successfully"
         fi
         touch {output.flag:q}
         """
@@ -257,14 +261,15 @@ rule clean_all:
     log:
         logfile = LOGS_DIR / "clean_all.log"
     params:
-        flags_dir = FLAGS_DIR
+        flags_dir = FLAGS_DIR,
+        version = DIANN_VERSION
     shell:
         """
         echo "WARNING: This will remove:"
         echo "  - Deployment flags (.deploy_flags/)"
         echo "  - Virtual environment (.venv/)"
         echo "  - Oktoberfest build directory (oktoberfest_build/)"
-        echo "  - Docker images (diann:2.3.1, thermorawfileparser:linux, oktoberfest:latest)"
+        echo "  - Docker images (diann:{params.version}, thermorawfileparser:linux, oktoberfest:latest)"
         echo ""
         read -p "Continue? [y/N]: " -n 1 -r
         echo
@@ -279,7 +284,7 @@ rule clean_all:
             rm -rf oktoberfest_build
 
             echo "Removing Docker images..."
-            docker rmi diann:2.3.1 2>/dev/null || true
+            docker rmi diann:{params.version} 2>/dev/null || true
             docker rmi thermorawfileparser:linux 2>/dev/null || true
             docker rmi oktoberfest:latest 2>/dev/null || true
 

@@ -8,9 +8,9 @@ Provides 3 converter options:
 - msconvert-demultiplex: msconvert with demultiplex filter (x86/Linux only)
 
 Usage:
-  thermoraw -i sample.raw -o output/
-  thermoraw -i sample.raw -o output/ --converter msconvert
-  thermoraw -i sample.raw -o output/ --converter msconvert-demultiplex
+  thermoraw -i sample.raw -o sample.mzML
+  thermoraw -i sample.raw -o sample.mzML --converter msconvert
+  thermoraw -i sample.raw -o sample.mzML --converter msconvert-demultiplex
 """
 
 import os
@@ -118,7 +118,6 @@ def _run_msconvert_docker(
         options = f"{options} {MSCONVERT_DEMUX_FILTER}"
 
     # msconvert via Wine in Docker
-    # Note: The image entrypoint expects "wine msconvert" as the command
     msconvert_cmd = f"wine msconvert {container_input} {options} -o {container_output}"
 
     cmd = (
@@ -135,7 +134,7 @@ def _run_msconvert_docker(
 @app.default
 def run(
     input_file: Annotated[Path, cyclopts.Parameter(name=["-i", "--input"])],
-    output_dir: Annotated[Path, cyclopts.Parameter(name=["-o", "--output"])],
+    output_file: Annotated[Path, cyclopts.Parameter(name=["-o", "--output"])],
     converter: Annotated[
         str,
         cyclopts.Parameter(
@@ -156,9 +155,8 @@ def run(
       msconvert-demultiplex  msconvert with demultiplex for overlapping DIA windows
 
     Examples:
-        thermoraw -i sample.raw -o output/
-        thermoraw -i sample.raw -o output/ --converter msconvert
-        thermoraw -i sample.raw -o output/ --converter msconvert-demultiplex
+        thermoraw -i sample.raw -o sample.mzML
+        thermoraw -i input/sample.raw -o input/sample.mzML --converter msconvert
     """
     # Validate converter option
     valid_converters = ("thermoraw", "msconvert", "msconvert-demultiplex")
@@ -176,7 +174,8 @@ def run(
         print("Use --converter thermoraw instead.", file=sys.stderr)
         sys.exit(1)
 
-    # Ensure output directory exists
+    # Extract output directory from output file path
+    output_dir = output_file.parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Route to appropriate converter

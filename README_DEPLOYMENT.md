@@ -154,9 +154,9 @@ This makes the following CLI tools available:
 ### 4. Build Docker Images
 
 #### DIA-NN (Required)
-Builds `diann:2.3.1` Docker image (~10 minutes, 766MB).
+Builds `diann:2.3.2` Docker image (~10 minutes, 766MB).
 
-**Dockerfile:** `docker/Dockerfile.diann-2.3.1`
+**Dockerfile:** `docker/Dockerfile.diann`
 **Flag:** `.deploy_flags/diann_docker_built.flag`
 
 #### ThermoRawFileParser (Required)
@@ -520,7 +520,7 @@ snakemake -s deploy.smk clean_all
 This will prompt for confirmation before removing:
 - `.deploy_flags/` - Deployment state
 - `.venv/` - Python virtual environment
-- Docker images: `diann:2.3.1`, `thermorawfileparser:latest`, `oktoberfest:latest`
+- Docker images: `diann:2.3.2`, `thermorawfileparser:latest`, `oktoberfest:latest`
 
 ---
 

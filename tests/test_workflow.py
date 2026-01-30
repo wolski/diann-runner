@@ -68,7 +68,7 @@ class TestDiannWorkflow(unittest.TestCase):
     def test_step_a_generation(self):
         """Test Step A script generation."""
         script_path = self.workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_step_a.sh'
         )
         
@@ -208,7 +208,7 @@ class TestDiannWorkflow(unittest.TestCase):
     def test_generate_all_scripts(self):
         """Test generating all three scripts at once."""
         scripts = self.workflow.generate_all_scripts(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             raw_files_step_b=self.raw_files[:2],  # Subset
             raw_files_step_c=self.raw_files,      # Full set
             quantify_step_b=False
@@ -260,7 +260,7 @@ class TestDiannWorkflow(unittest.TestCase):
         )
         
         script_path = workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_multi_mods.sh'
         )
         
@@ -277,7 +277,7 @@ class TestDiannWorkflow(unittest.TestCase):
         )
         
         script_path = workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_no_mods.sh'
         )
         
@@ -311,7 +311,7 @@ class TestDiannWorkflow(unittest.TestCase):
         
         # But not in Step A (library generation doesn't need it)
         script_a = workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_dda_a.sh'
         )
         content_a = self.read_script(script_a)
@@ -320,7 +320,7 @@ class TestDiannWorkflow(unittest.TestCase):
     def test_common_params_in_all_steps(self):
         """Test that common parameters appear in all steps."""
         script_a = self.workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_common_a.sh'
         )
         script_b = self.workflow.generate_step_b_quantification_with_refinement(
@@ -352,7 +352,7 @@ class TestDiannWorkflow(unittest.TestCase):
     def test_output_directories_created(self):
         """Test that output directory declarations are in scripts."""
         script_a = self.workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_dirs_a.sh'
         )
         
@@ -363,7 +363,7 @@ class TestDiannWorkflow(unittest.TestCase):
     def test_log_files(self):
         """Test that log files are properly configured in all steps."""
         script_a = self.workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name='test_log_a.sh'
         )
         script_b = self.workflow.generate_step_b_quantification_with_refinement(
@@ -409,7 +409,7 @@ class TestDiannWorkflow(unittest.TestCase):
         """Test custom script naming."""
         custom_name = 'my_custom_script.sh'
         script_path = self.workflow.generate_step_a_library(
-            fasta_path=self.fasta_path,
+            fasta_paths=self.fasta_path,
             script_name=custom_name
         )
         

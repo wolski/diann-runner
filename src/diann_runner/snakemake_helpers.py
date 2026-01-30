@@ -524,10 +524,47 @@ def build_oktoberfest_config(
     return config
 
 
-# Helper function to create an input parameter for order.fasta if it's present and configured
-def get_custom_fasta_input(fasta_config: dict, raw_dir: Path) -> list[Path]:
-    """Return custom FASTA path as list (empty if not used)."""
-    path = raw_dir / "order.fasta"
-    if fasta_config["use_custom_fasta"] and path.exists() and path.stat().st_size > 0:
-        return [path]
-    return []
+def get_fasta_paths(fasta_config: dict) -> list[str]:
+    """Return all FASTA paths to use for the workflow.
+
+    DIA-NN can accept multiple --fasta arguments and merges them internally.
+    Dispatcher stages all files to input/:
+    - Database FASTA: input/<filename>.fasta
+    - Custom FASTA: input/order.fasta
+
+    Args:
+        fasta_config: Dict with 'database_path' and 'use_custom_fasta' keys
+
+    Returns:
+        List of FASTA paths (database first, then custom if enabled)
+    """
+    paths = [fasta_config["database_path"]]
+
+    # Add custom order.fasta if enabled and exists
+    if fasta_config["use_custom_fasta"]:
+        order_fasta = Path("input/order.fasta")
+        if order_fasta.exists() and order_fasta.stat().st_size > 0:
+            paths.append(str(order_fasta))
+
+    return paths
+
+
+def get_msconvert_options(raw_converter: str) -> str:
+    """Get msconvert CLI options based on raw_converter setting.
+
+    For Bruker .d files, thermoraw is not applicable, so both 'thermoraw'
+    and 'msconvert' map to standard msconvert options.
+
+    Args:
+        raw_converter: One of 'thermoraw', 'msconvert', 'msconvert-demultiplex'
+
+    Returns:
+        msconvert CLI options string
+    """
+    base_options = '--mzML --64 --zlib --filter "peakPicking vendor msLevel=1-"'
+    demux_filter = '--filter "demultiplex optimization=overlap_only massError=10.0ppm"'
+
+    if raw_converter == "msconvert-demultiplex":
+        return f"{base_options} {demux_filter}"
+    # thermoraw and msconvert both use standard options for .d files
+    return base_options

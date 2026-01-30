@@ -26,14 +26,14 @@ Usage:
     
     # Generate all scripts (simple case - same files for B and C)
     workflow.generate_all_scripts(
-        fasta_path='/path/to/db.fasta',
+        fasta_paths='/path/to/db.fasta',  # Can also be list for multiple FASTAs
         raw_files_step_b=['sample1.mzML', 'sample2.mzML'],
         raw_files_step_c=None  # Defaults to same as step_b
     )
-    
+
     # Or generate scripts individually for maximum flexibility:
     workflow.generate_step_a_library(
-        fasta_path='/path/to/db.fasta'
+        fasta_paths='/path/to/db.fasta'  # Or ['/path/to/db.fasta', '/path/to/custom.fasta']
     )
     
     workflow.generate_step_b_quantification_with_refinement(
@@ -305,7 +305,7 @@ class DiannWorkflow:
             output_dirs: List of output directories to create
             log_file: Optional log file for tee redirection
         """
-        lines = ['#!/bin/bash', 'set -ex', '']
+        lines = ['#!/bin/bash', 'set -exo pipefail', '']
         
         # Create directories
         all_dirs = temp_dirs + output_dirs
@@ -334,24 +334,29 @@ class DiannWorkflow:
     
     def generate_step_a_library(
         self,
-        fasta_path: str,
-        script_name: str = 'step_A_library_search.sh'
+        fasta_paths: str | list[str],
+        script_name: str = 'step_A_library_search.sh',
     ) -> str:
         """
         Generate Step A: Predicted library generation from FASTA.
-        
+
         This step:
         - Takes only FASTA as input (NO raw files)
         - Uses deep learning predictor
         - Generates predicted spectral library
-        
+
         Args:
-            fasta_path: Path to FASTA database (only needed for Step A)
+            fasta_paths: Path(s) to FASTA database(s). Can be single string or list.
+                         DIA-NN merges multiple FASTAs internally.
             script_name: Name of output shell script
-            
+
         Returns:
             Path to generated shell script
         """
+        # Normalize to list
+        if isinstance(fasta_paths, str):
+            fasta_paths = [fasta_paths]
+
         temp_dir = f"{self.temp_dir_base}_libA"
         # Use consistent basename across all steps: WU{id}_report.parquet
         # DIA-NN will append .predicted.speclib for Step A
@@ -361,9 +366,10 @@ class DiannWorkflow:
         # Use -- to separate diann-docker options from DIA-NN arguments
         cmd = [f'"{self.diann_bin}"', '--']
 
-        # FASTA search mode
+        # FASTA search mode with all FASTA files
         cmd.append("--fasta-search")
-        cmd.append(f'--fasta "{fasta_path}"')
+        for fasta_path in fasta_paths:
+            cmd.append(f'--fasta "{fasta_path}"')
 
         # Common parameters
         cmd.extend(self._build_common_params())
@@ -603,7 +609,7 @@ class DiannWorkflow:
     
     def generate_all_scripts(
         self,
-        fasta_path: str,
+        fasta_paths: str | list[str],
         raw_files_step_b: list[str],
         raw_files_step_c: list[str] = None,
         quantify_step_b: bool = True,
@@ -612,28 +618,29 @@ class DiannWorkflow:
     ) -> dict[str, str]:
         """
         Generate all three workflow scripts.
-        
+
         Args:
-            fasta_path: Path to FASTA database for Step A
+            fasta_paths: Path(s) to FASTA database(s) for Step A. Can be single string or list.
+                         DIA-NN merges multiple FASTAs internally.
             raw_files_step_b: Raw files to use in Step B (can be subset for faster library building)
             raw_files_step_c: Raw files to use in Step C (defaults to same as Step B if not specified)
             quantify_step_b: If True, Step B generates quantification; if False, only builds library
             use_quant_step_c: If True, Step C reuses .quant files from Step B (default True).
                              Files not in Step B will be processed from scratch.
             save_library_step_c: If True, Step C saves output library (default True)
-        
+
         Returns:
             Dictionary mapping step names to script paths
         """
         # Default to same files if not specified
         if raw_files_step_c is None:
             raw_files_step_c = raw_files_step_b
-        
+
         print("Generating DIA-NN three-stage workflow scripts...")
         print()
-        
+
         scripts = {
-            'step_a': self.generate_step_a_library(fasta_path=fasta_path),
+            'step_a': self.generate_step_a_library(fasta_paths=fasta_paths),
             'step_b': self.generate_step_b_quantification_with_refinement(
                 raw_files=raw_files_step_b,
                 quantify=quantify_step_b

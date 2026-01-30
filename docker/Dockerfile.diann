@@ -1,7 +1,17 @@
 # DIA-NN in a tiny Ubuntu base (CPU)
+# Parameterized for multiple versions
 FROM ubuntu:24.04
 
-ARG DIANN_URL="https://github.com/vdemichev/DiaNN/releases/download/2.0/DIA-NN-2.3.0-Academia-Linux-Preview.zip"
+# Version to install (used in image tagging and URL construction)
+ARG DIANN_VERSION=2.3.2
+
+# URL can be overridden for non-standard naming (e.g., 2.3.0 Preview)
+ARG DIANN_URL="https://github.com/vdemichev/DiaNN/releases/download/2.0/DIA-NN-${DIANN_VERSION}-Academia-Linux.zip"
+
+# Store version in image for inspection
+LABEL org.opencontainers.image.version="${DIANN_VERSION}"
+LABEL org.opencontainers.image.description="DIA-NN ${DIANN_VERSION} mass spectrometry analysis"
+LABEL org.opencontainers.image.source="https://github.com/vdemichev/DiaNN"
 
 # Minimal deps; add others if DIA-NN complains (e.g., libomp, libquadmath0)
 RUN apt-get update && \
@@ -21,7 +31,30 @@ ENV LC_ALL=C.UTF-8
 WORKDIR /work
 ENTRYPOINT ["diann-linux"]
 
-# Build and run examples:
-# docker build --platform linux/amd64 -f docker/Dockerfile.diann -t diann:2.3.0 .
-# docker run --rm --platform linux/amd64 -v $(pwd):/work diann:2.3.0
-# docker run --rm -v $(pwd):/work diann:2.3.0 --f data.mzML --fasta proteins.fasta --out report.tsv
+# =============================================================================
+# Build examples:
+# =============================================================================
+#
+# Default (2.3.2):
+#   docker build --platform linux/amd64 -f docker/Dockerfile.diann -t diann:2.3.2 .
+#
+# Specific version:
+#   docker build --platform linux/amd64 \
+#     --build-arg DIANN_VERSION=2.3.1 \
+#     -f docker/Dockerfile.diann -t diann:2.3.1 .
+#
+# Version with non-standard URL (e.g., 2.3.0 Preview):
+#   docker build --platform linux/amd64 \
+#     --build-arg DIANN_VERSION=2.3.0 \
+#     --build-arg DIANN_URL="https://github.com/vdemichev/DiaNN/releases/download/2.0/DIA-NN-2.3.0-Academia-Linux-Preview.zip" \
+#     -f docker/Dockerfile.diann -t diann:2.3.0 .
+#
+# =============================================================================
+# Run examples:
+# =============================================================================
+#
+#   docker run --rm --platform linux/amd64 -v $(pwd):/work diann:2.3.2
+#   docker run --rm -v $(pwd):/work diann:2.3.2 --f data.mzML --fasta proteins.fasta --out report.tsv
+#
+# Check installed version:
+#   docker inspect diann:2.3.2 --format '{{index .Config.Labels "org.opencontainers.image.version"}}'

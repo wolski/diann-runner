@@ -2,7 +2,7 @@
 
 # DIA-NN settings
 threads: 8
-diann_docker_image: "diann:2.3.1"
+diann_docker_image: "diann:2.3.2"
 
 # File conversion (Docker images for thermoraw CLI)
 msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"

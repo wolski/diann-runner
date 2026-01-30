@@ -175,7 +175,7 @@ def library_search(
     )
     
     script_path = workflow.generate_step_a_library(
-        fasta_path=str(fasta),
+        fasta_paths=str(fasta),
         script_name=script_name,
     )
     
@@ -352,7 +352,7 @@ def all_stages(
     print()
     
     scripts = workflow.generate_all_scripts(
-        fasta_path=str(fasta),
+        fasta_paths=str(fasta),
         raw_files_step_b=[str(f) for f in raw_files],
         raw_files_step_c=[str(f) for f in raw_files],
     )

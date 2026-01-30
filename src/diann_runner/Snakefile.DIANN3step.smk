@@ -13,8 +13,9 @@ import pandas as pd
 from diann_runner.snakemake_helpers import (
     build_oktoberfest_config,
     copy_fasta_if_missing,
-    get_custom_fasta_input,
+    get_fasta_paths,
     get_final_quantification_outputs,
+    get_msconvert_options,
     parse_flat_params,
     create_diann_workflow,
     detect_input_files,
@@ -27,7 +28,7 @@ from diann_runner.snakemake_helpers import (
 )
 
 # Local rules that don't need cluster execution
-localrules: all, print_config_dict, copy_fasta, diann_generate_scripts, generate_oktoberfest_config, outputsyml
+localrules: all, print_config_dict, diann_generate_scripts, generate_oktoberfest_config, outputsyml
 
 # Detect input files using helper function
 RAW_DIR = Path("input/raw")
@@ -57,6 +58,9 @@ ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
 fasta_config = WORKFLOW_PARAMS["fasta"]  # Alias for fasta parameters used in rules
 # Resolve FASTA path (handles /misc/fasta/... paths that don't exist locally)
 fasta_config["database_path"] = str(resolve_fasta_path(fasta_config["database_path"]))
+# Get all FASTA paths (database + custom order.fasta if enabled)
+# DIA-NN merges multiple --fasta arguments internally
+FASTA_PATHS = get_fasta_paths(fasta_config)
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
@@ -81,7 +85,11 @@ rule all:
 # ============================================================================
 
 rule convert_d_zip:
-    """Extract .d.zip to .d folder, then convert to mzML using msconvert."""
+    """Extract .d.zip to .d folder, then convert to mzML using msconvert.
+
+    Note: thermoraw option is ignored for Bruker .d files (Thermo-only).
+    Both 'thermoraw' and 'msconvert' use standard msconvert options.
+    """
     input:
         file = RAW_DIR / "{sample}.d.zip"
     output:
@@ -90,7 +98,7 @@ rule convert_d_zip:
         logfile = "logs/convert_d_zip_{sample}.log"
     params:
         msconvert_docker = deploy_dict["msconvert_docker"],
-        msconvert_options = WORKFLOW_PARAMS["msconvert_options"]
+        msconvert_options = get_msconvert_options(WORKFLOW_PARAMS["raw_converter"])
     retries: 3
     shell:
         """
@@ -117,29 +125,13 @@ rule convert_raw:
     retries: 3
     shell:
         """
-        thermoraw -i {input.file:q} -o {input.file:q}/../ --converter {params.converter}
+        thermoraw -i {input.file:q} -o {output.file:q} --converter {params.converter}
         """
 
 def get_converted_file(sample: str):
     """Returns the formatted output file path for a given sample."""
     # All input types now convert to mzML
     return RAW_DIR / f"{sample}.mzML"
-
-# ============================================================================
-# FASTA preparation (copy to work dir for Docker access)
-# ============================================================================
-
-rule copy_fasta:
-    """Copy FASTA database to work directory for Docker container access."""
-    output:
-        fasta = "database.fasta"
-    params:
-        source_fasta = fasta_config["database_path"]
-    shell:
-        """
-        echo "Copying FASTA to work directory..."
-        cp {params.source_fasta:q} {output.fasta:q}
-        """
 
 # ============================================================================
 # DIA-NN 3-stage workflow using workflow.py
@@ -149,8 +141,7 @@ rule diann_generate_scripts:
     """Generate DIA-NN workflow shell scripts using DiannWorkflow class."""
     input:
         mzml_files = [get_converted_file(sample) for sample in SAMPLES],
-        fasta = "database.fasta",
-        custom_fasta = get_custom_fasta_input(fasta_config, RAW_DIR),
+        fasta_files = FASTA_PATHS,
     output:
         step_a_script = "step_A_library_search.sh",
         step_b_script = "step_B_quantification_refinement.sh",
@@ -161,24 +152,23 @@ rule diann_generate_scripts:
     log:
         logfile = "logs/diann_generate_scripts.log"
     run:
-        # Use local database.fasta (copied from remote path for Docker access)
-        fasta_path = str(input.fasta)
-        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and len(input.custom_fasta) > 0:
-            fasta_path = str(input.custom_fasta[0])
+        # Get FASTA paths as list of strings
+        fasta_paths = [str(f) for f in input.fasta_files]
 
         # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
+        # Use first FASTA (database) for workflow initialization
         workflow = create_diann_workflow(
             WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-            fasta_path, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+            fasta_paths[0], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
             deploy_dict
         )
 
         # Convert input mzML files to list of strings
         raw_files = [str(f) for f in input.mzml_files]
 
-        # Generate all three scripts
+        # Generate all three scripts (pass all FASTA paths - DIA-NN merges them)
         scripts = workflow.generate_all_scripts(
-            fasta_path=fasta_path,
+            fasta_paths=fasta_paths,
             raw_files_step_b=raw_files,
             raw_files_step_c=raw_files,
             quantify_step_b=True,
@@ -195,23 +185,17 @@ rule diann_generate_scripts:
 rule generate_oktoberfest_config:
     """Generate Oktoberfest configuration from DIA-NN parameters."""
     input:
-        fasta = "database.fasta",
-        custom_fasta = get_custom_fasta_input(fasta_config, RAW_DIR),
+        fasta_files = FASTA_PATHS,
     output:
         config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
     log:
         logfile = "logs/generate_oktoberfest_config.log"
     run:
-        # Use local database.fasta (copied from remote path for Docker access)
-        fasta_path = str(input.fasta)
-        if WORKFLOW_PARAMS["fasta"]["use_custom_fasta"] and len(input.custom_fasta) > 0:
-            fasta_path = str(input.custom_fasta[0])
-
-        # Build Oktoberfest config using helper function
-        # No oktoberfest_params needed - function uses defaults
+        # Oktoberfest uses single FASTA - use first (database) only
+        # TODO: Support multiple FASTAs in Oktoberfest if needed
         oktoberfest_config = build_oktoberfest_config(
             workunit_id=str(WORKUNITID),
-            fasta_path=fasta_path,
+            fasta_path=str(input.fasta_files[0]),
             output_dir=f"{OUTPUT_PREFIX}_libA",
             diann_params=WORKFLOW_PARAMS["diann"]
         )
@@ -226,7 +210,7 @@ rule run_oktoberfest_library:
     """Execute Oktoberfest library generation."""
     input:
         config = rules.generate_oktoberfest_config.output.config,
-        fasta = "database.fasta"
+        fasta_files = FASTA_PATHS
     output:
         speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_oktoberfest.speclib.msp",
         runlog = f"{OUTPUT_PREFIX}_libA/oktoberfest.log.txt"
@@ -395,7 +379,7 @@ rule prolfqua_qc:
         workunit_id = WORKUNITID
     shell:
         """
-        prolfquapp-docker --image-version {params.prolfquapp_version} prolfqua_qc.sh \
+        prolfquapp-docker --image-version {params.prolfquapp_version} -- prolfqua_qc.sh \
             --indir {params.indir:q} -s DIANN \
             --dataset {input.dataset:q} \
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \

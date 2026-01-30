@@ -18,10 +18,13 @@ All commands defined in `pyproject.toml`:
 
 | Command | Module | Purpose |
 |---------|--------|---------|
-| `diann-docker` | `docker.py` | Run DIA-NN in Docker container |
+| `diann-docker` | `diann_docker.py` | Run DIA-NN in Docker container |
 | `diann-workflow` | `cli.py` | Generate three-stage workflow scripts |
+| `diann-snakemake` | `snakemake_cli.py` | Run Snakemake workflow |
 | `diann-cleanup` | `cleanup.py` | Alias for `snakemake --delete-all-output` |
 | `diann-qc` | `plotter.py` | Generate QC plots from DIA-NN results |
+| `diann-qc-report` | `qc_report.py` | Generate Markdown QC report |
+| `thermoraw` | `thermoraw_docker.py` | Convert .raw files via Docker |
 | `prolfquapp-docker` | `prolfquapp_docker.py` | Run prolfqua QC in Docker |
 
 **Optional (in contrib/oktoberfest/):** Koina/Oktoberfest integration for alternative spectral predictors.
@@ -68,8 +71,11 @@ snakemake -s /path/to/Snakefile.DIANN3step.smk --cores 8 all
 
 ### Docker Image
 ```bash
-# Build the DIA-NN Docker image
-docker build --platform linux/amd64 -f docker/Dockerfile.diann-2.3.1 -t diann:2.3.1 .
+# Build the DIA-NN Docker image (default: 2.3.2)
+docker build --platform linux/amd64 -f docker/Dockerfile.diann -t diann:2.3.2 .
+
+# Build a specific version
+docker build --platform linux/amd64 --build-arg DIANN_VERSION=2.3.1 -f docker/Dockerfile.diann -t diann:2.3.1 .
 
 # Test the Docker wrapper
 diann-docker --help
@@ -129,7 +135,7 @@ All source modules are located in `src/diann_runner/`:
 - `_load_workflow_from_defaults()`: Loads workflow with config defaults + CLI overrides
 - Command-line args always take precedence over config defaults
 
-**`src/diann_runner/docker.py`** - Docker wrapper for DIA-NN
+**`src/diann_runner/diann_docker.py`** - Docker wrapper for DIA-NN
 - Automatically detects Apple Silicon and uses `--platform linux/amd64`
 - Mounts current directory to `/work` in container
 - Preserves UID/GID on Unix systems for correct file permissions
@@ -137,13 +143,19 @@ All source modules are located in `src/diann_runner/`:
 
 **`src/diann_runner/plotter.py`** - QC plotting utilities (`diann-qc` command)
 
+**`src/diann_runner/qc_report.py`** - Markdown QC report generation (`diann-qc-report` command)
+
 **`src/diann_runner/cleanup.py`** - Cleanup utilities (`diann-cleanup` command)
+
+**`src/diann_runner/thermoraw_docker.py`** - Thermo .raw file conversion via Docker (`thermoraw` command)
+
+**`src/diann_runner/snakemake_cli.py`** - Snakemake workflow runner (`diann-snakemake` command)
 
 **`src/diann_runner/prolfquapp_docker.py`** - Prolfqua QC integration (`prolfquapp-docker` command)
 
 **`contrib/oktoberfest/`** - Optional Koina/Oktoberfest integration (see `contrib/oktoberfest/README.md`)
 
-**`snakemake_helpers.py`** - Helper functions for Snakemake (at project root)
+**`src/diann_runner/snakemake_helpers.py`** - Helper functions for Snakemake
 - `detect_input_files()`: Detects .d.zip, .raw, or .mzML files with priority logic
 - `parse_flat_params()`: Transforms flat Bfabric XML keys to nested structure
 - `parse_var_mods_string()`: Parses modification strings into tuples

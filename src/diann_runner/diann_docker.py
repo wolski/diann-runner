@@ -9,7 +9,7 @@ Note: Use relative paths or run from your data directory.
       Current directory is mounted to /work in the container.
 
 Env vars (can also use CLI options):
-  DIANN_DOCKER_IMAGE   Docker image (default: "diann:2.3.1")
+  DIANN_DOCKER_IMAGE   Docker image (default: "diann:2.3.2")
   DIANN_PLATFORM       Override docker --platform
   DIANN_EXTRA          Extra docker run args
 """
@@ -24,7 +24,7 @@ import cyclopts
 from diann_runner.docker_utils import DockerCommandBuilder, run_container
 
 # --- Settings from environment ---
-DEFAULT_IMAGE = os.environ.get("DIANN_DOCKER_IMAGE", "diann:2.3.1")
+DEFAULT_IMAGE = os.environ.get("DIANN_DOCKER_IMAGE", "diann:2.3.2")
 DEFAULT_PLATFORM = os.environ.get("DIANN_PLATFORM", "")
 DEFAULT_EXTRA = os.environ.get("DIANN_EXTRA", "")
 
