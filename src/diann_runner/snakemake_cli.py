@@ -8,9 +8,12 @@ Usage:
     diann-snakemake --cores 8 all  # run in current directory
 """
 
+import os
 import subprocess
 import sys
 from importlib.resources import files
+
+from loguru import logger
 
 
 def get_snakefile_path() -> str:
@@ -39,6 +42,9 @@ def main() -> int:
     # Build snakemake command
     # Pass through all user arguments, prepending -s with our Snakefile path
     cmd = ["snakemake", "-s", snakefile_path] + sys.argv[1:]
+
+    logger.info(f"Working directory: {os.getcwd()}")
+    logger.info(f"Running Snakemake command: {' '.join(cmd)}")
 
     result = subprocess.run(cmd)
     return result.returncode
