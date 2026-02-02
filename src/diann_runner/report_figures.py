@@ -176,6 +176,7 @@ def multi_bar_plot(
         if bars:
             plt.legend(bars, labels)
         plt.title(title)
+        s.set_xticks(range(len(xl[i])))
         if not axis:
             s.set_xticklabels([""] * len(xl[i]))
         else:

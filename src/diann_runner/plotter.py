@@ -8,6 +8,7 @@ matrices, and per-run statistics.
 
 import re
 import sys
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -63,9 +64,13 @@ def _compute_cv_stats(
     if len(matching_cols) == 0:
         return
 
-    cvs = np.ma.filled(
-        variation(matrix[files], axis=1, nan_policy="omit"), float("nan")
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+        # Suppress SmallSampleWarning - expected when conditions have few replicates
+        warnings.filterwarnings("ignore", message=".*too small.*")
+        cvs = np.ma.filled(
+            variation(matrix[files], axis=1, nan_policy="omit"), float("nan")
+        )
     cvs[cvs == 0] = float("nan")
 
     df.loc[df["Condition"] == condition, f"{prefix}.CV"] = np.nanmedian(cvs)
@@ -211,7 +216,7 @@ def report(stats: str, main: str, out: str) -> None:
         for col in ["Precursor.CV", "Precursor.CV.20", "Precursor.CV.10", "Precursor.N",
                     "PG.CV", "PG.CV.20", "PG.CV.10", "PG.N",
                     "Gene.CV", "Gene.CV.20", "Gene.CV.10", "Gene.N"]:
-            df[col] = 0
+            df[col] = 0.0
         for condition in conditions:
             files = df["File.Name"][df["Condition"] == condition]
             _compute_cv_stats(df, pr, condition, files, "Precursor")
