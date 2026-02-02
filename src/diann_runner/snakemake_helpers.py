@@ -227,8 +227,9 @@ def parse_flat_params(flat_params):
     # Parse scoring
     diann['qvalue'] = float(flat_params['10_diann_scoring_qvalue'])
 
-    # Parse protein inference
-    diann['pg_level'] = int(flat_params['11a_diann_protein_pg_level'])
+    # Parse protein inference (e.g., "protein_names_1" -> 1)
+    pg_level_str = flat_params['11a_diann_protein_pg_level']
+    diann['pg_level'] = int(pg_level_str.split("_")[-1])
     diann['relaxed_prot_inf'] = flat_params['11b_diann_protein_relaxed_prot_inf'].lower() == 'true'
 
     # Parse quantification & normalization

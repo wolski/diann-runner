@@ -453,9 +453,9 @@
         <updatable>false</updatable>
         <description>Protein grouping level: 0=genes, 1=protein names (default), 2=protein IDs. DIA-NN command: --pg-level</description>
         <context>APPLICATION</context>
-        <enumeration>0</enumeration>
-        <enumeration>1</enumeration>
-        <enumeration>2</enumeration>
+        <enumeration>genes_0</enumeration>
+        <enumeration>protein_names_1</enumeration>
+        <enumeration>protein_IDs_2</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>11a_diann_protein_pg_level</key>
@@ -464,7 +464,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>1</value>
+        <value>protein_names_1</value>
     </parameter>
 
     <parameter>
