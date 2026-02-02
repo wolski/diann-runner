@@ -27,6 +27,7 @@ diann-qc-report = "diann_runner.qc_report:app"
 prolfquapp-docker = "diann_runner.prolfquapp_docker:main"
 diann-snakemake = "diann_runner.snakemake_cli:main"
 thermoraw = "diann_runner.thermoraw_docker:main"
+prozor-diann = "diann_runner.prozor_diann:app"
 # Oktoberfest tools moved to contrib/oktoberfest/
 
 [project.optional-dependencies]

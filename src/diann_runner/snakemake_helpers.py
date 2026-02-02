@@ -561,3 +561,27 @@ def get_msconvert_options(raw_converter: str) -> str:
         return f"{base_options} {demux_filter}"
     # thermoraw and msconvert both use standard options for .d files
     return base_options
+
+
+def run_prozor_inference(
+    report_parquet: str,
+    fasta_path: str,
+    output_parquet: str,
+    min_peptide_length: int = 6,
+) -> None:
+    """Run prozor protein inference on a DIA-NN report.
+
+    Args:
+        report_parquet: Path to DIA-NN report parquet file
+        fasta_path: Path to FASTA database
+        output_parquet: Path for output parquet file
+        min_peptide_length: Minimum peptide length to consider
+    """
+    from diann_runner.prozor_diann import run_prozor_inference as _run_prozor
+
+    _run_prozor(
+        report_path=Path(report_parquet),
+        fasta_path=Path(fasta_path),
+        output_path=Path(output_parquet),
+        min_peptide_length=min_peptide_length,
+    )

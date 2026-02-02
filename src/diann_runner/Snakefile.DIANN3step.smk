@@ -25,10 +25,11 @@ from diann_runner.snakemake_helpers import (
     load_deploy_config,
     write_outputs_yml,
     resolve_fasta_path,
+    run_prozor_inference,
 )
 
 # Local rules that don't need cluster execution
-localrules: all, print_config_dict, diann_generate_scripts, generate_oktoberfest_config, outputsyml
+localrules: all, print_config_dict, diann_generate_scripts, generate_oktoberfest_config, outputsyml, run_prozor_inference
 
 # Detect input files using helper function
 RAW_DIR = Path("input/raw")
@@ -322,6 +323,27 @@ rule convert_parquet_to_tsv:
     run:
         convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv), params.is_dda)
 
+rule run_prozor_inference:
+    """Run prozor protein inference on DIA-NN report.
+
+    Uses Aho-Corasick peptide matching and greedy parsimony to re-annotate
+    proteins from the FASTA database. Produces a new parquet file with
+    updated Protein.Ids and Protein.Group columns.
+    """
+    input:
+        report_parquet = FINAL_QUANT_OUTPUTS["report_parquet"],
+        fasta = lambda wildcards: fasta_config["database_path"]
+    output:
+        prozor_parquet = FINAL_QUANT_OUTPUTS["report_parquet"].replace(".parquet", "_prozor.parquet")
+    log:
+        logfile = "logs/run_prozor_inference.log"
+    run:
+        run_prozor_inference(
+            report_parquet=str(input.report_parquet),
+            fasta_path=str(input.fasta),
+            output_parquet=str(output.prozor_parquet),
+        )
+
 rule diannqc:
     """Generate DIA-NN QC plots using diann-qc command."""
     input:
@@ -341,7 +363,8 @@ rule diannqc:
 
 rule zip_diann_result:
     input:
-        pdf = rules.diannqc.output.pdf
+        pdf = rules.diannqc.output.pdf,
+        prozor = rules.run_prozor_inference.output.prozor_parquet
     output:
         zip = f"DIANN_Result_WU{WORKUNITID}.zip"
     log:

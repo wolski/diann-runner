@@ -112,53 +112,6 @@ class GreedyResult:
         return pd.DataFrame(rows)
 
 
-def _find_indistinguishable_proteins(
-    matrix: sparse.csr_matrix, candidate_indices: np.ndarray
-) -> list[int]:
-    """
-    Find proteins with identical peptide patterns among candidates.
-
-    When there's a tie (multiple proteins with same max peptide count),
-    check if they share all peptides. If so, group them.
-
-    Args:
-        matrix: Peptide-protein sparse matrix
-        candidate_indices: Column indices of tied proteins
-
-    Returns:
-        List of indices for proteins to group together
-    """
-    if len(candidate_indices) == 1:
-        return list(candidate_indices)
-
-    # Extract columns for candidates
-    submatrix = matrix[:, candidate_indices].toarray()
-
-    # Check pairwise if proteins have identical patterns
-    # Two proteins are indistinguishable if their columns are identical
-    n_candidates = len(candidate_indices)
-    groups = []
-    used = set()
-
-    for i in range(n_candidates):
-        if i in used:
-            continue
-        group = [i]
-        used.add(i)
-        for j in range(i + 1, n_candidates):
-            if j in used:
-                continue
-            if np.array_equal(submatrix[:, i], submatrix[:, j]):
-                group.append(j)
-                used.add(j)
-        groups.append(group)
-
-    # Return the largest group (or first if tied)
-    # This matches R behavior: group indistinguishable, pick one group
-    largest_group = max(groups, key=len)
-    return [candidate_indices[i] for i in largest_group]
-
-
 def greedy_parsimony(pep_prot: PeptideProteinMatrix) -> GreedyResult:
     """
     Find minimal protein set explaining all peptides using greedy algorithm.
@@ -181,58 +134,83 @@ def greedy_parsimony(pep_prot: PeptideProteinMatrix) -> GreedyResult:
         >>> inference = greedy_parsimony(matrix)
         >>> print(f"Reduced to {inference.n_groups} protein groups")
     """
-    # Work with a copy as CSC for efficient column operations
+    # Convert to LIL for efficient row access, then to CSC for column sums
     matrix = pep_prot.matrix.tocsc().astype(np.float64)
     n_peptides, n_proteins = matrix.shape
 
-    # Track which peptides/proteins are still active
-    active_peptides = np.ones(n_peptides, dtype=bool)
-    active_proteins = np.ones(n_proteins, dtype=bool)
+    # Build peptide->protein lookup using sparse structure for efficiency
+    # peptide_proteins[i] = set of protein indices that contain peptide i
+    matrix_csr = matrix.tocsr()
+    peptide_proteins = []
+    for i in range(n_peptides):
+        row = matrix_csr.getrow(i)
+        peptide_proteins.append(set(row.indices))
+
+    # Build protein->peptide lookup
+    # protein_peptides[j] = set of peptide indices that protein j contains
+    protein_peptides = []
+    for j in range(n_proteins):
+        col = matrix.getcol(j)
+        protein_peptides.append(set(col.indices))
+
+    # Track which peptides/proteins are still active (as sets for O(1) operations)
+    active_peptides = set(range(n_peptides))
+    active_proteins = set(range(n_proteins))
+
+    # Compute initial peptide counts per protein
+    pep_counts = np.array([len(protein_peptides[j]) for j in range(n_proteins)])
 
     groups = []
 
-    for _ in range(n_proteins):
-        # Count peptides per protein (only active peptides)
-        active_matrix = matrix[active_peptides, :][:, active_proteins]
-
-        if active_matrix.shape[0] == 0 or active_matrix.nnz == 0:
+    while active_peptides and active_proteins:
+        # Find protein(s) with most active peptides
+        # Only consider active proteins
+        active_prot_list = np.array(list(active_proteins))
+        if len(active_prot_list) == 0:
             break
 
-        peps_per_prot = np.asarray(active_matrix.sum(axis=0)).ravel()
+        active_counts = pep_counts[active_prot_list]
+        max_count = active_counts.max()
 
-        if peps_per_prot.max() == 0:
+        if max_count == 0:
             break
 
-        # Find protein(s) with most peptides
-        max_count = peps_per_prot.max()
-        candidates = np.where(peps_per_prot == max_count)[0]
+        # Find all proteins tied for max count
+        candidates = active_prot_list[active_counts == max_count]
 
-        # Map back to original indices
-        active_protein_indices = np.where(active_proteins)[0]
-        candidate_orig_indices = active_protein_indices[candidates]
+        # Group indistinguishable proteins (same peptide sets among active peptides)
+        # Use frozenset of active peptides for each candidate
+        peptide_signatures = {}
+        for prot_idx in candidates:
+            # Get active peptides for this protein
+            active_peps = protein_peptides[prot_idx] & active_peptides
+            sig = frozenset(active_peps)
+            if sig not in peptide_signatures:
+                peptide_signatures[sig] = []
+            peptide_signatures[sig].append(prot_idx)
 
-        # Check for indistinguishable proteins (identical peptide patterns)
-        grouped_indices = _find_indistinguishable_proteins(
-            matrix[active_peptides, :], candidate_orig_indices
-        )
+        # Pick the largest group (or first if tied)
+        best_group = max(peptide_signatures.values(), key=len)
 
         # Get protein names for this group
-        group_proteins = [pep_prot.proteins[i] for i in grouped_indices]
+        group_proteins = [pep_prot.proteins[i] for i in best_group]
 
-        # Find peptides covered by this group (use first protein, they're identical)
-        winner_col = matrix[active_peptides, grouped_indices[0]]
-        covered_mask = np.asarray(winner_col.toarray()).ravel() > 0
-
-        # Map back to original peptide indices
-        active_peptide_indices = np.where(active_peptides)[0]
-        covered_orig_indices = active_peptide_indices[covered_mask]
-        group_peptides = [pep_prot.peptides[i] for i in covered_orig_indices]
+        # Get peptides covered by this group (all have same peptides)
+        covered_peptides = protein_peptides[best_group[0]] & active_peptides
+        group_peptides = [pep_prot.peptides[i] for i in covered_peptides]
 
         # Create protein group
         groups.append(ProteinGroup(proteins=group_proteins, peptides=group_peptides))
 
-        # Remove covered peptides and grouped proteins from active sets
-        active_peptides[covered_orig_indices] = False
-        active_proteins[grouped_indices] = False
+        # Update active sets
+        active_peptides -= covered_peptides
+        active_proteins -= set(best_group)
+
+        # Update peptide counts for remaining proteins
+        # Subtract counts for removed peptides
+        for pep_idx in covered_peptides:
+            for prot_idx in peptide_proteins[pep_idx]:
+                if prot_idx in active_proteins:
+                    pep_counts[prot_idx] -= 1
 
     return GreedyResult(groups=groups)
