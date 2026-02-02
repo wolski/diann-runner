@@ -567,21 +567,36 @@ def run_prozor_inference(
     report_parquet: str,
     fasta_path: str,
     output_parquet: str,
+    log_path: str | None = None,
     min_peptide_length: int = 6,
-) -> None:
+) -> dict:
     """Run prozor protein inference on a DIA-NN report.
 
     Args:
         report_parquet: Path to DIA-NN report parquet file
         fasta_path: Path to FASTA database
         output_parquet: Path for output parquet file
+        log_path: Path for log file (default: prozor.log in output directory)
         min_peptide_length: Minimum peptide length to consider
+
+    Returns:
+        Dict with inference statistics
     """
     from diann_runner.prozor_diann import run_prozor_inference as _run_prozor
+    from diann_runner.prozor_diann import _setup_file_logging
 
-    _run_prozor(
+    output_path = Path(output_parquet)
+    if log_path is None:
+        log_path = output_path.parent / "prozor.log"
+    else:
+        log_path = Path(log_path)
+
+    # Set up file logging
+    _setup_file_logging(log_path)
+
+    return _run_prozor(
         report_path=Path(report_parquet),
         fasta_path=Path(fasta_path),
-        output_path=Path(output_parquet),
+        output_path=output_path,
         min_peptide_length=min_peptide_length,
     )

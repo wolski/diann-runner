@@ -26,6 +26,16 @@ app = cyclopts.App(
 )
 
 
+def _setup_file_logging(log_path: Path) -> None:
+    """Configure loguru to also log to a file."""
+    logger.add(
+        log_path,
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+        level="INFO",
+        mode="w",  # Overwrite existing log
+    )
+
+
 def _extract_protein_id(header: str) -> str:
     """Extract protein ID from FASTA header.
 
@@ -53,7 +63,7 @@ def run_prozor_inference(
     fasta_path: Path,
     output_path: Path,
     min_peptide_length: int = 6,
-) -> pd.DataFrame:
+) -> dict:
     """Run prozor protein inference on a DIA-NN report.
 
     Args:
@@ -63,7 +73,7 @@ def run_prozor_inference(
         min_peptide_length: Minimum peptide length to consider
 
     Returns:
-        Updated DataFrame with new protein assignments
+        Dict with inference statistics
     """
     logger.info(f"Reading report from {report_path}")
     df = pd.read_parquet(report_path)
@@ -151,14 +161,59 @@ def run_prozor_inference(
     logger.info(f"Writing output to {output_path}")
     df.to_parquet(output_path, index=False)
 
-    # Summary stats
+    # Collect statistics
+    original_protein_ids = df["Protein.Ids.Original"].nunique()
     new_protein_ids = df["Protein.Ids"].nunique()
+    original_protein_groups = df["Protein.Group.Original"].nunique()
     new_protein_groups = df["Protein.Group"].nunique()
-    logger.info(f"Original unique Protein.Ids: {df['Protein.Ids.Original'].nunique()}")
-    logger.info(f"New unique Protein.Ids: {new_protein_ids}")
-    logger.info(f"New unique Protein.Group: {new_protein_groups}")
 
-    return df
+    # Count rows where protein assignment changed
+    changed_mask = df["Protein.Ids"] != df["Protein.Ids.Original"]
+    rows_changed = changed_mask.sum()
+    pct_changed = 100 * rows_changed / len(df)
+
+    stats = {
+        "report_path": str(report_path),
+        "fasta_path": str(fasta_path),
+        "output_path": str(output_path),
+        "total_rows": len(df),
+        "unique_peptides": len(peptides),
+        "proteins_in_fasta": len(proteins),
+        "peptide_protein_matches": len(annotations),
+        "original_protein_ids": original_protein_ids,
+        "original_protein_groups": original_protein_groups,
+        "inferred_protein_ids": new_protein_ids,
+        "inferred_protein_groups": len(protein_groups),
+        "rows_changed": rows_changed,
+        "rows_changed_pct": pct_changed,
+        "unmapped_rows": unmapped_count,
+    }
+
+    # Log summary
+    logger.info("=" * 60)
+    logger.info("PROZOR PROTEIN INFERENCE SUMMARY")
+    logger.info("=" * 60)
+    logger.info(f"Input report:        {report_path}")
+    logger.info(f"FASTA database:      {fasta_path}")
+    logger.info(f"Output file:         {output_path}")
+    logger.info("-" * 60)
+    logger.info(f"Total rows:          {len(df):,}")
+    logger.info(f"Unique peptides:     {len(peptides):,}")
+    logger.info(f"Proteins in FASTA:   {len(proteins):,}")
+    logger.info("-" * 60)
+    logger.info(f"Original Protein.Ids:  {original_protein_ids:,}")
+    logger.info(f"Inferred Protein.Ids:  {new_protein_ids:,}")
+    logger.info(f"Reduction:             {original_protein_ids - new_protein_ids:,} ({100*(original_protein_ids - new_protein_ids)/original_protein_ids:.1f}%)")
+    logger.info("-" * 60)
+    logger.info(f"Original Protein.Groups: {original_protein_groups:,}")
+    logger.info(f"Inferred Protein.Groups: {len(protein_groups):,}")
+    logger.info("-" * 60)
+    logger.info(f"Rows with changed assignment: {rows_changed:,} ({pct_changed:.1f}%)")
+    if unmapped_count > 0:
+        logger.info(f"Unmapped rows (kept original): {unmapped_count:,}")
+    logger.info("=" * 60)
+
+    return stats
 
 
 @app.default
@@ -166,6 +221,7 @@ def main(
     report: Path,
     fasta: Path,
     output: Path | None = None,
+    log: Path | None = None,
     min_length: int = 6,
 ) -> None:
     """Run prozor protein inference on a DIA-NN report.
@@ -174,10 +230,18 @@ def main(
         report: Path to DIA-NN report parquet file
         fasta: Path to FASTA database file
         output: Output parquet path (default: {report}_prozor.parquet)
+        log: Log file path (default: prozor.log in output directory)
         min_length: Minimum peptide length to consider
     """
     if output is None:
         output = report.with_name(report.stem + "_prozor.parquet")
+
+    if log is None:
+        log = output.parent / "prozor.log"
+
+    # Set up file logging
+    _setup_file_logging(log)
+    logger.info(f"Logging to {log}")
 
     run_prozor_inference(
         report_path=report,

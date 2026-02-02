@@ -334,7 +334,8 @@ rule run_prozor_inference:
         report_parquet = FINAL_QUANT_OUTPUTS["report_parquet"],
         fasta = lambda wildcards: fasta_config["database_path"]
     output:
-        prozor_parquet = FINAL_QUANT_OUTPUTS["report_parquet"].replace(".parquet", "_prozor.parquet")
+        prozor_parquet = FINAL_QUANT_OUTPUTS["report_parquet"].replace(".parquet", "_prozor.parquet"),
+        prozor_log = FINAL_QUANT_OUTPUTS["report_parquet"].replace("_report.parquet", "_prozor.log")
     log:
         logfile = "logs/run_prozor_inference.log"
     run:
@@ -342,6 +343,7 @@ rule run_prozor_inference:
             report_parquet=str(input.report_parquet),
             fasta_path=str(input.fasta),
             output_parquet=str(output.prozor_parquet),
+            log_path=str(output.prozor_log),
         )
 
 rule diannqc:
