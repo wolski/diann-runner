@@ -44,6 +44,7 @@ def build_docker_cmd(
     builder = (
         DockerCommandBuilder(image)
         .with_cleanup()
+        .with_init()
         .with_platform(force_amd64_on_arm=True, override=platform_override)
         .with_uid_gid()
         .with_mount(os.getcwd(), "/work")

@@ -45,6 +45,7 @@ def build_docker_cmd(image_version: str, image_repo: str, argv: list[str]) -> li
     builder = (
         DockerCommandBuilder(image)
         .with_cleanup()
+        .with_init()
         .with_interactive()
         .with_uid_gid(flag="--user")
         .with_mount(os.getcwd(), "/work", style="bind")

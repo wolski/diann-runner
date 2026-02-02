@@ -91,6 +91,7 @@ def _run_thermoraw_docker(input_file: Path, output_dir: Path, image: str) -> int
     cmd = (
         DockerCommandBuilder(image)
         .with_cleanup()
+        .with_init()
         .with_platform(force_amd64_on_arm=True)
         .with_uid_gid()
         .with_mount(cwd, "/data")
@@ -123,6 +124,7 @@ def _run_msconvert_docker(
     cmd = (
         DockerCommandBuilder(image)
         .with_cleanup()
+        .with_init()
         .with_mount(cwd, "/data")
         .with_workdir("/data")
         .build(["sh", "-c", msconvert_cmd])

@@ -120,6 +120,11 @@ class DockerCommandBuilder:
         self._args.append("--rm")
         return self
 
+    def with_init(self) -> "DockerCommandBuilder":
+        """Add --init flag for proper signal handling and zombie reaping."""
+        self._args.append("--init")
+        return self
+
     def with_interactive(self, tty: bool = True) -> "DockerCommandBuilder":
         """Add interactive flags (-it or -i)."""
         if tty and sys.stdin.isatty():
