@@ -6,7 +6,7 @@ Provides a unified API over multiple Aho-Corasick implementations:
 - ahocorasick_rs: Rust-based, optional but faster
 
 Usage:
-    from prozor.ahocorasick import create_automaton
+    from diann_runner.prozor.ahocorasick import create_automaton
 
     ac = create_automaton(peptides, backend="auto")
     for match in ac.find_all(protein_sequence):

@@ -8,7 +8,7 @@ for all peptide sequences within protein sequences simultaneously.
 from dataclasses import dataclass
 from typing import Iterable
 
-from prozor.ahocorasick import create_automaton
+from diann_runner.prozor.ahocorasick import create_automaton
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,7 +115,7 @@ class AnnotationResult:
         Returns:
             PeptideProteinMatrix
         """
-        from prozor.sparse_matrix import PeptideProteinMatrix
+        from diann_runner.prozor.sparse_matrix import PeptideProteinMatrix
 
         return PeptideProteinMatrix.from_annotations(self, weighting=weighting)
 

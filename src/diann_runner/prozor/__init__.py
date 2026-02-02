@@ -21,9 +21,9 @@ Example:
     >>> result = greedy_parsimony(matrix)
 """
 
-from prozor.annotate import annotate_peptides, PeptideAnnotation, read_fasta
-from prozor.greedy import greedy_parsimony, ProteinGroup
-from prozor.sparse_matrix import PeptideProteinMatrix
+from diann_runner.prozor.annotate import annotate_peptides, PeptideAnnotation, read_fasta
+from diann_runner.prozor.greedy import greedy_parsimony, ProteinGroup
+from diann_runner.prozor.sparse_matrix import PeptideProteinMatrix
 
 __all__ = [
     "annotate_peptides",

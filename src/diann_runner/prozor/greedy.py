@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from scipy import sparse
 
-from prozor.sparse_matrix import PeptideProteinMatrix
+from diann_runner.prozor.sparse_matrix import PeptideProteinMatrix
 
 
 @dataclass

@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from prozor import (
+from diann_runner.prozor import (
     PeptideAnnotation,
     PeptideProteinMatrix,
     ProteinGroup,
     annotate_peptides,
     greedy_parsimony,
 )
-from prozor.ahocorasick import Match, create_automaton, get_available_backends
+from diann_runner.prozor.ahocorasick import Match, create_automaton, get_available_backends
 
 
 class TestAhoCorasick:
@@ -199,7 +199,7 @@ class TestSparseMatrix:
     @pytest.fixture
     def simple_annotations(self):
         """Simple annotation result for testing."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         annotations = [
             PeptideAnnotation("PEP1", "PROT1", 0, 4),
@@ -285,7 +285,7 @@ class TestGreedyParsimony:
 
     def test_simple_inference(self):
         """Basic protein inference test."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         # PROT1 has unique peptide, PROT2 and PROT3 share all peptides
         annotations = [
@@ -304,7 +304,7 @@ class TestGreedyParsimony:
 
     def test_indistinguishable_proteins(self):
         """Proteins with identical peptides should be grouped."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         # PROT1 and PROT2 have exactly the same peptides
         annotations = [
@@ -323,7 +323,7 @@ class TestGreedyParsimony:
 
     def test_greedy_selects_largest_first(self):
         """Should select protein with most peptides first."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         # PROT1 has 3 peptides, PROT2 has 1 peptide
         annotations = [
@@ -352,7 +352,7 @@ class TestGreedyParsimony:
 
     def test_greedy_result_to_dict(self):
         """Should convert result to peptide->protein mapping."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         annotations = [
             PeptideAnnotation("PEP1", "PROT1", 0, 4),
@@ -368,7 +368,7 @@ class TestGreedyParsimony:
 
     def test_greedy_result_to_dataframe(self):
         """Should convert result to DataFrame."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         annotations = [
             PeptideAnnotation("PEP1", "PROT1", 0, 4),
@@ -383,7 +383,7 @@ class TestGreedyParsimony:
 
     def test_empty_matrix(self):
         """Should handle empty input gracefully."""
-        from prozor.annotate import AnnotationResult
+        from diann_runner.prozor.annotate import AnnotationResult
 
         result = AnnotationResult(annotations=[])
         matrix = PeptideProteinMatrix.from_annotations(result)

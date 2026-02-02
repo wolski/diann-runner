@@ -12,7 +12,7 @@ import numpy as np
 from scipy import sparse
 
 if TYPE_CHECKING:
-    from prozor.annotate import AnnotationResult
+    from diann_runner.prozor.annotate import AnnotationResult
 
 
 @dataclass

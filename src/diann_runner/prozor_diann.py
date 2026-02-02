@@ -9,16 +9,13 @@ This tool:
 5. Updates protein columns while preserving file structure
 """
 
-import sys
 from pathlib import Path
 
 import cyclopts
 import pandas as pd
 from loguru import logger
 
-# Import prozor from the package
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from prozor import annotate_peptides, greedy_parsimony, read_fasta
+from diann_runner.prozor import annotate_peptides, greedy_parsimony, read_fasta
 
 app = cyclopts.App(
     name="prozor-diann",
