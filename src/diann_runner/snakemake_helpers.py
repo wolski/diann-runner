@@ -35,21 +35,13 @@ def is_server_environment() -> bool:
 
 
 def resolve_fasta_path(fasta_path: str | Path) -> Path:
-    """Resolve FASTA path, checking input/ directory first.
+    """Resolve FASTA path, enforcing use of input/ directory copy.
 
-    The dispatcher downloads FASTA files to input/, so check there before
-    using the original path (which may be a server path like /misc/fasta/...).
+    The dispatcher (or user) must ensure the FASTA file is copied to input/
+    so it is accessible within the Docker container.
     """
     fasta_path = Path(fasta_path)
-    if fasta_path.exists():
-        return fasta_path
-
-    # Check if FASTA was downloaded to input/ by dispatcher
-    input_path = Path("input") / fasta_path.name
-    if input_path.exists():
-        return input_path
-
-    return fasta_path
+    return Path("input") / fasta_path.name
 
 
 def load_config(raw_dir: Path) -> dict:

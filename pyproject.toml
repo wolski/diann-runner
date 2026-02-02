@@ -2,7 +2,7 @@
 name = "diann-runner"
 version = "0.2.1"
 description = "Tools for running DIA-NN workflows"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 # Install with: uv pip install -e .,
 dependencies = [
     "snakemake>=8.0.0",
@@ -13,6 +13,8 @@ dependencies = [
     "cyclopts>=2.0.0",
     "pyarrow>=10.0.0",
     "scipy>=1.7.0",
+    "bfabric-app-runner>=0.5.0",
+    "loguru>=0.7.0",
 ]
 
 [project.scripts]
