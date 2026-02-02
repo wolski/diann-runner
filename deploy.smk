@@ -18,6 +18,9 @@ Usage:
     # Build specific image
     snakemake -s deploy.smk build_diann_docker --cores 1
 
+    # Check if images are already available
+    snakemake -s deploy.smk check_images --cores 1
+
 Configuration:
     Set via --config:
     - force_rebuild: Force rebuild of Docker images (default: false)
@@ -27,6 +30,7 @@ Configuration:
 from pathlib import Path
 
 from deploy import (
+    check_docker_images,
     check_prerequisites,
     print_deployment_complete,
 )
@@ -128,6 +132,14 @@ rule deployment_complete:
 ################################################################################
 # Utility Rules
 ################################################################################
+
+rule check_images:
+    """Check if required Docker images are available."""
+    params:
+        version = DIANN_VERSION
+    run:
+        check_docker_images(diann_version=params.version)
+
 
 rule clean:
     """Remove deployment flags to allow re-running."""

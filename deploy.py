@@ -49,6 +49,52 @@ def check_prerequisites(output_flag: Path) -> None:
     output_flag.touch()
 
 
+def check_docker_images(diann_version: str = "2.3.2") -> None:
+    """
+    Check if required Docker images are available.
+
+    Args:
+        diann_version: DIA-NN version to check for
+    """
+    print("=" * 60)
+    print("Checking Docker Images")
+    print("=" * 60)
+
+    images_to_check = [
+        (f"diann:{diann_version}", f"diann:{diann_version}"),
+        ("thermorawfileparser:linux", "thermorawfileparser:linux"),
+    ]
+
+    result = subprocess.run(
+        ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
+        capture_output=True,
+        text=True
+    )
+    available_images = set(result.stdout.strip().split("\n"))
+
+    all_present = True
+    for image_name, display_name in images_to_check:
+        if image_name in available_images:
+            # Get image details
+            detail = subprocess.run(
+                ["docker", "images", image_name, "--format", "{{.Size}} (created {{.CreatedSince}})"],
+                capture_output=True,
+                text=True
+            )
+            print(f"✓ {display_name}: {detail.stdout.strip()}")
+        else:
+            print(f"✗ {display_name}: NOT FOUND")
+            all_present = False
+
+    print("=" * 60)
+
+    if all_present:
+        print("✓ All required images are available\n")
+    else:
+        print("\n✗ Some images are missing!")
+        print("  Run: snakemake -s deploy.smk --cores 1\n")
+
+
 def print_deployment_complete(output_flag: Path) -> None:
     """
     Print final deployment summary.
