@@ -96,7 +96,7 @@ rule build_diann_docker:
 
 
 rule build_thermorawfileparser_docker:
-    """Build thermorawfileparser:linux Docker image."""
+    """Build thermorawfileparser:2.0.0 Docker image."""
     input:
         dockerfile = "docker/Dockerfile.thermorawfileparser-linux",
         prereq_flag = FLAGS_DIR / "prerequisites_checked.flag"
@@ -108,11 +108,11 @@ rule build_thermorawfileparser_docker:
         force_rebuild = FORCE_REBUILD
     shell:
         """
-        if docker images | grep -q "^thermorawfileparser.*linux" && [ "{params.force_rebuild}" != "True" ]; then
-            echo "thermorawfileparser:linux already exists (use --config force_rebuild=true to rebuild)"
+        if docker images | grep -q "^thermorawfileparser.*2.0.0" && [ "{params.force_rebuild}" != "True" ]; then
+            echo "thermorawfileparser:2.0.0 already exists (use --config force_rebuild=true to rebuild)"
         else
-            echo "Building thermorawfileparser:linux..."
-            docker build -f {input.dockerfile:q} -t thermorawfileparser:linux . 2>&1 | tee {log:q}
+            echo "Building thermorawfileparser:2.0.0..."
+            docker build -f {input.dockerfile:q} -t thermorawfileparser:2.0.0 . 2>&1 | tee {log:q}
         fi
         touch {output.flag:q}
         """
@@ -162,14 +162,14 @@ rule clean_all:
         """
         echo "This will remove:"
         echo "  - Deployment flags (.deploy_flags/)"
-        echo "  - Docker images (diann:{params.version}, thermorawfileparser:linux)"
+        echo "  - Docker images (diann:{params.version}, thermorawfileparser:2.0.0)"
         echo ""
         read -p "Continue? [y/N]: " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -rf {params.flags_dir:q}
             docker rmi diann:{params.version} 2>/dev/null || true
-            docker rmi thermorawfileparser:linux 2>/dev/null || true
+            docker rmi thermorawfileparser:2.0.0 2>/dev/null || true
             echo "Done"
         else
             echo "Cancelled"

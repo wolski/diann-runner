@@ -62,7 +62,7 @@ def check_docker_images(diann_version: str = "2.3.2") -> None:
 
     images_to_check = [
         (f"diann:{diann_version}", f"diann:{diann_version}"),
-        ("thermorawfileparser:linux", "thermorawfileparser:linux"),
+        ("thermorawfileparser:2.0.0", "thermorawfileparser:2.0.0"),
     ]
 
     result = subprocess.run(
