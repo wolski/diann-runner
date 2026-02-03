@@ -215,8 +215,7 @@ def parse_flat_params(flat_params):
 
     # Parse digestion
     diann['cut'] = flat_params['08_diann_digestion_cut']
-    missed_cleavages_str = flat_params['08_diann_digestion_missed_cleavages']
-    diann['missed_cleavages'] = int(missed_cleavages_str) if missed_cleavages_str != 'None' else 1
+    diann['missed_cleavages'] = int(flat_params['08_diann_digestion_missed_cleavages'])
 
     # Parse mass accuracy
     mass_acc_ms2_str = flat_params['09_diann_mass_acc_ms2']
@@ -242,6 +241,9 @@ def parse_flat_params(flat_params):
 
     # Parse DDA mode
     diann['is_dda'] = flat_params['05_diann_is_dda'].lower() == 'true'
+
+    # Parse scan window
+    diann['scan_window'] = int(flat_params.get('05b_diann_scan_window', 0))
 
     # Parse FASTA - use alternate path if main is NONE
     fasta_main = flat_params['03_fasta_database_path']
@@ -326,6 +328,7 @@ def create_diann_workflow(
         cut=diann_params["cut"],
         mass_acc=diann_params["mass_acc"],
         mass_acc_ms1=diann_params["mass_acc_ms1"],
+        scan_window=diann_params["scan_window"],
         verbose=diann_params["verbose"],
         pg_level=diann_params["pg_level"],
         is_dda=diann_params["is_dda"],

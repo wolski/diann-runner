@@ -84,6 +84,7 @@ class DiannWorkflow:
         cut: str = 'K*,R*',
         mass_acc: int = 20,
         mass_acc_ms1: int = 15,
+        scan_window: int = 0,
         verbose: int = 1,
         pg_level: int = 0,
         is_dda: bool = False,
@@ -118,6 +119,7 @@ class DiannWorkflow:
             cut: Protease specificity (e.g., 'K*,R*' for trypsin)
             mass_acc: MS2 mass accuracy (ppm)
             mass_acc_ms1: MS1 mass accuracy (ppm)
+            scan_window: Scan window radius (0 = auto)
             verbose: Verbosity level
             pg_level: Protein grouping level (0 = genes, 1 = protein names, 2 = protein IDs)
             is_dda: True for DDA data, False for DIA data
@@ -154,6 +156,7 @@ class DiannWorkflow:
         self.cut = cut
         self.mass_acc = mass_acc
         self.mass_acc_ms1 = mass_acc_ms1
+        self.scan_window = scan_window
         self.verbose = verbose
         self.pg_level = pg_level
         self.is_dda = is_dda
@@ -197,6 +200,7 @@ class DiannWorkflow:
             'cut': self.cut,
             'mass_acc': self.mass_acc,
             'mass_acc_ms1': self.mass_acc_ms1,
+            'scan_window': self.scan_window,
             'verbose': self.verbose,
             'pg_level': self.pg_level,
             'is_dda': self.is_dda,
@@ -267,6 +271,10 @@ class DiannWorkflow:
         params.append(f"--missed-cleavages {self.missed_cleavages}")
         params.append(f"--mass-acc {self.mass_acc}")
         params.append(f"--mass-acc-ms1 {self.mass_acc_ms1}")
+        
+        if self.scan_window > 0:
+            params.append(f"--scan-window {self.scan_window}")
+
         params.append(f"--verbose {self.verbose}")
         
         # Variable modifications

@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Python package for running DIA-NN (mass spectrometry data analysis) workflows. It provides:
 - A Docker wrapper (`diann-docker`) to run DIA-NN in containers
-- A CLI tool (`diann-workflow`) to generate three-stage DIA-NN workflow scripts
 - A Snakemake workflow for automated pipeline execution
 - QC plotting utilities
 
@@ -19,7 +18,6 @@ All commands defined in `pyproject.toml`:
 | Command | Module | Purpose |
 |---------|--------|---------|
 | `diann-docker` | `diann_docker.py` | Run DIA-NN in Docker container |
-| `diann-workflow` | `cli.py` | Generate three-stage workflow scripts |
 | `diann-snakemake` | `snakemake_cli.py` | Run Snakemake workflow |
 | `diann-cleanup` | `cleanup.py` | Alias for `snakemake --delete-all-output` |
 | `diann-qc` | `plotter.py` | Generate QC plots from DIA-NN results |
@@ -113,7 +111,6 @@ The core architecture is built around DIA-NN's three-stage processing:
 
 - Each stage saves a `.config.json` file alongside its output (e.g., `predicted.speclib.config.json`)
 - Steps B and C load the config from the previous step to ensure all parameters (var_mods, threads, qvalue, etc.) remain consistent
-- The CLI commands `quantification-refinement` and `final-quantification` require a `--config` parameter pointing to the previous step's config file
 - This prevents common mistakes like changing modifications between stages
 
 Implementation in `src/diann_runner/workflow.py`:
@@ -130,11 +127,6 @@ All source modules are located in `src/diann_runner/`:
 - `_build_common_params()`: Builds DIA-NN CLI arguments shared across stages
 - `_write_shell_script()`: Generates executable bash scripts
 - Each `generate_step_*()` method creates a bash script for that stage
-
-**`src/diann_runner/cli.py`** - Command-line interface using cyclopts
-- Commands: `library-search`, `quantification-refinement`, `final-quantification`, `all-stages`, `create-config`, `run-script`
-- `_load_workflow_from_defaults()`: Loads workflow with config defaults + CLI overrides
-- Command-line args always take precedence over config defaults
 
 **`src/diann_runner/diann_docker.py`** - Docker wrapper for DIA-NN
 - Automatically detects Apple Silicon and uses `--platform linux/amd64`
@@ -402,7 +394,6 @@ diann-workflow final-quantification \
 Additional documentation is available in the `docs/` directory:
 - `docs/USAGE_EXAMPLES.md` - **Usage guide with quick reference and detailed patterns**
 - `docs/DIANN_PARAMETERS.md` - **Comprehensive DIA-NN parameter reference** (compiled from GitHub repo, issues, and discussions)
-- `docs/default_config.json` - Default configuration template
 - `README_DEPLOYMENT.md` - Deployment guide for production servers
 - `contrib/oktoberfest/docs/` - Koina/Oktoberfest integration (optional)
 
@@ -412,5 +403,4 @@ Additional documentation is available in the `docs/` directory:
 
 - Tests are in `tests/` directory
 - `test_workflow.py` tests the DiannWorkflow class
-- `test_cli.py` tests CLI commands
 - Run tests before committing changes to workflow generation logic
