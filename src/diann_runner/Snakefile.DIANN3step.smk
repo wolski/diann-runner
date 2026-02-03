@@ -3,7 +3,6 @@
 #   snakemake -s Snakefile.DIANN3step --cores 64 all
 #   snakemake -s Snakefile.DIANN3step --cores 64 -n  # dry run
 
-import json
 import sys
 from pathlib import Path
 
@@ -11,7 +10,6 @@ import pandas as pd
 
 # Import helpers from diann_runner package
 from diann_runner.snakemake_helpers import (
-    build_oktoberfest_config,
     copy_fasta_if_missing,
     get_fasta_paths,
     get_final_quantification_outputs,
@@ -29,7 +27,7 @@ from diann_runner.snakemake_helpers import (
 )
 
 # Local rules that don't need cluster execution
-localrules: all, print_config_dict, diann_generate_scripts, generate_oktoberfest_config, outputsyml, run_prozor_inference
+localrules: all, print_config_dict, diann_generate_scripts, outputsyml, run_prozor_inference
 
 # Detect input files using helper function
 RAW_DIR = Path("input/raw")
@@ -54,7 +52,6 @@ OUTPUT_PREFIX = "out-DIANN"
 WORKFLOW_PARAMS = parse_flat_params(config_dict["params"])
 
 # Only create globals needed for Snakemake wildcards and conditionals
-LIBRARY_PREDICTOR = WORKFLOW_PARAMS["library_predictor"]
 ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
 fasta_config = WORKFLOW_PARAMS["fasta"]  # Alias for fasta parameters used in rules
 # Resolve FASTA path (handles /misc/fasta/... paths that don't exist locally)
@@ -180,58 +177,8 @@ rule diann_generate_scripts:
         print(f"Generated scripts: {scripts}")
 
 # ============================================================================
-# Oktoberfest library generation (alternative to DIA-NN Step A)
+# DIA-NN 3-stage execution
 # ============================================================================
-
-rule generate_oktoberfest_config:
-    """Generate Oktoberfest configuration from DIA-NN parameters."""
-    input:
-        fasta_files = FASTA_PATHS,
-    output:
-        config = f"{OUTPUT_PREFIX}_libA/oktoberfest_config.json"
-    log:
-        logfile = "logs/generate_oktoberfest_config.log"
-    run:
-        # Oktoberfest uses single FASTA - use first (database) only
-        # TODO: Support multiple FASTAs in Oktoberfest if needed
-        oktoberfest_config = build_oktoberfest_config(
-            workunit_id=str(WORKUNITID),
-            fasta_path=str(input.fasta_files[0]),
-            output_dir=f"{OUTPUT_PREFIX}_libA",
-            diann_params=WORKFLOW_PARAMS["diann"]
-        )
-
-        # Write config to file
-        with open(output.config, 'w') as f:
-            json.dump(oktoberfest_config, f, indent=2)
-
-        print(f"Generated Oktoberfest config: {output.config}")
-
-rule run_oktoberfest_library:
-    """Execute Oktoberfest library generation."""
-    input:
-        config = rules.generate_oktoberfest_config.output.config,
-        fasta_files = FASTA_PATHS
-    output:
-        speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_oktoberfest.speclib.msp",
-        runlog = f"{OUTPUT_PREFIX}_libA/oktoberfest.log.txt"
-    log:
-        logfile = "logs/run_oktoberfest_library.log"
-    params:
-        output_prefix = OUTPUT_PREFIX
-    shell:
-        """
-        echo "Running Oktoberfest library generation"
-        oktoberfest-docker -c {input.config:q} 2>&1 | tee {output.runlog:q}
-        mv {params.output_prefix}_libA/speclib.msp {output.speclib:q}
-        """
-
-def get_library_for_step_b():
-    """Return the appropriate library file for Step B based on LIBRARY_PREDICTOR."""
-    if LIBRARY_PREDICTOR == "oktoberfest":
-        return f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_oktoberfest.speclib.msp"
-    else:
-        return f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_report-lib.predicted.speclib"
 
 rule run_diann_step_a:
     """Execute Step A: Library Search."""
@@ -259,7 +206,7 @@ rule run_diann_step_b:
     """Execute Step B: Quantification with Refinement."""
     input:
         script = rules.diann_generate_scripts.output.step_b_script,
-        predicted_lib = get_library_for_step_b()
+        predicted_lib = rules.run_diann_step_a.output.speclib
     output:
         # DIA-NN 2.3.0 creates native .parquet library (with -lib insertion)
         speclib = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report-lib.parquet",
