@@ -26,8 +26,9 @@ All commands defined in `pyproject.toml`:
 | `diann-qc-report` | `qc_report.py` | Generate Markdown QC report |
 | `thermoraw` | `thermoraw_docker.py` | Convert .raw files via Docker |
 | `prolfquapp-docker` | `prolfquapp_docker.py` | Run prolfqua QC in Docker |
+| `prozor-diann` | `prozor_diann.py` | Re-run protein inference on DIA-NN report |
 
-**Optional (in contrib/oktoberfest/):** Koina/Oktoberfest integration for alternative spectral predictors.
+**Optional (in contrib/oktoberfest/):** Koina/Oktoberfest integration for alternative spectral predictors (not included in main workflow).
 
 ## Development Commands
 
@@ -153,6 +154,16 @@ All source modules are located in `src/diann_runner/`:
 
 **`src/diann_runner/prolfquapp_docker.py`** - Prolfqua QC integration (`prolfquapp-docker` command)
 
+**`src/diann_runner/prozor_diann.py`** - Protein inference CLI (`prozor-diann` command)
+- Re-annotates DIA-NN report with protein IDs from FASTA using greedy parsimony
+- Outputs `_prozor.parquet` with updated Protein.Ids and Protein.Group columns
+
+**`src/diann_runner/prozor/`** - Protein inference subpackage (Python port of R prozor)
+- `ahocorasick.py`: Backend abstraction for Aho-Corasick pattern matching
+- `annotate.py`: Peptide-to-protein annotation using multi-pattern matching
+- `sparse_matrix.py`: scipy.sparse matrix for peptide-protein relationships
+- `greedy.py`: Greedy parsimony algorithm for minimal protein set inference
+
 **`contrib/oktoberfest/`** - Optional Koina/Oktoberfest integration (see `contrib/oktoberfest/README.md`)
 
 **`src/diann_runner/snakemake_helpers.py`** - Helper functions for Snakemake
@@ -168,8 +179,9 @@ All source modules are located in `src/diann_runner/`:
 The `Snakefile.DIANN3step.smk` orchestrates the complete pipeline:
 1. File conversion (`.raw` → `.mzML` or `.d.zip` → `.d`)
 2. DIA-NN execution (generates and runs bash script)
-3. QC report generation
-4. Results packaging and upload to bfabric
+3. Prozor protein inference (re-annotates proteins from FASTA)
+4. QC report generation
+5. Results packaging and upload to bfabric
 
 Key features:
 - Reads configuration from `params.yml` in the working directory
@@ -177,7 +189,7 @@ Key features:
 - Integrates with FGCZ infrastructure (bfabric, prolfqua)
 - Uses Docker containers for msconvert and prolfqua
 - Supports optional Step C (controlled by `enable_step_c` parameter)
-- Supports alternative library predictors: DIA-NN (default) or Oktoberfest
+- Runs prozor protein inference after DIA-NN quantification
 
 ### Bfabric Parameter Flow Architecture
 

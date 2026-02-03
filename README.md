@@ -20,6 +20,7 @@ uv pip install -e .
 | `diann-cleanup` | Clean up workflow output files |
 | `prolfquapp-docker` | Run prolfqua QC in Docker |
 | `thermoraw` | Convert Thermo RAW to mzML (native on macOS, Docker elsewhere) |
+| `prozor-diann` | Run protein inference on DIA-NN report using prozor algorithm |
 
 Use `<command> --help` for options.
 
