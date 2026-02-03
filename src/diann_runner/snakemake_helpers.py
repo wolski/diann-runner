@@ -243,8 +243,12 @@ def parse_flat_params(flat_params):
     # Parse DDA mode
     diann['is_dda'] = flat_params['05_diann_is_dda'].lower() == 'true'
 
-    # Parse FASTA
-    fasta['database_path'] = flat_params['03_fasta_database_path']
+    # Parse FASTA - use alternate path if main is NONE
+    fasta_main = flat_params['03_fasta_database_path']
+    if fasta_main.upper() == 'NONE':
+        fasta['database_path'] = flat_params['03b_additional_fasta_database_path']
+    else:
+        fasta['database_path'] = fasta_main
     fasta['use_custom_fasta'] = flat_params['03_fasta_use_custom'].lower() == 'true'
 
     # Convert var_mods to tuples for DiannWorkflow

@@ -54,23 +54,133 @@
 
     <!-- 03: FASTA Configuration -->
     <parameter classname="parameter" id="171593">
-        <deletable>false</deletable>
-        <updatable>false</updatable>
         <description>FASTA database file for protein inference and library generation. Only forward sequences and contaminants included.</description>
         <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <key>03_fasta_database_path</key>
+        <label>FASTA Database</label>
+        <modifiable>true</modifiable>
+        <required>true</required>
+        <type>STRING</type>
         <enumeration>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</enumeration>
         <enumeration>/misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta</enumeration>
         <enumeration>/misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9606_reviewed_cnl_20230330.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9606_UP000005640_20230824.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9606_1spg_20230330.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10090_1spg_20230405.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10090_UP000000589_Musm_1spg_20241112.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10090_UP000000589_20240130.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_7227_1spg_20230515.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_7955_1spg_20230515.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_83333_EcoliK12_20230516.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_208964_PAO1_UP000002438_20240627.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_8355_UP000186698_Xenopus_20240502.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_4932_UP000002311_yeast_20250325.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_4932_ensembl_R64_1_1_20171115.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_5076_UP000076449_Penicillium_20240320.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_6239_1spg_20230516.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_6239_UP000001940_20230516.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_3702_AraUniprot_1spg_20230811.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_3702_AraUniprot_cnl_20230811.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9031_UP000000539_gallus_1spg_20231130.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9986_1spg_rabbit_20230615.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_10116_1spg_rat_20240418.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_246196_UP000000757_20230921.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9913_UP000009136_bos_taurus_spg_20240711.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_swissprot_20230328.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_tripleProteome_HYC_1SpG_20230609.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_twoProteome_HY_1SpG_20230609.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_507601_UP000005641_ToxoplGond_20241112.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9823_UP000008227_1spg_pig_20231017.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_9823_UP000008227_susScorfa_1spg_20241113.fasta</enumeration>
+        <enumeration>/misc/fasta/fgcz_60711_UP000029965_greenMonkey_20251203.fasta</enumeration>
+        <enumeration>/misc/fasta/Homo_sapiens.GRCh38.pep.all.fasta</enumeration>
+        <enumeration>/misc/fasta/p1511_db3_20180323.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_tripleProt_HYE_large_20230714.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_tripleProt_HYE_large_20230714.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_UP000005640_9606_I2L_entrapment.fasta</enumeration>
+        <enumeration>/misc/fasta/p3000_UP000005640_9606_1-fold_peptide-level_entrapment.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_db5_SA_JE2_modNmoreTranslations_20221124.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_db5_SA_6850_modNmoreTranslations_20221124.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_SA6850_2024_Genbank_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_SA6850_2024_REFSEQ_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p3404_SAreference_UP000008816_93061_20240830.fasta</enumeration>
+        <enumeration>/misc/fasta/p3234_db1_ensemblPlants_20230426.fasta</enumeration>
+        <enumeration>/misc/fasta/p23580_db3_CCCannotated_20230405.fasta</enumeration>
+        <enumeration>/misc/fasta/p24227_canislupus_UP000002254_9615_20230511.fasta</enumeration>
+        <enumeration>/misc/fasta/p27160_eHOMD2022_9606_cont_20220131.fasta</enumeration>
+        <enumeration>/misc/fasta/p27865_db1_threeColis_20230831.fasta</enumeration>
+        <enumeration>/misc/fasta/p28488_db1_orcaNdwnSzdUniref100_20220610.fasta</enumeration>
+        <enumeration>/misc/fasta/p30301_db2_ZE04MAR21_20230927.fasta</enumeration>
+        <enumeration>/misc/fasta/p30301_db3_ZE04JUN21_20230927.fasta</enumeration>
+        <enumeration>/misc/fasta/p30301_db4_concatDB2nDB3.fasta</enumeration>
+        <enumeration>/misc/fasta/o30380_db_1_UP000031872_UP000001811_cont_IDs_43743.fasta</enumeration>
+        <enumeration>/misc/fasta/p30335_db1_PfalciNhuman_20230329.fasta</enumeration>
+        <enumeration>/misc/fasta/p30383_db1_Pfalciparum3D7_20230112.fasta</enumeration>
+        <enumeration>/misc/fasta/p30604_dbUP29799nUP268571_nr_20241120.fasta</enumeration>
+        <enumeration>/misc/fasta/p31434_db2_20230706.fasta</enumeration>
+        <enumeration>/misc/fasta/p31434_db2_20230706.fasta</enumeration>
+        <enumeration>/misc/fasta/p31540_db1_NCBI_20230622.fasta</enumeration>
+        <enumeration>/misc/fasta/p31540_db2_Uniref100_n_NCBI_noDubs_20231025.fasta</enumeration>
+        <enumeration>/misc/fasta/p31540_db3_Uniref100_n_NCBI_wDescriptionNoDubsCut60_20231031.fasta</enumeration>
+        <enumeration>/misc/fasta/p31573_db2_IsoF_20240605.fasta</enumeration>
+        <enumeration>/misc/fasta/p32331_fgcz_9606_1spg_20230330_n_taxId_364106_20230814.fasta</enumeration>
+        <enumeration>/misc/fasta/p32624_UP000009136_UP000002032_db1_20230905.fasta</enumeration>
+        <enumeration>/misc/fasta/p32750_db1_MEcoli_ref_1_proteome_fixed_20231004.fasta</enumeration>
+        <enumeration>/misc/fasta/p32750_db2_MEcoli_ref_2_proteome_fixed_20231004.fasta</enumeration>
+        <enumeration>/misc/fasta/p32750_db3_MEvo1_0_proteome_fixed_20231004.fasta</enumeration>
+        <enumeration>/misc/fasta/p32808_db1_HaloBor_20230914.fasta</enumeration>
+        <enumeration>/misc/fasta/p33333_db1_UP001300_20231207.fasta</enumeration>
+        <enumeration>/misc/fasta/p33430_db1_UP000001014_SalmonellaTyphimurium_20240322.fasta</enumeration>
+        <enumeration>/misc/fasta/p34124_UP000002296_Trypanosoma_20240207.fasta</enumeration>
+        <enumeration>/misc/fasta/o34326_db1_20240229.fasta</enumeration>
+        <enumeration>/misc/fasta/p34435_db1_UPkb_taxID_388413_20240405.fasta</enumeration>
+        <enumeration>/misc/fasta/p35159_UP000008524_Trypanosomabb_db1_20240517.fasta</enumeration>
+        <enumeration>/misc/fasta/o34855_96061spg_n_83333EcoliK12_20240613.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta</enumeration>
+        <enumeration>/misc/fasta/p35425_db1_Falocis_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p35425_db2_Falocis_UP000007468_546269_20240816.fasta</enumeration>
+        <enumeration>/misc/fasta/p34548_SpringBloom2021_95MagSpeciesDB_15JUL24_20240726.fasta</enumeration>
+        <enumeration>/misc/fasta/p33688_db1_UP000005640_9606_20241015.fasta</enumeration>
+        <enumeration>/misc/fasta/p33688_db2_uniprotkb_UP000005640_20241015.fasta</enumeration>
+        <enumeration>/misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta</enumeration>
+        <enumeration>/misc/fasta/p35134_db1_TripleProteome_HYE_20240918.fasta</enumeration>
+        <enumeration>/misc/fasta/p35134_db1_TripleProteome_HYE_20241112.fasta</enumeration>
+        <enumeration>/misc/fasta/p35425_db3_Falocis_db1n2_20241023.fasta</enumeration>
+        <enumeration>/misc/fasta/p36020_db2_MultispeciesNWheat_20240823.fasta</enumeration>
+        <enumeration>/misc/fasta/p36096_SA6850_db1_wPseudogenes_20241114.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db1_UP000002204_RhodococcusE_20240903.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db2_UP000197050_BrevundimonasV_20240903.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db3_ncbi_RhodococcusE_20241018.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db4_ncbi_BrevundimonasV_20241018.fasta</enumeration>
+        <enumeration>/misc/fasta/p36156_db4_ncbi_BrevundimonasV_20241018.fasta</enumeration>
+        <enumeration>/misc/fasta/p36249_db1_pioneer_20250224.fasta</enumeration>
+        <enumeration>/misc/fasta/o36989_humanbgsNmetaPrXDB_Colon_epicXS_20250521.fasta</enumeration>
+        <enumeration>/misc/fasta/p37616_db1_Tenacibaculum_UP000231564_20250305.fasta</enumeration>
+        <enumeration>/misc/fasta/p38815_db6_DAFplusFernDB_upLike_20260130.fasta</enumeration>
+        <enumeration>/misc/fasta/p38902_db3_BoaNReptaVir_20251209.fasta</enumeration>
+        <enumeration>/misc/fasta/p39218_db1_20260127.fasta</enumeration>
+        <enumeration>NONE</enumeration>
+        <value>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</value>
+    </parameter>
+
+<!-- 13: Freestyle Parameters -->
+    <parameter>
+        <description>fasta path from storage folder (FASTA Database parameter must be NONE)</description>
+        <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>03_fasta_database_path</key>
-        <label>FASTA Database</label>
+        <key>03b_additional_fasta_database_path</key>
+        <label>Freestyle FastaPath</label>
         <modifiable>true</modifiable>
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</value>
+        <value></value>
     </parameter>
+
 
     <parameter>
         <deletable>false</deletable>
@@ -513,7 +623,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>BOOLEAN</type>
-        <value>true</value>
+        <value>false</value>
     </parameter>
 
     <!-- 99: Other Settings -->
