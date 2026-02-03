@@ -107,8 +107,11 @@ def run_prozor_inference(
     logger.info("Building peptide-protein matrix...")
     matrix = annotations.to_sparse_matrix()
     n_peptides_matched, n_proteins_matched = matrix.matrix.shape
+    n_proteotypic = len(matrix.proteotypic_peptides())
+    proteotypic_frac = matrix.proteotypic_fraction()
     logger.info(f"Matrix shape: {matrix.matrix.shape}")
     logger.info(f"Proteins matched by peptides: {n_proteins_matched}")
+    logger.info(f"Proteotypic peptides: {n_proteotypic} ({100*proteotypic_frac:.1f}%)")
 
     # Run greedy parsimony
     logger.info("Running greedy parsimony...")
@@ -181,6 +184,8 @@ def run_prozor_inference(
         "proteins_in_fasta": len(proteins),
         "peptide_protein_matches": len(annotations),
         "proteins_matched": n_proteins_matched,
+        "proteotypic_peptides": n_proteotypic,
+        "proteotypic_fraction": proteotypic_frac,
         "protein_groups_after_parsimony": n_protein_groups,
         "original_protein_ids": original_protein_ids,
         "original_protein_groups": original_protein_groups,
@@ -203,8 +208,12 @@ def run_prozor_inference(
     logger.info(f"Unique peptides:     {len(peptides):,}")
     logger.info(f"Proteins in FASTA:   {len(proteins):,}")
     logger.info("-" * 60)
-    logger.info("GREEDY PARSIMONY:")
+    logger.info("PEPTIDE-PROTEIN MATCHING:")
     logger.info(f"  Proteins matched by peptides: {n_proteins_matched:,}")
+    logger.info(f"  Proteotypic peptides (unique): {n_proteotypic:,} ({100*proteotypic_frac:.1f}%)")
+    logger.info(f"  Shared peptides: {n_peptides_matched - n_proteotypic:,} ({100*(1-proteotypic_frac):.1f}%)")
+    logger.info("-" * 60)
+    logger.info("GREEDY PARSIMONY:")
     logger.info(f"  Protein groups after parsimony: {n_protein_groups:,}")
     logger.info(f"  Parsimony reduction: {n_proteins_matched - n_protein_groups:,} ({100*(n_proteins_matched - n_protein_groups)/n_proteins_matched:.1f}%)")
     logger.info("-" * 60)
