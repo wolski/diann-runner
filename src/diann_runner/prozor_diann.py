@@ -106,12 +106,15 @@ def run_prozor_inference(
     # Build sparse matrix
     logger.info("Building peptide-protein matrix...")
     matrix = annotations.to_sparse_matrix()
+    n_peptides_matched, n_proteins_matched = matrix.matrix.shape
     logger.info(f"Matrix shape: {matrix.matrix.shape}")
+    logger.info(f"Proteins matched by peptides: {n_proteins_matched}")
 
     # Run greedy parsimony
     logger.info("Running greedy parsimony...")
     protein_groups = greedy_parsimony(matrix)
-    logger.info(f"Protein groups after parsimony: {len(protein_groups)}")
+    n_protein_groups = len(protein_groups)
+    logger.info(f"Protein groups after parsimony: {n_protein_groups}")
 
     # Build peptide -> protein group mapping
     # Each peptide maps to the protein group(s) that contain it
@@ -177,10 +180,12 @@ def run_prozor_inference(
         "unique_peptides": len(peptides),
         "proteins_in_fasta": len(proteins),
         "peptide_protein_matches": len(annotations),
+        "proteins_matched": n_proteins_matched,
+        "protein_groups_after_parsimony": n_protein_groups,
         "original_protein_ids": original_protein_ids,
         "original_protein_groups": original_protein_groups,
         "inferred_protein_ids": new_protein_ids,
-        "inferred_protein_groups": len(protein_groups),
+        "inferred_protein_groups": n_protein_groups,
         "rows_changed": rows_changed,
         "rows_changed_pct": pct_changed,
         "unmapped_rows": unmapped_count,
@@ -198,12 +203,16 @@ def run_prozor_inference(
     logger.info(f"Unique peptides:     {len(peptides):,}")
     logger.info(f"Proteins in FASTA:   {len(proteins):,}")
     logger.info("-" * 60)
-    logger.info(f"Original Protein.Ids:  {original_protein_ids:,}")
-    logger.info(f"Inferred Protein.Ids:  {new_protein_ids:,}")
-    logger.info(f"Reduction:             {original_protein_ids - new_protein_ids:,} ({100*(original_protein_ids - new_protein_ids)/original_protein_ids:.1f}%)")
+    logger.info("GREEDY PARSIMONY:")
+    logger.info(f"  Proteins matched by peptides: {n_proteins_matched:,}")
+    logger.info(f"  Protein groups after parsimony: {n_protein_groups:,}")
+    logger.info(f"  Parsimony reduction: {n_proteins_matched - n_protein_groups:,} ({100*(n_proteins_matched - n_protein_groups)/n_proteins_matched:.1f}%)")
     logger.info("-" * 60)
-    logger.info(f"Original Protein.Groups: {original_protein_groups:,}")
-    logger.info(f"Inferred Protein.Groups: {len(protein_groups):,}")
+    logger.info("COMPARISON WITH DIA-NN:")
+    logger.info(f"  DIA-NN Protein.Ids:    {original_protein_ids:,}")
+    logger.info(f"  Prozor Protein.Ids:    {new_protein_ids:,}")
+    logger.info(f"  DIA-NN Protein.Groups: {original_protein_groups:,}")
+    logger.info(f"  Prozor Protein.Groups: {n_protein_groups:,}")
     logger.info("-" * 60)
     logger.info(f"Rows with changed assignment: {rows_changed:,} ({pct_changed:.1f}%)")
     if unmapped_count > 0:
