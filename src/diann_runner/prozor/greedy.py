@@ -112,7 +112,10 @@ class GreedyResult:
         return pd.DataFrame(rows)
 
 
-def greedy_parsimony(pep_prot: PeptideProteinMatrix) -> GreedyResult:
+def greedy_parsimony(
+    pep_prot: PeptideProteinMatrix,
+    subsume: bool = True,
+) -> GreedyResult:
     """
     Find minimal protein set explaining all peptides using greedy algorithm.
 
@@ -120,9 +123,12 @@ def greedy_parsimony(pep_prot: PeptideProteinMatrix) -> GreedyResult:
     the most unexplained peptides, remove those peptides, and repeat.
 
     Proteins with identical peptide evidence are grouped together.
+    If subsume=True, proteins whose peptides become fully covered by a winner
+    are added to that winner's group (subset relationship).
 
     Args:
         pep_prot: PeptideProteinMatrix from annotations
+        subsume: If True, add subsumed proteins to winner's group (default True)
 
     Returns:
         GreedyResult with protein groups and their assigned peptides
@@ -192,19 +198,38 @@ def greedy_parsimony(pep_prot: PeptideProteinMatrix) -> GreedyResult:
         # Pick the largest group (or first if tied)
         best_group = max(peptide_signatures.values(), key=len)
 
-        # Get protein names for this group
-        group_proteins = [pep_prot.proteins[i] for i in best_group]
-
         # Get peptides covered by this group (all have same peptides)
         covered_peptides = protein_peptides[best_group[0]] & active_peptides
         group_peptides = [pep_prot.peptides[i] for i in covered_peptides]
+
+        # Find subsumed proteins: proteins whose remaining peptides are
+        # a subset of the winner's peptides (they become "empty" after this round)
+        subsumed_proteins = []
+        if subsume:
+            # Only check proteins that share at least one peptide with winner
+            # Build set of proteins that share peptides with winner
+            candidate_subsumed = set()
+            for pep_idx in covered_peptides:
+                candidate_subsumed.update(peptide_proteins[pep_idx])
+            candidate_subsumed -= set(best_group)
+            candidate_subsumed &= active_proteins
+
+            for prot_idx in candidate_subsumed:
+                prot_active_peps = protein_peptides[prot_idx] & active_peptides
+                if prot_active_peps <= covered_peptides:
+                    # This protein's peptides are a subset of winner's
+                    subsumed_proteins.append(prot_idx)
+
+        # Get protein names for this group (winners + subsumed)
+        all_group_indices = list(best_group) + subsumed_proteins
+        group_proteins = [pep_prot.proteins[i] for i in all_group_indices]
 
         # Create protein group
         groups.append(ProteinGroup(proteins=group_proteins, peptides=group_peptides))
 
         # Update active sets
         active_peptides -= covered_peptides
-        active_proteins -= set(best_group)
+        active_proteins -= set(all_group_indices)
 
         # Update peptide counts for remaining proteins
         # Subtract counts for removed peptides

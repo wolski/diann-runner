@@ -117,7 +117,13 @@ def run_prozor_inference(
     logger.info("Running greedy parsimony...")
     protein_groups = greedy_parsimony(matrix)
     n_protein_groups = len(protein_groups)
+    # Count total proteins in groups (includes subsumed)
+    n_proteins_in_groups = sum(g.n_proteins for g in protein_groups)
+    # Subsumed = proteins added to groups beyond the representative
+    n_subsumed = n_proteins_in_groups - n_protein_groups
     logger.info(f"Protein groups after parsimony: {n_protein_groups}")
+    logger.info(f"Proteins in groups (incl. subsumed): {n_proteins_in_groups}")
+    logger.info(f"Subsumed proteins: {n_subsumed}")
 
     # Build peptide -> protein group mapping
     # Each peptide maps to the protein group(s) that contain it
@@ -187,6 +193,8 @@ def run_prozor_inference(
         "proteotypic_peptides": n_proteotypic,
         "proteotypic_fraction": proteotypic_frac,
         "protein_groups_after_parsimony": n_protein_groups,
+        "proteins_in_groups": n_proteins_in_groups,
+        "subsumed_proteins": n_subsumed,
         "original_protein_ids": original_protein_ids,
         "original_protein_groups": original_protein_groups,
         "inferred_protein_ids": new_protein_ids,
@@ -215,7 +223,9 @@ def run_prozor_inference(
     logger.info("-" * 60)
     logger.info("GREEDY PARSIMONY:")
     logger.info(f"  Protein groups after parsimony: {n_protein_groups:,}")
-    logger.info(f"  Parsimony reduction: {n_proteins_matched - n_protein_groups:,} ({100*(n_proteins_matched - n_protein_groups)/n_proteins_matched:.1f}%)")
+    logger.info(f"  Proteins in groups (incl. subsumed): {n_proteins_in_groups:,}")
+    logger.info(f"  Subsumed proteins (subset of winner): {n_subsumed:,}")
+    logger.info(f"  Proteins not in any group: {n_proteins_matched - n_proteins_in_groups:,}")
     logger.info("-" * 60)
     logger.info("COMPARISON WITH DIA-NN:")
     logger.info(f"  DIA-NN Protein.Ids:    {original_protein_ids:,}")
