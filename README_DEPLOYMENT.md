@@ -443,11 +443,12 @@ git push
 **On the server (fgcz-c-073) - pull both repositories:**
 
 ```bash
-# Pull slurmworker repo (contains app.yml, dispatch.py, pylock.toml)
+# 1. Pull slurmworker repo (contains app.yml, dispatch.py, pylock.toml)
 cd /home/bfabric/slurmworker
 git pull
 
-# Pull diann_runner repo (contains the actual workflow code)
+# 2. Pull diann_runner repo (contains the actual workflow code)
+# IMPORTANT: This step is often forgotten but required!
 cd /home/bfabric/diann_runner
 git pull
 ```
