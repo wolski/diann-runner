@@ -13,7 +13,7 @@ Note: Use relative paths or run from your data directory.
       Current directory is mounted to /work in the container.
 
 Env vars (can also use CLI options):
-  PROLFQUAPP_IMAGE_VERSION   Image version (default: "2.0.7")
+  PROLFQUAPP_IMAGE_VERSION   Image version (default: "2.0.8")
   PROLFQUAPP_IMAGE_REPO      Image repository (default: "docker.io/prolfqua/prolfquapp")
   PROLFQUAPP_EXTRA           Extra docker run args
 """
@@ -28,7 +28,7 @@ import cyclopts
 from diann_runner.docker_utils import DockerCommandBuilder, run_container
 
 # --- Settings from environment ---
-DEFAULT_VERSION = os.environ.get("PROLFQUAPP_IMAGE_VERSION", "2.0.7")
+DEFAULT_VERSION = os.environ.get("PROLFQUAPP_IMAGE_VERSION", "2.0.8")
 DEFAULT_REPO = os.environ.get("PROLFQUAPP_IMAGE_REPO", "docker.io/prolfqua/prolfquapp")
 EXTRA_ARGS = shlex.split(os.environ.get("PROLFQUAPP_EXTRA", ""))
 
