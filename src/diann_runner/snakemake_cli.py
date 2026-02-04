@@ -28,11 +28,43 @@ def get_snakefile_path() -> str:
     return str(snakefile)
 
 
+def run_snakemake(cmd: list[str]) -> tuple[int, str]:
+    """Run snakemake command, streaming output and capturing it for error checking.
+    
+    Args:
+        cmd: List of command arguments
+        
+    Returns:
+        Tuple of (return_code, captured_output)
+    """
+    # Merge stderr into stdout so we can capture and stream everything easily
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1  # Line buffered
+    )
+
+    captured_lines = []
+    
+    if process.stdout:
+        for line in process.stdout:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            captured_lines.append(line)
+    
+    returncode = process.wait()
+    return returncode, "".join(captured_lines)
+
+
 def main() -> int:
     """Main entry point for diann-snakemake command.
 
     Passes all arguments through to snakemake, automatically adding
     the -s flag pointing to the bundled Snakefile.
+    
+    Handles directory locking by automatically attempting unlock and retry.
 
     Returns:
         Exit code from snakemake
@@ -46,8 +78,29 @@ def main() -> int:
     logger.info(f"Working directory: {os.getcwd()}")
     logger.info(f"Running Snakemake command: {' '.join(cmd)}")
 
-    result = subprocess.run(cmd)
-    return result.returncode
+    returncode, output = run_snakemake(cmd)
+    
+    # Check for LockException
+    if returncode != 0 and ("LockException" in output or "Directory cannot be locked" in output):
+        logger.warning("Snakemake failed with LockException. Attempting to unlock and retry...")
+        
+        # Build unlock command (append --unlock to original args)
+        unlock_cmd = cmd + ["--unlock"]
+        
+        logger.info(f"Running unlock command: {' '.join(unlock_cmd)}")
+        unlock_rc, _ = run_snakemake(unlock_cmd)
+        
+        if unlock_rc == 0:
+            logger.info("Unlock successful. Retrying original command...")
+            returncode, output = run_snakemake(cmd)
+            if returncode == 0:
+                logger.info("Retry successful.")
+            else:
+                logger.error("Retry failed.")
+        else:
+            logger.error("Failed to unlock directory.")
+
+    return returncode
 
 
 if __name__ == "__main__":
