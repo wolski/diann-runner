@@ -238,7 +238,7 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Scan window radius (in scans). Set to 0 for automatic determination. DIA-NN command: --scan-window</description>
+        <description>Scan window radius (in scans). Set to AUTO for automatic determination. DIA-NN command: --scan-window</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
@@ -248,7 +248,15 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>0</value>
+        <enumeration>AUTO</enumeration>
+        <enumeration>3</enumeration>
+        <enumeration>5</enumeration>
+        <enumeration>8</enumeration>
+        <enumeration>12</enumeration>
+        <enumeration>17</enumeration>
+        <enumeration>23</enumeration>
+        <enumeration>30</enumeration>
+        <value>AUTO</value>
     </parameter>
 
     <!-- 06: Modification Configuration -->

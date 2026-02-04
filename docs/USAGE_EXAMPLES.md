@@ -13,7 +13,7 @@ workflow = DiannWorkflow(
     var_mods=[('35', '15.994915', 'M')],  # Oxidation
     threads=64,
     qvalue=0.01,
-    scan_window=0, # 0 = auto
+    scan_window=0, # 0 or AUTO
 )
 ```
 

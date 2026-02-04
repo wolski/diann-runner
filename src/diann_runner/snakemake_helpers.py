@@ -243,7 +243,8 @@ def parse_flat_params(flat_params):
     diann['is_dda'] = flat_params['05_diann_is_dda'].lower() == 'true'
 
     # Parse scan window
-    diann['scan_window'] = int(flat_params.get('05b_diann_scan_window', 0))
+    scan_window_str = flat_params.get('05b_diann_scan_window', 'AUTO')
+    diann['scan_window'] = 'AUTO' if scan_window_str == 'AUTO' else int(scan_window_str)
 
     # Parse FASTA - use alternate path if main is NONE
     fasta_main = flat_params['03_fasta_database_path']
