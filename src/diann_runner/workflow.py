@@ -272,7 +272,7 @@ class DiannWorkflow:
         params.append(f"--mass-acc {self.mass_acc}")
         params.append(f"--mass-acc-ms1 {self.mass_acc_ms1}")
         
-        if self.scan_window != 'AUTO':
+        if self.scan_window != 0 and self.scan_window != 'AUTO':
             params.append(f"--scan-window {self.scan_window}")
 
         params.append(f"--verbose {self.verbose}")
