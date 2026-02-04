@@ -1,16 +1,19 @@
 # DIA-NN Workflow - Usage Guide
 
+This guide explains how to use the `DiannWorkflow` python class to generate DIA-NN scripts. This is primarily used internally by the Snakemake workflow, but can also be used for custom scripting.
+
 ## Quick Reference
 
 ### Basic Setup
 ```python
-from diann_workflow import DiannWorkflow
+from diann_runner.workflow import DiannWorkflow
 
 workflow = DiannWorkflow(
     workunit_id='WU123',
     var_mods=[('35', '15.994915', 'M')],  # Oxidation
     threads=64,
     qvalue=0.01,
+    scan_window=0, # 0 = auto
 )
 ```
 
@@ -99,7 +102,7 @@ Use `quantify=False` in Step B to skip matrices generation and only build the re
 ### Pattern 1: Standard Workflow (Same Files Throughout)
 
 ```python
-from diann_workflow import DiannWorkflow
+from diann_runner.workflow import DiannWorkflow
 
 # Initialize with shared parameters
 workflow = DiannWorkflow(
@@ -292,6 +295,7 @@ workflow.generate_step_c_final_quantification(
 - `cut` - Protease specificity (default: `"K*,R*"` for trypsin)
 - `mass_acc` - MS2 mass accuracy in ppm (default: `20`)
 - `mass_acc_ms1` - MS1 mass accuracy in ppm (default: `15`)
+- `scan_window` - Scan window radius (default: `0` / auto)
 
 ### Step B Parameters
 

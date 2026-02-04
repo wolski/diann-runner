@@ -12,15 +12,14 @@ uv pip install -e .
 
 | Command | Purpose |
 |---------|---------|
-| `diann-workflow` | Generate three-stage DIA-NN workflow scripts |
-| `diann-docker` | Run DIA-NN in Docker container |
-| `diann-snakemake` | Execute Snakemake workflow |
-| `diann-qc` | Generate QC plots from results |
-| `diann-qc-report` | Generate Markdown QC report |
-| `diann-cleanup` | Clean up workflow output files |
-| `prolfquapp-docker` | Run prolfqua QC in Docker |
-| `thermoraw` | Convert Thermo RAW to mzML (native on macOS, Docker elsewhere) |
-| `prozor-diann` | Run protein inference on DIA-NN report using prozor algorithm |
+| `diann-docker` | `diann_docker.py` | Run DIA-NN in Docker container |
+| `diann-snakemake` | `snakemake_cli.py` | Execute Snakemake workflow |
+| `diann-qc` | `plotter.py` | Generate QC plots from results |
+| `diann-qc-report` | `qc_report.py` | Generate Markdown QC report |
+| `diann-cleanup` | `cleanup.py` | Clean up workflow output files |
+| `prolfquapp-docker` | `prolfquapp_docker.py` | Run prolfqua QC in Docker |
+| `thermoraw` | `thermoraw_docker.py` | Convert Thermo RAW to mzML (native on macOS, Docker elsewhere) |
+| `prozor-diann` | `prozor_diann.py` | Run protein inference on DIA-NN report using prozor algorithm |
 
 Use `<command> --help` for options.
 
@@ -29,19 +28,11 @@ Use `<command> --help` for options.
 ## Quick Start
 
 ```bash
-# Generate workflow scripts
-diann-workflow all-stages \
-  --fasta db.fasta \
-  --raw-files *.mzML \
-  --workunit-id WU123
-
-# Run them
-bash step_A_library_search.sh
-bash step_B_quantification_refinement.sh
-bash step_C_final_quantification.sh
+# Run the Snakemake workflow
+diann-snakemake --cores 8 -p all
 ```
 
-Or run DIA-NN directly:
+Or run DIA-NN directly using the Docker wrapper:
 
 ```bash
 diann-docker --f sample.mzML --fasta db.fasta --out report.tsv

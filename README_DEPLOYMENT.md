@@ -75,7 +75,6 @@ source .venv/bin/activate
 
 ```bash
 diann-docker --help
-diann-workflow --help
 docker images | grep diann
 ```
 
@@ -142,7 +141,6 @@ Installs the `diann_runner` package in editable mode using `uv pip install -e .`
 
 This makes the following CLI tools available:
 - `diann-docker` - Docker wrapper for DIA-NN
-- `diann-workflow` - Workflow generation CLI
 - `diann-cleanup` - Cleanup utility
 - `diann-qc` - QC plotting tool
 - `prolfquapp-docker` - Prolfqua wrapper
@@ -201,7 +199,6 @@ Displays summary and next steps.
 source .venv/bin/activate.fish
 
 diann-docker --help
-diann-workflow --help
 diann-cleanup --help
 diann-qc --help
 ```
@@ -561,24 +558,10 @@ Key settings to configure:
 diann-snakemake --cores 64 -p all
 ```
 
-#### Option B: Use CLI for Custom Workflows
+#### Option B: Use Snakemake directly
 
 ```bash
-# Activate venv first
-source ../.venv/bin/activate.fish
-
-# Generate all workflow scripts
-diann-workflow all-stages \
-    --fasta database.fasta \
-    --raw-files *.mzML \
-    --workunit-id WU001 \
-    --var-mods "35,15.994915,M" \
-    --threads 64
-
-# Execute generated scripts
-bash step_A_library_search.sh
-bash step_B_quantification_refinement.sh
-bash step_C_final_quantification.sh
+snakemake -s /path/to/Snakefile.DIANN3step.smk --cores 64 -p all
 ```
 
 ---
@@ -599,7 +582,6 @@ diann_runner/
 ├── .venv/                      # Python virtual environment
 │   └── bin/
 │       ├── diann-docker
-│       ├── diann-workflow
 │       ├── diann-cleanup
 │       └── ...
 ├── logs/                       # Deployment logs

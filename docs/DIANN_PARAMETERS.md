@@ -371,7 +371,7 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Purpose**: Set approximate DIA cycles during average peptide elution
 - **Typical values**: `6-10` for most instruments
 - **Example**: `--scan-window 8`
-- **Note**: Affects how many scans are considered during peptide detection
+- **Note**: Affects how many scans are considered during peptide detection. Can be set via Bfabric parameter `05b_diann_scan_window` (0 = auto).
 
 **`--im-window <value>`**
 - **Purpose**: Configure ion mobility filtering window width
