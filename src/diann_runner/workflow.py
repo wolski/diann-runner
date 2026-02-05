@@ -69,6 +69,7 @@ class DiannWorkflow:
         output_base_dir: str = 'out-DIANN',
         var_mods: tuple[tuple[str, str, str], ...] = (),
         diann_bin: str = 'diann-docker',
+        docker_image: str | None = None,
         fasta_file: str | None = None,
         threads: int = 64,
         qvalue: float = 0.01,
@@ -103,7 +104,8 @@ class DiannWorkflow:
             workunit_id: Workunit ID for naming outputs
             output_base_dir: Base directory for all outputs
             var_mods: List of (unimod_id, mass_delta, residues) tuples for variable modifications
-            diann_bin: Path to DIA-NN binary executable
+            diann_bin: Path to DIA-NN binary (e.g., 'diann-docker' or 'diann')
+            docker_image: Docker image for diann-docker (e.g., 'diann:2.3.2'), required when using diann-docker
             fasta_file: Path to FASTA database (optional, needed for proteotypic annotation in Steps B/C)
             threads: Number of threads to use
             qvalue: FDR threshold (default 0.01 = 1%)
@@ -135,6 +137,7 @@ class DiannWorkflow:
         self.workunit_id = workunit_id
         self.output_base_dir = output_base_dir
         self.diann_bin = diann_bin
+        self.docker_image = docker_image
         self.temp_dir_base = temp_dir_base
         self.fasta_file = fasta_file
 
@@ -183,6 +186,7 @@ class DiannWorkflow:
             'workunit_id': self.workunit_id,
             'output_base_dir': self.output_base_dir,
             'diann_bin': self.diann_bin,
+            'docker_image': self.docker_image,
             'temp_dir_base': self.temp_dir_base,
             'fasta_file': self.fasta_file,
             'var_mods': self.var_mods,
@@ -372,7 +376,10 @@ class DiannWorkflow:
 
         # Build command
         # Use -- to separate diann-docker options from DIA-NN arguments
-        cmd = [f'"{self.diann_bin}"', '--']
+        cmd = [f'"{self.diann_bin}"']
+        if self.docker_image:
+            cmd.append(f'--image {self.docker_image}')
+        cmd.append('--')
 
         # FASTA search mode with all FASTA files
         cmd.append("--fasta-search")
@@ -456,7 +463,10 @@ class DiannWorkflow:
 
         # Build command (same for both steps!)
         # Use -- to separate diann-docker options from DIA-NN arguments
-        cmd = [f'"{self.diann_bin}"', '--']
+        cmd = [f'"{self.diann_bin}"']
+        if self.docker_image:
+            cmd.append(f'--image {self.docker_image}')
+        cmd.append('--')
 
         # Library
         cmd.append(f'--lib "{input_lib_path}"')

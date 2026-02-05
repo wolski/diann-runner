@@ -5,8 +5,9 @@ threads: 8
 diann_docker_image: "diann:2.3.2"
 
 # File conversion (Docker images for thermoraw CLI)
+thermoraw_image: "thermorawfileparser:2.0.0"
 msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
 
 # QC and staging
-prolfquapp_version: "2.0.8"
+prolfquapp_image: "prolfqua/prolfquapp:2.0.9"
 app_runner: "fgcz_app_runner"

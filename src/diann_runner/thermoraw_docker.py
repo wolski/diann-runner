@@ -8,9 +8,12 @@ Provides 3 converter options:
 - msconvert-demultiplex: msconvert with demultiplex filter (x86/Linux only)
 
 Usage:
-  thermoraw -i sample.raw -o sample.mzML
-  thermoraw -i sample.raw -o sample.mzML --converter msconvert
-  thermoraw -i sample.raw -o sample.mzML --converter msconvert-demultiplex
+  thermoraw --image <image:tag> -i sample.raw -o sample.mzML
+  thermoraw --image <image:tag> -i sample.raw -o sample.mzML --converter msconvert
+
+Examples:
+  thermoraw --image thermorawfileparser:2.0.0 -i sample.raw -o sample.mzML
+  thermoraw --image chambm/pwiz-skyline-i-agree-to-the-vendor-licenses -i sample.raw -o out.mzML --converter msconvert
 """
 
 import os
@@ -27,14 +30,6 @@ from diann_runner.docker_utils import (
     is_apple_silicon,
     print_command,
     run_container,
-)
-
-# --- Default Docker Images ---
-DEFAULT_THERMORAW_IMAGE = os.environ.get(
-    "THERMORAW_DOCKER_IMAGE", "thermorawfileparser:2.0.0"
-)
-DEFAULT_MSCONVERT_IMAGE = os.environ.get(
-    "MSCONVERT_DOCKER_IMAGE", "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
 )
 
 # --- msconvert options (hardcoded for consistency) ---
@@ -137,16 +132,13 @@ def _run_msconvert_docker(
 def run(
     input_file: Annotated[Path, cyclopts.Parameter(name=["-i", "--input"])],
     output_file: Annotated[Path, cyclopts.Parameter(name=["-o", "--output"])],
+    image: Annotated[str, cyclopts.Parameter(help="Docker image (required for Docker converters)")],
     converter: Annotated[
         str,
         cyclopts.Parameter(
             help="Converter: thermoraw, msconvert, msconvert-demultiplex"
         ),
     ] = "thermoraw",
-    image: Annotated[
-        str | None,
-        cyclopts.Parameter(help="Docker image override"),
-    ] = None,
 ) -> None:
     """
     Convert Thermo RAW files to mzML format.
@@ -157,8 +149,8 @@ def run(
       msconvert-demultiplex  msconvert with demultiplex for overlapping DIA windows
 
     Examples:
-        thermoraw -i sample.raw -o sample.mzML
-        thermoraw -i input/sample.raw -o input/sample.mzML --converter msconvert
+        thermoraw --image thermorawfileparser:2.0.0 -i sample.raw -o sample.mzML
+        thermoraw --image chambm/pwiz-skyline-i-agree-to-the-vendor-licenses -i in.raw -o out.mzML --converter msconvert
     """
     # Validate converter option
     valid_converters = ("thermoraw", "msconvert", "msconvert-demultiplex")
@@ -186,16 +178,13 @@ def run(
         if NATIVE_BINARY:
             sys.exit(_run_thermoraw_native(input_file, output_dir))
         else:
-            img = image or DEFAULT_THERMORAW_IMAGE
-            sys.exit(_run_thermoraw_docker(input_file, output_dir, img))
+            sys.exit(_run_thermoraw_docker(input_file, output_dir, image))
 
     elif converter == "msconvert":
-        img = image or DEFAULT_MSCONVERT_IMAGE
-        sys.exit(_run_msconvert_docker(input_file, output_dir, img, demultiplex=False))
+        sys.exit(_run_msconvert_docker(input_file, output_dir, image, demultiplex=False))
 
     elif converter == "msconvert-demultiplex":
-        img = image or DEFAULT_MSCONVERT_IMAGE
-        sys.exit(_run_msconvert_docker(input_file, output_dir, img, demultiplex=True))
+        sys.exit(_run_msconvert_docker(input_file, output_dir, image, demultiplex=True))
 
 
 def main():

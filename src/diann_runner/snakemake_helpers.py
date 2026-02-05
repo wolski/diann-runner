@@ -315,6 +315,7 @@ def create_diann_workflow(
         fasta_file=fasta_path,
         var_mods=var_mods,
         diann_bin=diann_params["diann_bin"],
+        docker_image=deploy_params["diann_docker_image"],
         threads=deploy_params["threads"],
         qvalue=diann_params["qvalue"],
         min_pep_len=diann_params["min_pep_len"],

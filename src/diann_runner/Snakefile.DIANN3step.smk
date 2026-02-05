@@ -119,11 +119,12 @@ rule convert_raw:
     log:
         logfile = "logs/convert_raw_{sample}.log"
     params:
-        converter = WORKFLOW_PARAMS["raw_converter"]
+        converter = WORKFLOW_PARAMS["raw_converter"],
+        image = deploy_dict["thermoraw_image"]
     retries: 3
     shell:
         """
-        thermoraw -i {input.file:q} -o {output.file:q} --converter {params.converter}
+        thermoraw --image {params.image:q} -i {input.file:q} -o {output.file:q} --converter {params.converter}
         """
 
 def get_converted_file(sample: str):
@@ -192,12 +193,10 @@ rule run_diann_step_a:
     params:
         fasta = lambda wildcards: fasta_config["database_path"],
         output_dir = f"{OUTPUT_PREFIX}_libA",
-        docker_image = deploy_dict["diann_docker_image"],
         copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_libA", fasta_config["database_path"])
     shell:
         """
-        export DIANN_DOCKER_IMAGE={params.docker_image:q}
-        echo "Running Step A: Library Search (image: $DIANN_DOCKER_IMAGE)"
+        echo "Running Step A: Library Search"
         bash {input.script:q}
         {params.copy_fasta_cmd}
         """
@@ -217,12 +216,10 @@ rule run_diann_step_b:
     log:
         logfile = "logs/run_diann_step_b.log"
     params:
-        docker_image = deploy_dict["diann_docker_image"],
         copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
     shell:
         """
-        export DIANN_DOCKER_IMAGE={params.docker_image:q}
-        echo "Running Step B: Quantification with Refinement (image: $DIANN_DOCKER_IMAGE)"
+        echo "Running Step B: Quantification with Refinement"
         bash {input.script:q}
         {params.copy_fasta_cmd}
         """
@@ -247,12 +244,10 @@ rule run_diann_step_c:
     log:
         logfile = "logs/run_diann_step_c.log"
     params:
-        docker_image = deploy_dict["diann_docker_image"],
         copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantC", fasta_config["database_path"])
     shell:
         """
-        export DIANN_DOCKER_IMAGE={params.docker_image:q}
-        echo "Running Step C: Final Quantification (image: $DIANN_DOCKER_IMAGE)"
+        echo "Running Step C: Final Quantification"
         bash {input.script:q}
         {params.copy_fasta_cmd}
         """
@@ -345,13 +340,13 @@ rule prolfqua_qc:
     log:
         logfile = "logs/prolfqua_qc.log"
     params:
-        prolfquapp_version = deploy_dict["prolfquapp_version"],
+        prolfquapp_image = deploy_dict["prolfquapp_image"],
         indir = lambda wildcards, input: str(Path(input.report_tsv).parent),
         container_id = CONTAINERID,
         workunit_id = WORKUNITID
     shell:
         """
-        prolfquapp-docker --image-version {params.prolfquapp_version} -- prolfqua_qc.sh \
+        prolfquapp-docker --image {params.prolfquapp_image} -- prolfqua_qc.sh \
             --indir {params.indir:q} -s DIANN \
             --dataset {input.dataset:q} \
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \
