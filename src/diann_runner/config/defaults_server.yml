@@ -8,5 +8,5 @@ diann_docker_image: "diann:2.3.2"
 msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
 
 # QC and staging
-prolfquapp_version: "2.0.7"
+prolfquapp_version: "2.0.8"
 app_runner: "fgcz_app_runner"
