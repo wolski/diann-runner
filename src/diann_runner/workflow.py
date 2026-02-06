@@ -83,8 +83,8 @@ class DiannWorkflow:
         max_fr_mz: int = 1800,
         missed_cleavages: int = 1,
         cut: str = 'K*,R*',
-        mass_acc: int = 20,
-        mass_acc_ms1: int = 15,
+        mass_acc: int = 0,
+        mass_acc_ms1: int = 0,
         scan_window: int | str = 0,
         verbose: int = 1,
         pg_level: int = 0,
@@ -296,6 +296,9 @@ class DiannWorkflow:
         # Peptidoform scoring (optional)
         if self.no_peptidoforms:
             params.append("--no-peptidoforms")
+
+        # RT profiling (always enabled)
+        params.append("--rt-profiling")
 
         return params
     
@@ -578,6 +581,101 @@ class DiannWorkflow:
             script_name=script_name
         )
     
+    def generate_single_step(
+        self,
+        fasta_paths: str | list[str],
+        raw_files: list[str],
+        script_name: str = 'step_single.sh',
+    ) -> str:
+        """
+        Generate single-step DIA-NN script: library prediction + quantification in one invocation.
+
+        DIA-NN 2.3.2 supports running with --lib (empty) + --fasta-search --predictor + raw files.
+        This combines Steps A and B into a single DIA-NN call, writing outputs to the
+        quantB directory so downstream rules are unchanged.
+
+        Args:
+            fasta_paths: Path(s) to FASTA database(s). Can be single string or list.
+            raw_files: List of raw/mzML files to process
+            script_name: Name of output shell script
+
+        Returns:
+            Path to generated shell script
+        """
+        # Normalize to list
+        if isinstance(fasta_paths, str):
+            fasta_paths = [fasta_paths]
+
+        output_dir = self.quant_b_dir
+        temp_dir = f"{self.temp_dir_base}_quantB"
+        output_file = f"{output_dir}/{self.workunit_id}_report.parquet"
+        output_lib = f"{output_dir}/{self.workunit_id}_report.speclib"
+        log_file = f"{output_dir}/diann_quantB.log.txt"
+
+        # Build command
+        cmd = [f'"{self.diann_bin}"']
+        if self.docker_image:
+            cmd.append(f'--image {self.docker_image}')
+        cmd.append('--')
+
+        # Empty --lib triggers library-free mode with predictor
+        cmd.append("--lib")
+
+        # FASTA search mode with predictor
+        cmd.append("--fasta-search")
+        cmd.append("--predictor")
+        for fasta_path in fasta_paths:
+            cmd.append(f'--fasta "{fasta_path}"')
+
+        # Raw files
+        for f in raw_files:
+            cmd.append(f"--f {f}")
+
+        # Common parameters
+        cmd.extend(self._build_common_params())
+
+        # Quantification flags
+        cmd.append("--matrices")
+        cmd.append(f"--pg-level {self.pg_level}")
+
+        # Protein inference
+        if self.relaxed_prot_inf:
+            cmd.append("--relaxed-prot-inf")
+
+        # Match-between-runs (MBR)
+        if self.reanalyse:
+            cmd.append("--reanalyse")
+
+        # Normalization
+        if self.no_norm:
+            cmd.append("--no-norm")
+
+        # Generate output library
+        cmd.append("--gen-spec-lib")
+        cmd.append(f'--out-lib "{output_lib}"')
+
+        # DDA mode if specified
+        if self.is_dda:
+            cmd.append("--dda")
+
+        # Output files
+        cmd.append(f'--out "{output_file}"')
+        cmd.append(f'--temp "{temp_dir}"')
+
+        self._write_shell_script(
+            script_path=script_name,
+            commands=cmd,
+            temp_dirs=[temp_dir],
+            output_dirs=[output_dir],
+            log_file=log_file
+        )
+
+        # Save config
+        config_path = self.save_config(f"{output_dir}/{self.workunit_id}_quantB")
+        print(f"Saved workflow config: {config_path}")
+
+        return script_name
+
     def generate_step_c_final_quantification(
         self,
         raw_files: list[str],

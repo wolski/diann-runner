@@ -429,6 +429,59 @@ class TestDiannWorkflow(unittest.TestCase):
         self.assertIn('TEST001_report-lib', content)
 
 
+    def test_single_step_generation(self):
+        """Test single-step script generation (library prediction + quantification)."""
+        script_path = self.workflow.generate_single_step(
+            fasta_paths=self.fasta_path,
+            raw_files=self.raw_files,
+            script_name='test_single_step.sh'
+        )
+
+        # Check script exists
+        self.assertTrue(os.path.exists(script_path))
+        self.assertTrue(os.access(script_path, os.X_OK))
+
+        content = self.read_script(script_path)
+
+        # Check single-step specific flags
+        self.assertIn('--lib\n', content.replace(' \\\n', '\n'))  # bare --lib (no path)
+        self.assertIn('--fasta-search', content)
+        self.assertIn('--predictor', content)
+        self.assertIn('--out-lib', content)
+        self.assertIn('--gen-spec-lib', content)
+        self.assertIn('--matrices', content)
+        self.assertIn('--rt-profiling', content)
+        self.assertIn(self.fasta_path, content)
+
+        # Check all raw files are present
+        for raw_file in self.raw_files:
+            self.assertIn(raw_file, content)
+
+        # Check common params
+        self.assertIn('--threads 32', content)
+        self.assertIn('--qvalue 0.01', content)
+        self.assertIn('UniMod:35,15.994915,M', content)
+
+        # Should NOT have these flags
+        self.assertNotIn('--reannotate', content)
+        self.assertNotIn('--use-quant', content)
+
+        # Output should go to quantB directory
+        self.assertIn('test-out_quantB', content)
+
+    def test_single_step_with_multiple_fastas(self):
+        """Test single-step with multiple FASTA files."""
+        fasta_paths = ['/test/db1.fasta', '/test/db2.fasta']
+        script_path = self.workflow.generate_single_step(
+            fasta_paths=fasta_paths,
+            raw_files=self.raw_files,
+            script_name='test_single_multi_fasta.sh'
+        )
+
+        content = self.read_script(script_path)
+        for fp in fasta_paths:
+            self.assertIn(fp, content)
+
     def test_scan_window_parameter(self):
         """Test that scan_window parameter is correctly added to script."""
         # Case 1: scan_window = 0 (default/auto) -> should NOT be in script

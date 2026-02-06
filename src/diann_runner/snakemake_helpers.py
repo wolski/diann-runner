@@ -219,9 +219,9 @@ def parse_flat_params(flat_params):
 
     # Parse mass accuracy
     mass_acc_ms2_str = flat_params['09_diann_mass_acc_ms2']
-    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'None' else 0
+    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'auto' else 0
     mass_acc_ms1_str = flat_params['09_diann_mass_acc_ms1']
-    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'None' else 0
+    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'auto' else 0
 
     # Parse scoring
     diann['qvalue'] = float(flat_params['10_diann_scoring_qvalue'])
@@ -261,6 +261,7 @@ def parse_flat_params(flat_params):
     library_predictor = flat_params.get('library_predictor', 'diann')  # Default to diann
     enable_step_c_str = flat_params.get('enable_step_c', 'false')
     enable_step_c = enable_step_c_str.lower() == 'true' if isinstance(enable_step_c_str, str) else bool(enable_step_c_str)
+    workflow_mode = flat_params.get('02_workflow_mode', 'two_step')
 
     # Parse conversion/runtime parameters
     # raw_converter: thermoraw (default), msconvert, msconvert-demultiplex
@@ -273,6 +274,7 @@ def parse_flat_params(flat_params):
         'var_mods': var_mods_tuples,
         'library_predictor': library_predictor,
         'enable_step_c': enable_step_c,
+        'workflow_mode': workflow_mode,
         'raw_converter': raw_converter,
         'diann_binary': diann_binary,
     }

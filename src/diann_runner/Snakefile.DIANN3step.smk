@@ -27,7 +27,7 @@ from diann_runner.snakemake_helpers import (
 )
 
 # Local rules that don't need cluster execution
-localrules: all, print_config_dict, diann_generate_scripts, outputsyml, run_prozor_inference
+localrules: all, print_config_dict, diann_generate_scripts, diann_generate_single_step_script, outputsyml, run_prozor_inference
 
 # Detect input files using helper function
 RAW_DIR = Path("input/raw")
@@ -60,6 +60,7 @@ fasta_config["database_path"] = str(resolve_fasta_path(fasta_config["database_pa
 # DIA-NN merges multiple --fasta arguments internally
 FASTA_PATHS = get_fasta_paths(fasta_config)
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
+WORKFLOW_MODE = WORKFLOW_PARAMS.get("workflow_mode", "two_step")
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
 def final_quant_outputs(wildcards):
@@ -133,124 +134,175 @@ def get_converted_file(sample: str):
     return RAW_DIR / f"{sample}.mzML"
 
 # ============================================================================
-# DIA-NN 3-stage workflow using workflow.py
+# DIA-NN workflow rules (conditional on WORKFLOW_MODE)
 # ============================================================================
 
-rule diann_generate_scripts:
-    """Generate DIA-NN workflow shell scripts using DiannWorkflow class."""
-    input:
-        mzml_files = [get_converted_file(sample) for sample in SAMPLES],
-        fasta_files = FASTA_PATHS,
-    output:
-        step_a_script = "step_A_library_search.sh",
-        step_b_script = "step_B_quantification_refinement.sh",
-        step_c_script = "step_C_final_quantification.sh",
-        config_a = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_libA.config.json",
-        config_b = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json",
-        config_c = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_quantC.config.json"
-    log:
-        logfile = "logs/diann_generate_scripts.log"
-    run:
-        # Get FASTA paths as list of strings
-        fasta_paths = [str(f) for f in input.fasta_files]
+if WORKFLOW_MODE == "single_step":
 
-        # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
-        # Use first FASTA (database) for workflow initialization
-        workflow = create_diann_workflow(
-            WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-            fasta_paths[0], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
-            deploy_dict
-        )
+    rule diann_generate_single_step_script:
+        """Generate single-step DIA-NN script (library prediction + quantification)."""
+        input:
+            mzml_files = [get_converted_file(sample) for sample in SAMPLES],
+            fasta_files = FASTA_PATHS,
+        output:
+            script = "step_single.sh",
+            config_b = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json"
+        log:
+            logfile = "logs/diann_generate_single_step_script.log"
+        run:
+            fasta_paths = [str(f) for f in input.fasta_files]
 
-        # Convert input mzML files to list of strings
-        raw_files = [str(f) for f in input.mzml_files]
+            workflow = create_diann_workflow(
+                WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
+                fasta_paths[0], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+                deploy_dict
+            )
 
-        # Generate all three scripts (pass all FASTA paths - DIA-NN merges them)
-        scripts = workflow.generate_all_scripts(
-            fasta_paths=fasta_paths,
-            raw_files_step_b=raw_files,
-            raw_files_step_c=raw_files,
-            quantify_step_b=True,
-            use_quant_step_c=True,
-            save_library_step_c=True
-        )
+            raw_files = [str(f) for f in input.mzml_files]
 
-        print(f"Generated scripts: {scripts}")
+            workflow.generate_single_step(
+                fasta_paths=fasta_paths,
+                raw_files=raw_files,
+            )
 
-# ============================================================================
-# DIA-NN 3-stage execution
-# ============================================================================
+    rule run_diann_single_step:
+        """Execute single-step DIA-NN: library prediction + quantification."""
+        input:
+            script = rules.diann_generate_single_step_script.output.script
+        output:
+            speclib = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report-lib.parquet",
+            report = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.parquet",
+            pg_matrix = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.pg_matrix.tsv",
+            stats = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.stats.tsv",
+            runlog = f"{OUTPUT_PREFIX}_quantB/diann_quantB.log.txt"
+        log:
+            logfile = "logs/run_diann_single_step.log"
+        params:
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
+        shell:
+            """
+            echo "Running single-step DIA-NN: library prediction + quantification"
+            bash {input.script:q}
+            {params.copy_fasta_cmd}
+            """
 
-rule run_diann_step_a:
-    """Execute Step A: Library Search."""
-    input:
-        script = rules.diann_generate_scripts.output.step_a_script
-    output:
-        speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_report-lib.predicted.speclib",
-        runlog = f"{OUTPUT_PREFIX}_libA/diann_libA.log.txt"
-    log:
-        logfile = "logs/run_diann_step_a.log"
-    params:
-        fasta = lambda wildcards: fasta_config["database_path"],
-        output_dir = f"{OUTPUT_PREFIX}_libA",
-        copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_libA", fasta_config["database_path"])
-    shell:
+else:
+
+    rule diann_generate_scripts:
+        """Generate DIA-NN workflow shell scripts using DiannWorkflow class."""
+        input:
+            mzml_files = [get_converted_file(sample) for sample in SAMPLES],
+            fasta_files = FASTA_PATHS,
+        output:
+            step_a_script = "step_A_library_search.sh",
+            step_b_script = "step_B_quantification_refinement.sh",
+            step_c_script = "step_C_final_quantification.sh",
+            config_a = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_libA.config.json",
+            config_b = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_quantB.config.json",
+            config_c = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_quantC.config.json"
+        log:
+            logfile = "logs/diann_generate_scripts.log"
+        run:
+            # Get FASTA paths as list of strings
+            fasta_paths = [str(f) for f in input.fasta_files]
+
+            # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
+            # Use first FASTA (database) for workflow initialization
+            workflow = create_diann_workflow(
+                WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
+                fasta_paths[0], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+                deploy_dict
+            )
+
+            # Convert input mzML files to list of strings
+            raw_files = [str(f) for f in input.mzml_files]
+
+            # Generate all three scripts (pass all FASTA paths - DIA-NN merges them)
+            scripts = workflow.generate_all_scripts(
+                fasta_paths=fasta_paths,
+                raw_files_step_b=raw_files,
+                raw_files_step_c=raw_files,
+                quantify_step_b=True,
+                use_quant_step_c=True,
+                save_library_step_c=True
+            )
+
+            print(f"Generated scripts: {scripts}")
+
+    # ============================================================================
+    # DIA-NN 3-stage execution
+    # ============================================================================
+
+    rule run_diann_step_a:
+        """Execute Step A: Library Search."""
+        input:
+            script = rules.diann_generate_scripts.output.step_a_script
+        output:
+            speclib = f"{OUTPUT_PREFIX}_libA/WU{WORKUNITID}_report-lib.predicted.speclib",
+            runlog = f"{OUTPUT_PREFIX}_libA/diann_libA.log.txt"
+        log:
+            logfile = "logs/run_diann_step_a.log"
+        params:
+            fasta = lambda wildcards: fasta_config["database_path"],
+            output_dir = f"{OUTPUT_PREFIX}_libA",
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_libA", fasta_config["database_path"])
+        shell:
+            """
+            echo "Running Step A: Library Search"
+            bash {input.script:q}
+            {params.copy_fasta_cmd}
+            """
+
+    rule run_diann_step_b:
+        """Execute Step B: Quantification with Refinement."""
+        input:
+            script = rules.diann_generate_scripts.output.step_b_script,
+            predicted_lib = rules.run_diann_step_a.output.speclib
+        output:
+            # DIA-NN 2.3.0 creates native .parquet library (with -lib insertion)
+            speclib = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report-lib.parquet",
+            report = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.parquet",
+            pg_matrix = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.pg_matrix.tsv",
+            stats = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.stats.tsv",
+            runlog = f"{OUTPUT_PREFIX}_quantB/diann_quantB.log.txt"
+        log:
+            logfile = "logs/run_diann_step_b.log"
+        params:
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
+        shell:
+            """
+            echo "Running Step B: Quantification with Refinement"
+            bash {input.script:q}
+            {params.copy_fasta_cmd}
+            """
+
+    rule run_diann_step_c:
+        """Execute Step C: Final Quantification.
+
+        This rule is always defined, but only executes when downstream rules
+        (convert_parquet_to_tsv, diannqc, prolfqua_qc) depend on Step C outputs.
+        When enable_step_c=False, they depend on Step B outputs instead.
         """
-        echo "Running Step A: Library Search"
-        bash {input.script:q}
-        {params.copy_fasta_cmd}
-        """
-
-rule run_diann_step_b:
-    """Execute Step B: Quantification with Refinement."""
-    input:
-        script = rules.diann_generate_scripts.output.step_b_script,
-        predicted_lib = rules.run_diann_step_a.output.speclib
-    output:
-        # DIA-NN 2.3.0 creates native .parquet library (with -lib insertion)
-        speclib = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report-lib.parquet",
-        report = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.parquet",
-        pg_matrix = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.pg_matrix.tsv",
-        stats = f"{OUTPUT_PREFIX}_quantB/WU{WORKUNITID}_report.stats.tsv",
-        runlog = f"{OUTPUT_PREFIX}_quantB/diann_quantB.log.txt"
-    log:
-        logfile = "logs/run_diann_step_b.log"
-    params:
-        copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
-    shell:
-        """
-        echo "Running Step B: Quantification with Refinement"
-        bash {input.script:q}
-        {params.copy_fasta_cmd}
-        """
-
-rule run_diann_step_c:
-    """Execute Step C: Final Quantification.
-
-    This rule is always defined, but only executes when downstream rules
-    (convert_parquet_to_tsv, diannqc, prolfqua_qc) depend on Step C outputs.
-    When enable_step_c=False, they depend on Step B outputs instead.
-    """
-    input:
-        script = rules.diann_generate_scripts.output.step_c_script,
-        refined_lib = rules.run_diann_step_b.output.speclib
-    output:
-        # DIA-NN 2.3.0 creates native .parquet library (same as Step B)
-        library = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report-lib.parquet",
-        report = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.parquet",
-        pg_matrix = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
-        stats = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
-        runlog = f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
-    log:
-        logfile = "logs/run_diann_step_c.log"
-    params:
-        copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantC", fasta_config["database_path"])
-    shell:
-        """
-        echo "Running Step C: Final Quantification"
-        bash {input.script:q}
-        {params.copy_fasta_cmd}
-        """
+        input:
+            script = rules.diann_generate_scripts.output.step_c_script,
+            refined_lib = rules.run_diann_step_b.output.speclib
+        output:
+            # DIA-NN 2.3.0 creates native .parquet library (same as Step B)
+            library = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report-lib.parquet",
+            report = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.parquet",
+            pg_matrix = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.pg_matrix.tsv",
+            stats = f"{OUTPUT_PREFIX}_quantC/WU{WORKUNITID}_report.stats.tsv",
+            runlog = f"{OUTPUT_PREFIX}_quantC/diann_quantC.log.txt"
+        log:
+            logfile = "logs/run_diann_step_c.log"
+        params:
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantC", fasta_config["database_path"])
+        shell:
+            """
+            echo "Running Step C: Final Quantification"
+            bash {input.script:q}
+            {params.copy_fasta_cmd}
+            """
 
 rule convert_parquet_to_tsv:
     """Convert main parquet report to TSV format for prolfqua and diann-qc."""

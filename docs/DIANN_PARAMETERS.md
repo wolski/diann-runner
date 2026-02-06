@@ -4,7 +4,7 @@ Comprehensive guide to DIA-NN command-line parameters, compiled from the officia
 
 **Repository**: https://github.com/vdemichev/DiaNN
 
-**Last Updated**: 2025-01-18
+**Last Updated**: 2026-02-06
 
 ---
 
@@ -50,6 +50,7 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Purpose**: Specify spectral library file(s)
 - **Supported formats**: `.csv`, `.tsv`, `.xls`, `.txt`, `.parquet`, `.speclib` (DIA-NN binary)
 - **Example**: `--lib predicted.speclib`
+- **Library-free mode**: `--lib` (with no value) — tells DIA-NN to operate without a pre-existing library. Combined with `--fasta-search --predictor` and raw files, this enables single-step workflow where library prediction and quantification happen in one invocation.
 - **Note**: Multiple libraries can be specified by repeating the parameter
 
 **`--fasta <fasta_file>`**
@@ -57,6 +58,12 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Format**: UniProt format (uncompressed) recommended for full functionality
 - **Example**: `--fasta uniprot_human.fasta`
 - **Usage**: Required for library generation and protein inference
+- **Multiple FASTAs**: Can be specified multiple times; DIA-NN merges them internally
+
+**`--reannotate`**
+- **Purpose**: Update protein information for each precursor in the library using the provided FASTA
+- **Usage**: Use when providing `--fasta` together with `--lib` in quantification steps to re-annotate protein IDs
+- **Note**: Not needed in single-step mode (FASTA is used from the start). In two-step mode, use in Step B when FASTA is provided alongside the predicted library.
 
 **`--raw <raw_file>`**
 - **Purpose**: Specify raw data files to process
@@ -74,6 +81,12 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Purpose**: Set output file name/path for main report
 - **Format**: `.parquet` (Apache Parquet format)
 - **Example**: `--out report.parquet`
+
+**`--out-lib <library_file>`**
+- **Purpose**: Set explicit output path for the generated spectral library
+- **Format**: `.parquet` (DIA-NN 2.3+) or `.tsv`
+- **Example**: `--out-lib results/report-lib.parquet`
+- **Note**: Used with `--gen-spec-lib`. If not specified, DIA-NN auto-generates the library filename from `--out` (inserting `-lib` before the extension).
 
 **Output file types produced**:
 - **Main report**: `.parquet` - Precursor and protein IDs with quantities
@@ -181,14 +194,34 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 
 ### Library Generation
 
-**Two-step workflow**:
-1. **Generate predicted library from FASTA** (Step A)
-   - Uses deep learning predictor
-   - Outputs: `.predicted.speclib` (binary format)
+**`--gen-spec-lib`**
+- **Purpose**: Generate a spectral library during analysis
+- **Usage**: Produces an empirical/refined library from the search results
+- **Output**: Library saved alongside main report (auto-named with `-lib` inserted), or to path specified by `--out-lib`
 
-2. **Analyze raw data with library** (Step B/C)
-   - Generates refined empirical library
-   - Outputs: `.parquet` format library
+**`--predictor`**
+- **Purpose**: Use deep learning predictor for in-silico spectral library generation
+- **Usage**: Required for library prediction from FASTA (both single-step and two-step workflows)
+
+**`--fasta-search`**
+- **Purpose**: Enable FASTA-based library-free search
+- **Usage**: Performs in-silico digestion of FASTA and generates predicted library
+- **Two-step mode**: Used alone with `--predictor` and FASTA (no raw files) to produce `.predicted.speclib`
+- **Single-step mode**: Combined with `--predictor`, `--lib` (empty), FASTA, and raw files to do everything in one call
+
+#### Workflow modes
+
+**Single-step workflow** (one DIA-NN invocation):
+- `--lib` (empty) + `--fasta-search` + `--predictor` + `--f` raw files
+- Library prediction + quantification in one call
+- No intermediate files
+
+**Two-step workflow** (two DIA-NN invocations):
+1. **Library prediction**: `--fasta-search --predictor --fasta db.fasta` (no raw files)
+   - Outputs: `.predicted.speclib` (binary format)
+2. **Quantification**: `--lib predicted.speclib --f sample.mzML --gen-spec-lib --reanalyse`
+   - Generates refined empirical library + quantification results
+   - Outputs: `.parquet` format library and report
 
 ### Library Prediction Parameters
 
@@ -287,7 +320,14 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 **`--mbr` / `--reanalyse`**
 - **Purpose**: Enable match-between-runs feature
 - **Usage**: Transfer identifications across runs for improved quantification
-- **Note**: Essential for library refinement in Step B
+- **Note**: Essential for library refinement
+
+### RT Profiling
+
+**`--rt-profiling`**
+- **Purpose**: Enable retention time profiling mode
+- **Usage**: Improves quantification accuracy by using RT-dependent scoring. Enabled by default in the DIA-NN GUI.
+- **Example**: `--rt-profiling`
 
 ### QuantUMS Parameters
 
@@ -443,6 +483,20 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Default**: `1500` or `1800`
 - **Example**: `--max-pr-mz 2000`
 
+**Important**: These are **not auto-detected from raw data**. Set them to match the precursor mass range of your DIA method. From the DIA-NN docs: *"To reduce RAM usage, make sure that the precursor mass range specified (when generating a predicted library) is not wider than the precursor mass range selected for MS/MS by the DIA method."*
+
+### Fragment m/z Range
+
+**`--min-fr-mz <value>`**
+- **Purpose**: Minimum fragment m/z
+- **Default**: `200`
+- **Example**: `--min-fr-mz 150`
+
+**`--max-fr-mz <value>`**
+- **Purpose**: Maximum fragment m/z
+- **Default**: `1800`
+- **Example**: `--max-fr-mz 2000`
+
 ### Q-value Threshold
 
 **`--qvalue <threshold>`**
@@ -582,19 +636,70 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 
 ## Parameter Combinations for Common Workflows
 
-### Standard DIA Analysis (Orbitrap)
+### Single-Step Workflow (Recommended)
+
+Library prediction + quantification in one DIA-NN call:
 
 ```bash
 diann.exe \
-  --lib predicted.speclib \
+  --f sample1.raw --f sample2.raw --f sample3.raw \
+  --lib \
+  --fasta uniprot.fasta --fasta-search \
+  --predictor --gen-spec-lib \
+  --out results/report.parquet \
+  --out-lib results/report-lib.parquet \
+  --threads 32 --verbose 1 \
+  --qvalue 0.01 --matrices \
+  --met-excision --unimod4 \
+  --var-mods 1 --var-mod UniMod:35,15.994915,M \
+  --min-pep-len 7 --max-pep-len 30 \
+  --min-pr-mz 380 --max-pr-mz 980 \
+  --min-pr-charge 1 --max-pr-charge 5 \
+  --min-fr-mz 150 --max-fr-mz 2000 \
+  --cut K*,R* --missed-cleavages 1 \
+  --reanalyse --rt-profiling
+```
+
+### Two-Step Workflow: Library Prediction
+
+```bash
+diann.exe \
+  --fasta-search \
   --fasta uniprot.fasta \
-  --raw sample1.mzML --raw sample2.mzML \
-  --out report.parquet \
+  --predictor --gen-spec-lib \
+  --out out-lib/report.parquet \
   --threads 32 \
-  --mass-acc 10.0 \
-  --mass-acc-ms1 4.0 \
   --qvalue 0.01 \
-  --var-mod "35,15.994915,M"
+  --met-excision --unimod4 \
+  --var-mods 1 --var-mod UniMod:35,15.994915,M \
+  --min-pep-len 7 --max-pep-len 30 \
+  --min-pr-mz 380 --max-pr-mz 980 \
+  --min-pr-charge 1 --max-pr-charge 5 \
+  --min-fr-mz 150 --max-fr-mz 2000 \
+  --cut K*,R* --missed-cleavages 1 \
+  --temp temp-lib
+```
+
+### Two-Step Workflow: Quantification
+
+```bash
+diann.exe \
+  --lib out-lib/report-lib.predicted.speclib \
+  --fasta uniprot.fasta --reannotate \
+  --f sample1.mzML --f sample2.mzML \
+  --out out-quant/report.parquet \
+  --gen-spec-lib \
+  --threads 32 \
+  --qvalue 0.01 --matrices \
+  --met-excision --unimod4 \
+  --var-mods 1 --var-mod UniMod:35,15.994915,M \
+  --min-pep-len 7 --max-pep-len 30 \
+  --min-pr-mz 380 --max-pr-mz 980 \
+  --min-pr-charge 1 --max-pr-charge 5 \
+  --min-fr-mz 150 --max-fr-mz 2000 \
+  --cut K*,R* --missed-cleavages 1 \
+  --relaxed-prot-inf --reanalyse --rt-profiling \
+  --temp temp-quant
 ```
 
 ### Phosphoproteomics (timsTOF)
@@ -612,34 +717,6 @@ diann.exe \
   --qvalue 0.01 \
   --var-mod "21,79.966331,STY" \
   --site-ms1-quant
-```
-
-### Library Refinement (Step B)
-
-```bash
-diann.exe \
-  --lib predicted.speclib \
-  --fasta uniprot.fasta \
-  --raw subset1.mzML --raw subset2.mzML \
-  --out reportB.parquet \
-  --reanalyse \
-  --threads 32 \
-  --mass-acc 15.0 \
-  --mass-acc-ms1 15.0
-```
-
-### Final Quantification with Quant Reuse (Step C)
-
-```bash
-diann.exe \
-  --lib refined.speclib \
-  --fasta uniprot.fasta \
-  --raw sample1.mzML --raw sample2.mzML \
-  --out reportC.parquet \
-  --reuse-quant \
-  --threads 32 \
-  --mass-acc 15.0 \
-  --mass-acc-ms1 15.0
 ```
 
 ---
@@ -663,6 +740,6 @@ diann.exe \
 
 ---
 
-**Document Version**: 1.0
-**Compiled from**: DIA-NN GitHub repository (as of 2025-01-18)
+**Document Version**: 1.1
+**Compiled from**: DIA-NN GitHub repository and DIA-NN 2.3.2 GUI (as of 2026-02-06)
 **Maintainer**: Update regularly by checking GitHub for new parameters and issues

@@ -36,21 +36,23 @@
     </parameter>
 
     <!-- 02: Workflow Control -->
-    <!-- <parameter>
+    <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Enable Step C (final quantification refinement) after Step B. When false: uses Step B outputs directly (~50% faster). When true: runs Step C for additional refinement. Note: Step C only benefits workflows with different files in B vs C.</description>
+        <description>Workflow mode. two_step: separate library prediction (Step A) then quantification (Step B) — standard mode. single_step: combined library prediction + quantification in one DIA-NN invocation — faster for small-to-medium datasets.</description>
         <context>APPLICATION</context>
+        <enumeration>two_step</enumeration>
+        <enumeration>single_step</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>02_workflow_enable_step_c</key>
-        <label>Enable Step C</label>
+        <key>02_workflow_mode</key>
+        <label>Workflow Mode</label>
         <modifiable>true</modifiable>
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
-        <type>BOOLEAN</type>
-        <value>false</value>
-    </parameter> -->
+        <type>STRING</type>
+        <value>two_step</value>
+    </parameter>
 
     <!-- 03: FASTA Configuration -->
     <parameter classname="parameter" id="171593">
@@ -386,7 +388,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>2</value>
+        <value>1</value>
     </parameter>
 
     <parameter>
@@ -396,6 +398,7 @@
         <context>APPLICATION</context>
         <enumeration>3</enumeration>
         <enumeration>4</enumeration>
+        <enumeration>5</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>07_diann_peptide_precursor_charge_max</key>
@@ -404,7 +407,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>3</value>
+        <value>4</value>
     </parameter>
 
     <parameter>
@@ -528,7 +531,7 @@
         <enumeration>10</enumeration>
         <enumeration>15</enumeration>
         <enumeration>20</enumeration>
-        <enumeration>None</enumeration>
+        <enumeration>auto</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>09_diann_mass_acc_ms2</key>
@@ -537,7 +540,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>None</value>
+        <value>auto</value>
     </parameter>
 
     <parameter>
@@ -548,7 +551,7 @@
         <enumeration>10</enumeration>
         <enumeration>15</enumeration>
         <enumeration>20</enumeration>
-        <enumeration>None</enumeration>
+        <enumeration>auto</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>09_diann_mass_acc_ms1</key>
@@ -557,7 +560,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>None</value>
+        <value>auto</value>
     </parameter>
 
     <!-- 10: Scoring and FDR -->
