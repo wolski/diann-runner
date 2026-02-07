@@ -489,19 +489,7 @@ class TestDiannWorkflow(unittest.TestCase):
 
     def test_scan_window_parameter(self):
         """Test that scan_window parameter is correctly added to script."""
-        # Case 1: scan_window = 0 (default/auto) -> should NOT be in script
-        workflow_auto = DiannWorkflow(
-            workunit_id='TEST_SW_0',
-            scan_window=0
-        )
-        script_auto = workflow_auto.generate_step_b_quantification_with_refinement(
-            raw_files=self.raw_files,
-            script_name='test_sw_0.sh'
-        )
-        content_auto = self.read_script(script_auto)
-        self.assertNotIn('--scan-window', content_auto)
-
-        # Case 2: scan_window = 'AUTO' (explicit auto) -> should NOT be in script
+        # Case 1: scan_window = 'AUTO' (default) -> should NOT be in script
         workflow_explicit_auto = DiannWorkflow(
             workunit_id='TEST_SW_AUTO',
             scan_window='AUTO'

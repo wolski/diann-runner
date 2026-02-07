@@ -217,11 +217,11 @@ def parse_flat_params(flat_params):
     diann['cut'] = flat_params['08_diann_digestion_cut']
     diann['missed_cleavages'] = int(flat_params['08_diann_digestion_missed_cleavages'])
 
-    # Parse mass accuracy (0 = auto-determine)
+    # Parse mass accuracy (AUTO = omit flag, let DIA-NN auto-determine)
     mass_acc_ms2_str = flat_params['09_diann_mass_acc_ms2']
-    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'AUTO' else 0
+    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'AUTO' else 'AUTO'
     mass_acc_ms1_str = flat_params['09_diann_mass_acc_ms1']
-    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'AUTO' else 0
+    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'AUTO' else 'AUTO'
 
     # Parse scoring
     diann['qvalue'] = float(flat_params['10_diann_scoring_qvalue'])

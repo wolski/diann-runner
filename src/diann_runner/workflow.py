@@ -83,9 +83,9 @@ class DiannWorkflow:
         max_fr_mz: int = 1800,
         missed_cleavages: int = 1,
         cut: str = 'K*,R*',
-        mass_acc: int = 0,
-        mass_acc_ms1: int = 0,
-        scan_window: int | str = 0,
+        mass_acc: int | str = 'AUTO',
+        mass_acc_ms1: int | str = 'AUTO',
+        scan_window: int | str = 'AUTO',
         verbose: int = 1,
         pg_level: int = 0,
         is_dda: bool = False,
@@ -119,9 +119,9 @@ class DiannWorkflow:
             max_fr_mz: Maximum fragment m/z
             missed_cleavages: Maximum number of missed cleavages
             cut: Protease specificity (e.g., 'K*,R*' for trypsin)
-            mass_acc: MS2 mass accuracy (ppm)
-            mass_acc_ms1: MS1 mass accuracy (ppm)
-            scan_window: Scan window radius (0 = auto)
+            mass_acc: MS2 mass accuracy in ppm ('AUTO' = omit flag, let DIA-NN auto-determine)
+            mass_acc_ms1: MS1 mass accuracy in ppm ('AUTO' = omit flag, let DIA-NN auto-determine)
+            scan_window: Scan window radius ('AUTO' = omit flag, let DIA-NN auto-determine)
             verbose: Verbosity level
             pg_level: Protein grouping level (0 = genes, 1 = protein names, 2 = protein IDs)
             is_dda: True for DDA data, False for DIA data
@@ -273,10 +273,12 @@ class DiannWorkflow:
         params.append(f"--min-fr-mz {self.min_fr_mz}")
         params.append(f"--max-fr-mz {self.max_fr_mz}")
         params.append(f"--missed-cleavages {self.missed_cleavages}")
-        params.append(f"--mass-acc {self.mass_acc}")
-        params.append(f"--mass-acc-ms1 {self.mass_acc_ms1}")
+        if self.mass_acc != 'AUTO':
+            params.append(f"--mass-acc {self.mass_acc}")
+        if self.mass_acc_ms1 != 'AUTO':
+            params.append(f"--mass-acc-ms1 {self.mass_acc_ms1}")
         
-        if self.scan_window != 0 and self.scan_window != 'AUTO':
+        if self.scan_window != 'AUTO':
             params.append(f"--scan-window {self.scan_window}")
 
         params.append(f"--verbose {self.verbose}")
