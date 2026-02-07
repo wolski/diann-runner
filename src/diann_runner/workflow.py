@@ -463,8 +463,7 @@ class DiannWorkflow:
 
         script_name = script_name or default_script
         output_file = f"{output_dir}/{self.workunit_id}_report.parquet"
-        # DIA-NN auto-generates library with .speclib extension from --out basename
-        output_lib = f"{output_dir}/{self.workunit_id}_report.speclib"
+        output_lib = f"{output_dir}/{self.workunit_id}_report-lib.parquet"
         log_file = f"{output_dir}/diann_quant{step_name}.log.txt"
 
         # Build command (same for both steps!)
@@ -514,9 +513,10 @@ class DiannWorkflow:
         if use_quant:
             cmd.append("--use-quant")
 
-        # Optional: generate library (DIA-NN auto-generates filename from --out prefix)
+        # Optional: generate library with explicit output path
         if generate_library:
             cmd.append("--gen-spec-lib")
+            cmd.append(f'--out-lib "{output_lib}"')
 
         # DDA mode if specified
         if self.is_dda:
@@ -612,7 +612,7 @@ class DiannWorkflow:
         output_dir = self.quant_b_dir
         temp_dir = f"{self.temp_dir_base}_quantB"
         output_file = f"{output_dir}/{self.workunit_id}_report.parquet"
-        output_lib = f"{output_dir}/{self.workunit_id}_report.speclib"
+        output_lib = f"{output_dir}/{self.workunit_id}_report-lib.parquet"
         log_file = f"{output_dir}/diann_quantB.log.txt"
 
         # Build command

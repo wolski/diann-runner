@@ -120,6 +120,8 @@ class TestDiannWorkflow(unittest.TestCase):
         # Check Step B specific flags
         self.assertIn('--reanalyse', content)
         self.assertIn('--gen-spec-lib', content)
+        self.assertIn('--out-lib', content)
+        self.assertIn('_report-lib.parquet', content)
         self.assertIn('--matrices', content)  # Because quantify=True
         self.assertIn('--pg-level', content)   # Because quantify=True
         
@@ -168,6 +170,8 @@ class TestDiannWorkflow(unittest.TestCase):
         self.assertIn('--reanalyse', content)
         self.assertIn('--pg-level', content)
         self.assertIn('--gen-spec-lib', content)  # Step C generates library by default (save_library=True)
+        self.assertIn('--out-lib', content)
+        self.assertIn('_report-lib.parquet', content)
 
         # Should NOT have these
         self.assertNotIn('--fasta-search', content)
@@ -448,6 +452,7 @@ class TestDiannWorkflow(unittest.TestCase):
         self.assertIn('--fasta-search', content)
         self.assertIn('--predictor', content)
         self.assertIn('--out-lib', content)
+        self.assertIn('_report-lib.parquet', content)  # DIA-NN 2.3.2 uses parquet for libraries
         self.assertIn('--gen-spec-lib', content)
         self.assertIn('--matrices', content)
         self.assertIn('--rt-profiling', content)

@@ -27,7 +27,7 @@ from diann_runner.snakemake_helpers import (
 )
 
 # Local rules that don't need cluster execution
-localrules: all, print_config_dict, diann_generate_scripts, diann_generate_single_step_script, outputsyml, run_prozor_inference
+localrules: all, print_config_dict, outputsyml, run_prozor_inference
 
 # Detect input files using helper function
 RAW_DIR = Path("input/raw")
@@ -186,6 +186,8 @@ if WORKFLOW_MODE == "single_step":
             {params.copy_fasta_cmd}
             """
 
+    localrules: diann_generate_single_step_script
+
 else:
 
     rule diann_generate_scripts:
@@ -228,6 +230,8 @@ else:
             )
 
             print(f"Generated scripts: {scripts}")
+
+    localrules: diann_generate_scripts
 
     # ============================================================================
     # DIA-NN 3-stage execution
