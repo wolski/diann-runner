@@ -217,11 +217,11 @@ def parse_flat_params(flat_params):
     diann['cut'] = flat_params['08_diann_digestion_cut']
     diann['missed_cleavages'] = int(flat_params['08_diann_digestion_missed_cleavages'])
 
-    # Parse mass accuracy
+    # Parse mass accuracy (0 = auto-determine)
     mass_acc_ms2_str = flat_params['09_diann_mass_acc_ms2']
-    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'auto' else 0
+    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'AUTO' else 0
     mass_acc_ms1_str = flat_params['09_diann_mass_acc_ms1']
-    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'auto' else 0
+    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'AUTO' else 0
 
     # Parse scoring
     diann['qvalue'] = float(flat_params['10_diann_scoring_qvalue'])
@@ -266,7 +266,6 @@ def parse_flat_params(flat_params):
     # Parse conversion/runtime parameters
     # raw_converter: thermoraw (default), msconvert, msconvert-demultiplex
     raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
-    diann_binary = flat_params.get('98_diann_binary', 'diann-docker')
 
     return {
         'diann': diann,
@@ -276,7 +275,6 @@ def parse_flat_params(flat_params):
         'enable_step_c': enable_step_c,
         'workflow_mode': workflow_mode,
         'raw_converter': raw_converter,
-        'diann_binary': diann_binary,
     }
 
 

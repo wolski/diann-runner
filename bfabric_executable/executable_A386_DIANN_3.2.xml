@@ -531,7 +531,7 @@
         <enumeration>10</enumeration>
         <enumeration>15</enumeration>
         <enumeration>20</enumeration>
-        <enumeration>auto</enumeration>
+        <enumeration>AUTO</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>09_diann_mass_acc_ms2</key>
@@ -540,7 +540,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>auto</value>
+        <value>AUTO</value>
     </parameter>
 
     <parameter>
@@ -551,7 +551,7 @@
         <enumeration>10</enumeration>
         <enumeration>15</enumeration>
         <enumeration>20</enumeration>
-        <enumeration>auto</enumeration>
+        <enumeration>AUTO</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>09_diann_mass_acc_ms1</key>
@@ -560,7 +560,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>auto</value>
+        <value>AUTO</value>
     </parameter>
 
     <!-- 10: Scoring and FDR -->

@@ -252,6 +252,26 @@ converter = WORKFLOW_PARAMS.get("raw_converter", "thermoraw")
 converter = WORKFLOW_PARAMS["raw_converter"]
 ```
 
+### XML Executable Is the Source of Truth
+
+**The Bfabric XML executable defines the UI and is the single source of truth for parameter values, enumerations, and sentinel strings.** Changes always flow in this direction:
+
+```
+XML executable (source of truth)
+  → Bfabric GUI → params.yml
+  → parse_flat_params() in snakemake_helpers.py
+  → DiannWorkflow
+  → tests
+```
+
+When adding or changing a parameter:
+1. Define it in the XML executable first (enumerations, default value, type)
+2. Add parsing in `parse_flat_params()`
+3. Wire it through `create_diann_workflow()` if needed
+4. Update tests to match the XML values **exactly** (e.g., `AUTO` not `auto`)
+
+Sentinel values must be consistent: use `AUTO` (uppercase) for "auto-determine" parameters, matching the XML. Tests must use the same strings the XML defines — tests reflect the UI, not the other way around.
+
 ### Flexible File Lists Between Stages
 
 A key design feature is that Step B and Step C can use different file lists:
