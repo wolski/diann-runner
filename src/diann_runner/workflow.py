@@ -300,6 +300,9 @@ class DiannWorkflow:
         # RT profiling (always enabled)
         params.append("--rt-profiling")
 
+        # Use protein IDs as gene names when FASTA lacks GN= annotations
+        params.append("--ids-to-names")
+
         return params
     
     def _write_shell_script(
