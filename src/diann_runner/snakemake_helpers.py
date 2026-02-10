@@ -10,19 +10,27 @@ import pandas as pd
 import yaml
 
 
-def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str) -> None:
+def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str, libs_zip: str | None = None) -> None:
     """Write outputs.yml for bfabric-app-runner staging."""
-    output1 = {
-        "local_path": str(Path(diann_zip).resolve()),
-        "store_entry_path": diann_zip,
-        "type": "bfabric_copy_resource"
-    }
-    output2 = {
-        "local_path": str(Path(qc_zip).resolve()),
-        "store_entry_path": qc_zip,
-        "type": "bfabric_copy_resource"
-    }
-    data = {"outputs": [output1, output2]}
+    outputs = [
+        {
+            "local_path": str(Path(diann_zip).resolve()),
+            "store_entry_path": diann_zip,
+            "type": "bfabric_copy_resource",
+        },
+        {
+            "local_path": str(Path(qc_zip).resolve()),
+            "store_entry_path": qc_zip,
+            "type": "bfabric_copy_resource",
+        },
+    ]
+    if libs_zip:
+        outputs.append({
+            "local_path": str(Path(libs_zip).resolve()),
+            "store_entry_path": libs_zip,
+            "type": "bfabric_copy_resource",
+        })
+    data = {"outputs": outputs}
     with open(output_file, "w") as f:
         yaml.dump(data, f, default_flow_style=False)
     print(f"YAML file {output_file} has been generated.")
@@ -267,6 +275,9 @@ def parse_flat_params(flat_params):
     # raw_converter: thermoraw (default), msconvert, msconvert-demultiplex
     raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
 
+    # Parse output options
+    include_libs = flat_params.get('14_include_libs', 'false').lower() == 'true'
+
     return {
         'diann': diann,
         'fasta': fasta,
@@ -275,6 +286,7 @@ def parse_flat_params(flat_params):
         'enable_step_c': enable_step_c,
         'workflow_mode': workflow_mode,
         'raw_converter': raw_converter,
+        'include_libs': include_libs,
     }
 
 
@@ -423,15 +435,38 @@ def zip_diann_results(output_dir: str, zip_path: str) -> None:
         raise FileNotFoundError(f"Output directory {output_dir} does not exist")
 
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
-        # Add all files from the output directory
+        # Add all files from the output directory, excluding library files
         for file_path in output_path.rglob('*'):
-            if file_path.is_file():
+            if file_path.is_file() and 'report-lib.' not in file_path.name:
                 # Store with relative path from output directory
                 arcname = file_path.relative_to(output_path.parent)
                 zipf.write(file_path, arcname)
                 print(f"  adding: {arcname}")
 
     print(f"Created {zip_path} with results from {output_dir}")
+
+
+def zip_library_files(output_prefix: str, zip_path: str) -> None:
+    """Zip all spectral library files (report-lib.*) from all output directories.
+
+    Args:
+        output_prefix: Output directory prefix (e.g., "out-DIANN")
+        zip_path: Path to output zip file
+    """
+    import zipfile
+
+    base = Path(output_prefix).parent or Path(".")
+    prefix_name = Path(output_prefix).name
+
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
+        for out_dir in sorted(base.glob(f"{prefix_name}_*")):
+            for lib_file in out_dir.glob("*report-lib.*"):
+                if lib_file.is_file():
+                    arcname = lib_file.relative_to(base)
+                    zipf.write(lib_file, arcname)
+                    print(f"  adding lib: {arcname}")
+
+    print(f"Created {zip_path} with library files from {output_prefix}_* directories")
 
 
 def copy_fasta_if_missing(output_dir: str, fasta_path: str) -> str:

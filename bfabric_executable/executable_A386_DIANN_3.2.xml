@@ -652,6 +652,23 @@
         <value>false</value>
     </parameter>
 
+    <!-- 14: Output Options -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Include spectral library files (predicted and refined) as a separate zip in staged output. Libraries are large files; enable only if needed for downstream reuse.</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>14_include_libs</key>
+        <label>Include Spectral Libraries</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
     <!-- 99: Other Settings -->
     <parameter>
         <deletable>false</deletable>

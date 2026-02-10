@@ -19,6 +19,7 @@ from diann_runner.snakemake_helpers import (
     detect_input_files,
     convert_parquet_to_tsv,
     zip_diann_results,
+    zip_library_files,
     load_config,
     load_deploy_config,
     write_outputs_yml,
@@ -61,6 +62,7 @@ fasta_config["database_path"] = str(resolve_fasta_path(fasta_config["database_pa
 FASTA_PATHS = get_fasta_paths(fasta_config)
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 WORKFLOW_MODE = WORKFLOW_PARAMS.get("workflow_mode", "two_step")
+INCLUDE_LIBS = WORKFLOW_PARAMS.get("include_libs", False)
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
 def final_quant_outputs(wildcards):
@@ -377,6 +379,18 @@ rule zip_diann_result:
             zip_path=output.zip
         )
 
+if INCLUDE_LIBS:
+    rule zip_diann_libs:
+        """Zip spectral library files from all output directories."""
+        input:
+            diann_zip = rules.zip_diann_result.output.zip
+        output:
+            zip = f"DIANN_Libs_WU{WORKUNITID}.zip"
+        log:
+            logfile = "logs/zip_diann_libs.log"
+        run:
+            zip_library_files(OUTPUT_PREFIX, output.zip)
+
 rule dataset_csv:
     input:
         parquet="input/raw/dataset.parquet",
@@ -413,13 +427,15 @@ rule prolfqua_qc:
 rule outputsyml:
     input:
         qc = rules.prolfqua_qc.output.zip,
-        diann = rules.zip_diann_result.output.zip
+        diann = rules.zip_diann_result.output.zip,
+        libs = f"DIANN_Libs_WU{WORKUNITID}.zip" if INCLUDE_LIBS else []
     output:
         yaml = "outputs.yml"
     log:
         logfile = "logs/outputsyml.log"
     run:
-        write_outputs_yml(output.yaml, input.diann, input.qc)
+        libs_zip = input.libs if INCLUDE_LIBS else None
+        write_outputs_yml(output.yaml, input.diann, input.qc, libs_zip=libs_zip)
 
 rule stageoutput:
     input:
