@@ -107,7 +107,9 @@ rule convert_d_zip:
         unzip -o {input.file:q}
         echo "Converting {wildcards.sample}.d -> {output.mzml:q} using msconvert"
         docker run --rm -v "$PWD":/data {params.msconvert_docker} \
-            wine msconvert /data/{wildcards.sample}.d {params.msconvert_options} -o /data
+            wine msconvert /data/{wildcards.sample}.d {params.msconvert_options} -o /data \
+            || true
+        tail -1 {output.mzml:q} | grep -q '</indexedmzML>'
         """
 
 rule convert_raw:
