@@ -86,30 +86,21 @@ rule all:
 # ============================================================================
 
 rule convert_d_zip:
-    """Extract .d.zip to .d folder, then convert to mzML using msconvert.
+    """Extract .d.zip to .d folder for direct use by DIA-NN.
 
-    Note: thermoraw option is ignored for Bruker .d files (Thermo-only).
-    Both 'thermoraw' and 'msconvert' use standard msconvert options.
+    DIA-NN natively supports Bruker .d input — no mzML conversion needed.
     """
     input:
         file = RAW_DIR / "{sample}.d.zip"
     output:
-        mzml = RAW_DIR / "{sample}.mzML"
+        folder = directory(RAW_DIR / "{sample}.d")
     log:
         logfile = "logs/convert_d_zip_{sample}.log"
-    params:
-        msconvert_docker = deploy_dict["msconvert_docker"],
-        msconvert_options = get_msconvert_options(WORKFLOW_PARAMS["raw_converter"])
     retries: 3
     shell:
         """
         echo "Extracting {input.file:q}"
         unzip -o {input.file:q}
-        echo "Converting {wildcards.sample}.d -> {output.mzml:q} using msconvert"
-        docker run --rm -v "$PWD":/data {params.msconvert_docker} \
-            wine msconvert /data/{wildcards.sample}.d {params.msconvert_options} -o /data \
-            || true
-        tail -1 {output.mzml:q} | grep -q '</indexedmzML>'
         """
 
 rule convert_raw:
@@ -134,7 +125,8 @@ rule convert_raw:
 
 def get_converted_file(sample: str):
     """Returns the formatted output file path for a given sample."""
-    # All input types now convert to mzML
+    if INPUT_TYPE == "d.zip":
+        return RAW_DIR / f"{sample}.d"
     return RAW_DIR / f"{sample}.mzML"
 
 # ============================================================================
