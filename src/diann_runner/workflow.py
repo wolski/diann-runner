@@ -132,7 +132,7 @@ class DiannWorkflow:
             no_peptidoforms: Disable peptidoform scoring (faster but no modification localization)
             relaxed_prot_inf: Enable relaxed protein inference (group by gene, not protein)
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
-            no_norm: Disable RT-dependent normalization
+            no_norm: Disable cross-run normalization
             ids_to_names: Use protein IDs as gene names (for FASTA without GN= annotations)
         """
         # Core identifiers
