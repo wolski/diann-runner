@@ -436,7 +436,7 @@ def zip_diann_results(output_dir: str, zip_path: str) -> None:
     if not output_path.exists():
         raise FileNotFoundError(f"Output directory {output_dir} does not exist")
 
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=3) as zipf:
         # Add all files from the output directory, excluding library files
         for file_path in output_path.rglob('*'):
             if file_path.is_file() and 'report-lib.' not in file_path.name:
@@ -460,7 +460,7 @@ def zip_library_files(output_prefix: str, zip_path: str) -> None:
     base = Path(output_prefix).parent or Path(".")
     prefix_name = Path(output_prefix).name
 
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=3) as zipf:
         for out_dir in sorted(base.glob(f"{prefix_name}_*")):
             for lib_file in out_dir.glob("*report-lib.*"):
                 if lib_file.is_file():
