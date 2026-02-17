@@ -238,6 +238,7 @@ def parse_flat_params(flat_params):
     pg_level_str = flat_params['11a_diann_protein_pg_level']
     diann['pg_level'] = int(pg_level_str.split("_")[-1])
     diann['relaxed_prot_inf'] = flat_params['11b_diann_protein_relaxed_prot_inf'].lower() == 'true'
+    diann['ids_to_names'] = flat_params.get('11c_diann_protein_ids_to_names', 'false').lower() == 'true'
 
     # Parse quantification & normalization
     diann['reanalyse'] = flat_params['12a_diann_quantification_reanalyse'].lower() == 'true'
@@ -351,6 +352,7 @@ def create_diann_workflow(
         relaxed_prot_inf=diann_params["relaxed_prot_inf"],
         reanalyse=diann_params["reanalyse"],
         no_norm=diann_params["no_norm"],
+        ids_to_names=diann_params["ids_to_names"],
     )
 
 

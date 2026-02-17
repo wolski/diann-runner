@@ -95,7 +95,8 @@ class DiannWorkflow:
         no_peptidoforms: bool = False,
         relaxed_prot_inf: bool = False,
         reanalyse: bool = True,
-        no_norm: bool = False
+        no_norm: bool = False,
+        ids_to_names: bool = False
     ):
         """
         Initialize DIA-NN workflow with shared parameters across all steps.
@@ -132,6 +133,7 @@ class DiannWorkflow:
             relaxed_prot_inf: Enable relaxed protein inference (group by gene, not protein)
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
             no_norm: Disable RT-dependent normalization
+            ids_to_names: Use protein IDs as gene names (for FASTA without GN= annotations)
         """
         # Core identifiers
         self.workunit_id = workunit_id
@@ -169,6 +171,7 @@ class DiannWorkflow:
         self.relaxed_prot_inf = relaxed_prot_inf
         self.reanalyse = reanalyse
         self.no_norm = no_norm
+        self.ids_to_names = ids_to_names
 
         # Derived paths
         self.lib_dir = f"{output_base_dir}_libA"
@@ -214,6 +217,7 @@ class DiannWorkflow:
             'relaxed_prot_inf': self.relaxed_prot_inf,
             'reanalyse': self.reanalyse,
             'no_norm': self.no_norm,
+            'ids_to_names': self.ids_to_names,
         }
     
     def save_config(self, output_path: str) -> str:
@@ -303,7 +307,8 @@ class DiannWorkflow:
         params.append("--rt-profiling")
 
         # Use protein IDs as gene names when FASTA lacks GN= annotations
-        params.append("--ids-to-names")
+        if self.ids_to_names:
+            params.append("--ids-to-names")
 
         return params
     

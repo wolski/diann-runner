@@ -600,7 +600,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>protein_names_1</value>
+        <value>protein_IDs_2</value>
     </parameter>
 
     <parameter>
@@ -617,6 +617,22 @@
         <required>true</required>
         <type>BOOLEAN</type>
         <value>true</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Use protein IDs as gene names when FASTA lacks GN= annotations. Useful for non-model organisms or custom databases without gene name fields. DIA-NN command: --ids-to-names</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>11c_diann_protein_ids_to_names</key>
+        <label>IDs to Names</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
     </parameter>
 
     <!-- 12: Quantification & Normalization -->

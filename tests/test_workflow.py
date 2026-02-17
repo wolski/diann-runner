@@ -352,6 +352,8 @@ class TestDiannWorkflow(unittest.TestCase):
             content = self.read_script(script)
             for flag in common_flags:
                 self.assertIn(flag, content)
+            # --ids-to-names should NOT appear by default
+            self.assertNotIn('--ids-to-names', content)
     
     def test_output_directories_created(self):
         """Test that output directory declarations are in scripts."""
@@ -512,6 +514,22 @@ class TestDiannWorkflow(unittest.TestCase):
         )
         content_set = self.read_script(script_set)
         self.assertIn('--scan-window 8', content_set)
+
+    def test_ids_to_names_parameter(self):
+        """Test that --ids-to-names flag is added only when enabled."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_IDS',
+            ids_to_names=True
+        )
+
+        script = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files,
+            script_name='test_ids_to_names.sh'
+        )
+
+        content = self.read_script(script)
+        self.assertIn('--ids-to-names', content)
+
 
 class TestEdgeCases(unittest.TestCase):
     """Test edge cases and error conditions."""
