@@ -100,7 +100,7 @@ rule convert_d_zip:
     shell:
         """
         echo "Extracting {input.file:q}"
-        unzip -o {input.file:q}
+        unzip -o {input.file:q} -d input/raw
         """
 
 rule convert_raw:
