@@ -421,21 +421,22 @@ def convert_parquet_to_tsv(parquet_path: str, tsv_path: str, is_dda: bool = Fals
     print(f"Converted {parquet_path} -> {tsv_path}")
 
 
-def zip_diann_results(output_dir: str, zip_path: str) -> None:
+def zip_diann_results(output_dir: str, zip_path: str, extra_files: list[str | Path] | None = None) -> None:
     """
     Zip DIA-NN results directory.
 
     Args:
         output_dir: Output directory to zip (e.g., "out-DIANN_quantB")
         zip_path: Path to output zip file
+        extra_files: Additional files to include at the archive root
     """
     import zipfile
-    from pathlib import Path
 
     output_path = Path(output_dir)
     if not output_path.exists():
         raise FileNotFoundError(f"Output directory {output_dir} does not exist")
 
+    written_arcnames = set()
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=3) as zipf:
         # Add all files from the output directory, excluding library files
         for file_path in output_path.rglob('*'):
@@ -443,6 +444,17 @@ def zip_diann_results(output_dir: str, zip_path: str) -> None:
                 # Store with relative path from output directory
                 arcname = file_path.relative_to(output_path.parent)
                 zipf.write(file_path, arcname)
+                written_arcnames.add(str(arcname))
+                print(f"  adding: {arcname}")
+
+        for extra_file in extra_files or []:
+            extra_path = Path(extra_file)
+            if not extra_path.is_file():
+                raise FileNotFoundError(f"Extra file {extra_file} does not exist")
+            arcname = extra_path.name
+            if arcname not in written_arcnames:
+                zipf.write(extra_path, arcname)
+                written_arcnames.add(arcname)
                 print(f"  adding: {arcname}")
 
     print(f"Created {zip_path} with results from {output_dir}")

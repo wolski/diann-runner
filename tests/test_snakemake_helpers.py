@@ -1,8 +1,32 @@
 
+import tempfile
 import unittest
-from diann_runner.snakemake_helpers import parse_flat_params
+import zipfile
+from pathlib import Path
+
+from diann_runner.snakemake_helpers import parse_flat_params, zip_diann_results
 
 class TestSnakemakeHelpers(unittest.TestCase):
+    def test_zip_diann_results_includes_extra_files_at_archive_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            output_dir = tmp_path / "out-DIANN_quantC"
+            output_dir.mkdir()
+            (output_dir / "report.tsv").write_text("protein\tquantity\n", encoding="utf-8")
+            (output_dir / "report-lib.parquet").write_text("library", encoding="utf-8")
+            dataset_csv = tmp_path / "dataset.csv"
+            dataset_csv.write_text("sample,condition\nsample1,A\n", encoding="utf-8")
+
+            zip_path = tmp_path / "DIANN_Result_WUTEST.zip"
+            zip_diann_results(str(output_dir), str(zip_path), extra_files=[dataset_csv])
+
+            with zipfile.ZipFile(zip_path) as zip_file:
+                names = set(zip_file.namelist())
+
+            self.assertIn("out-DIANN_quantC/report.tsv", names)
+            self.assertIn("dataset.csv", names)
+            self.assertNotIn("out-DIANN_quantC/report-lib.parquet", names)
+
     def test_parse_scan_window_auto(self):
         flat_params = {
             '06a_diann_mods_variable': 'None',

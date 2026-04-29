@@ -360,7 +360,8 @@ rule diannqc:
 rule zip_diann_result:
     input:
         pdf = rules.diannqc.output.pdf,
-        prozor = rules.run_prozor_inference.output.prozor_parquet
+        prozor = rules.run_prozor_inference.output.prozor_parquet,
+        dataset = "dataset.csv"
     output:
         zip = f"DIANN_Result_WU{WORKUNITID}.zip"
     log:
@@ -370,7 +371,8 @@ rule zip_diann_result:
     run:
         zip_diann_results(
             output_dir=params.output_dir,
-            zip_path=output.zip
+            zip_path=output.zip,
+            extra_files=[input.dataset]
         )
 
 if INCLUDE_LIBS:
@@ -415,6 +417,7 @@ rule prolfqua_qc:
             --dataset {input.dataset:q} \
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \
             --outdir qc_result | tee {output.runlog:q}
+        cp {input.dataset:q} qc_result/dataset.csv
         zip -r {output.zip:q} qc_result
         """
 
