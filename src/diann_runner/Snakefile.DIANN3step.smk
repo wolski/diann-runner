@@ -4,6 +4,7 @@
 #   snakemake -s Snakefile.DIANN3step --cores 64 -n  # dry run
 
 import sys
+import shutil
 from pathlib import Path
 
 import pandas as pd
@@ -369,10 +370,10 @@ rule zip_diann_result:
     params:
         output_dir = lambda wildcards, input: str(Path(input.pdf).parent)
     run:
+        shutil.copy2(input.dataset, Path(params.output_dir) / Path(input.dataset).name)
         zip_diann_results(
             output_dir=params.output_dir,
-            zip_path=output.zip,
-            extra_files=[input.dataset]
+            zip_path=output.zip
         )
 
 if INCLUDE_LIBS:
