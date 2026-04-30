@@ -623,7 +623,7 @@ def get_msconvert_options(raw_converter: str) -> str:
 
 def run_prozor_inference(
     report_parquet: str,
-    fasta_path: str,
+    fasta_path: str | Path | list[str | Path],
     output_parquet: str,
     log_path: str | None = None,
     min_peptide_length: int = 6,
@@ -632,7 +632,7 @@ def run_prozor_inference(
 
     Args:
         report_parquet: Path to DIA-NN report parquet file
-        fasta_path: Path to FASTA database
+        fasta_path: Path or paths to FASTA database files
         output_parquet: Path for output parquet file
         log_path: Path for log file (default: prozor.log in output directory)
         min_peptide_length: Minimum peptide length to consider
@@ -652,9 +652,14 @@ def run_prozor_inference(
     # Set up file logging
     _setup_file_logging(log_path)
 
+    if isinstance(fasta_path, (str, Path)):
+        fasta_paths = Path(fasta_path)
+    else:
+        fasta_paths = [Path(path) for path in fasta_path]
+
     return _run_prozor(
         report_path=Path(report_parquet),
-        fasta_path=Path(fasta_path),
+        fasta_path=fasta_paths,
         output_path=output_path,
         min_peptide_length=min_peptide_length,
     )

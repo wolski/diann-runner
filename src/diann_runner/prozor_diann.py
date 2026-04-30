@@ -9,6 +9,7 @@ This tool:
 5. Updates protein columns while preserving file structure
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -107,13 +108,38 @@ def _extract_peptides(df: pd.DataFrame, min_length: int) -> list[str]:
     return peptides
 
 
-def _load_fasta(fasta_path: Path) -> dict[str, str]:
-    """Load FASTA and extract protein IDs from headers."""
-    logger.info(f"Reading FASTA from {fasta_path}")
-    raw_proteins = read_fasta(fasta_path)
+def _normalize_fasta_paths(fasta_path: Path | str | Iterable[Path | str]) -> list[Path]:
+    """Normalize one or more FASTA paths to a list."""
+    if isinstance(fasta_path, (str, Path)):
+        return [Path(fasta_path)]
+    return [Path(path) for path in fasta_path]
 
-    proteins = {_extract_protein_id(header): seq for header, seq in raw_proteins.items()}
-    logger.info(f"Proteins in database: {len(proteins)}")
+
+def _format_fasta_paths(fasta_paths: list[Path]) -> str:
+    """Format FASTA paths for logs."""
+    return ", ".join(str(path) for path in fasta_paths)
+
+
+def _load_fasta(fasta_path: Path | str | Iterable[Path | str]) -> dict[str, str]:
+    """Load one or more FASTA files and extract protein IDs from headers."""
+    fasta_paths = _normalize_fasta_paths(fasta_path)
+    proteins: dict[str, str] = {}
+
+    for path in fasta_paths:
+        logger.info(f"Reading FASTA from {path}")
+        raw_proteins = read_fasta(path)
+        extracted = {_extract_protein_id(header): seq for header, seq in raw_proteins.items()}
+
+        duplicate_ids = set(proteins).intersection(extracted)
+        if duplicate_ids:
+            logger.warning(
+                f"{len(duplicate_ids)} protein IDs from {path} already exist; later FASTA entries overwrite earlier ones."
+            )
+
+        proteins.update(extracted)
+        logger.info(f"Proteins in {path}: {len(extracted)}")
+
+    logger.info(f"Proteins in combined database: {len(proteins)}")
     return proteins
 
 
@@ -242,13 +268,19 @@ def _collect_stats(
     )
 
 
-def _log_summary(stats: InferenceStats, report_path: Path, fasta_path: Path, output_path: Path) -> None:
+def _log_summary(
+    stats: InferenceStats,
+    report_path: Path,
+    fasta_path: Path | str | Iterable[Path | str],
+    output_path: Path,
+) -> None:
     """Log inference summary."""
+    fasta_paths = _normalize_fasta_paths(fasta_path)
     logger.info("=" * 60)
     logger.info("PROZOR PROTEIN INFERENCE SUMMARY")
     logger.info("=" * 60)
     logger.info(f"Input report:        {report_path}")
-    logger.info(f"FASTA database:      {fasta_path}")
+    logger.info(f"FASTA database:      {_format_fasta_paths(fasta_paths)}")
     logger.info(f"Output file:         {output_path}")
     logger.info("-" * 60)
     logger.info(f"Total rows:          {stats.total_rows:,}")
@@ -279,7 +311,7 @@ def _log_summary(stats: InferenceStats, report_path: Path, fasta_path: Path, out
 
 def run_prozor_inference(
     report_path: Path,
-    fasta_path: Path,
+    fasta_path: Path | str | Iterable[Path | str],
     output_path: Path,
     min_peptide_length: int = 6,
 ) -> InferenceStats:
@@ -287,7 +319,7 @@ def run_prozor_inference(
 
     Args:
         report_path: Path to DIA-NN report parquet file
-        fasta_path: Path to FASTA database
+        fasta_path: Path or paths to FASTA database files
         output_path: Path for output parquet file
         min_peptide_length: Minimum peptide length to consider
 

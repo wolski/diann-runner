@@ -1,6 +1,7 @@
 """Tests for the prozor protein inference package."""
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from diann_runner.prozor import (
@@ -11,6 +12,7 @@ from diann_runner.prozor import (
     greedy_parsimony,
 )
 from diann_runner.prozor.ahocorasick import Match, create_automaton, get_available_backends
+from diann_runner.prozor_diann import run_prozor_inference
 
 
 class TestAhoCorasick:
@@ -393,6 +395,34 @@ class TestGreedyParsimony:
 
 class TestIntegration:
     """Integration tests for full workflow."""
+
+    def test_run_prozor_reads_multiple_fastas(self, tmp_path):
+        """Peptides from a custom FASTA should be mapped during Prozor inference."""
+        report_path = tmp_path / "report.parquet"
+        output_path = tmp_path / "report_prozor.parquet"
+        main_fasta = tmp_path / "main.fasta"
+        custom_fasta = tmp_path / "order.fasta"
+
+        pd.DataFrame(
+            {
+                "Stripped.Sequence": ["MAINPEP", "CUSTOMPEP"],
+                "Protein.Ids": ["old_main", "old_custom"],
+                "Protein.Group": ["old_main", "old_custom"],
+            }
+        ).to_parquet(report_path)
+        main_fasta.write_text(">main_protein\nXXMAINPEPXX\n", encoding="utf-8")
+        custom_fasta.write_text(">custom_protein\nXXCUSTOMPEPXX\n", encoding="utf-8")
+
+        stats = run_prozor_inference(
+            report_path=report_path,
+            fasta_path=[main_fasta, custom_fasta],
+            output_path=output_path,
+        )
+
+        result = pd.read_parquet(output_path)
+        assert stats.proteins_in_fasta == 2
+        assert set(result["Protein.Ids"]) == {"main_protein", "custom_protein"}
+        assert not result["Protein.Ids"].isna().any()
 
     def test_full_workflow(self):
         """Test complete annotation -> matrix -> inference pipeline."""
