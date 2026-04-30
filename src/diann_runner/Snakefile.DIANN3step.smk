@@ -78,7 +78,6 @@ def final_quant_outputs(wildcards):
 
 rule all:
     input:
-        qc_zip = f"Result_WU{WORKUNITID}.zip",
         diann_zip = f"DIANN_Result_WU{WORKUNITID}.zip",
         outputs_yml = "outputs.yml"
 
@@ -360,7 +359,8 @@ rule zip_diann_result:
     input:
         pdf = rules.diannqc.output.pdf,
         prozor = rules.run_prozor_inference.output.prozor_parquet,
-        dataset = "dataset.csv"
+        dataset = "dataset.csv",
+        qc_dir = "qc_result"
     output:
         zip = f"DIANN_Result_WU{WORKUNITID}.zip"
     log:
@@ -371,7 +371,8 @@ rule zip_diann_result:
         shutil.copy2(input.dataset, Path(params.output_dir) / Path(input.dataset).name)
         zip_diann_results(
             output_dir=params.output_dir,
-            zip_path=output.zip
+            zip_path=output.zip,
+            extra_dirs=[input.qc_dir]
         )
 
 if INCLUDE_LIBS:
@@ -400,7 +401,7 @@ rule prolfqua_qc:
         unpack(final_quant_outputs),
         dataset = rules.dataset_csv.output.csv,
     output:
-        zip = f"Result_WU{WORKUNITID}.zip",
+        qc_dir = directory("qc_result"),
         runlog = "Rqc.1.log"
     log:
         logfile = "logs/prolfqua_qc.log"
@@ -417,12 +418,10 @@ rule prolfqua_qc:
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \
             --outdir qc_result | tee {output.runlog:q}
         cp {input.dataset:q} qc_result/dataset.csv
-        zip -r {output.zip:q} qc_result
         """
 
 rule outputsyml:
     input:
-        qc = rules.prolfqua_qc.output.zip,
         diann = rules.zip_diann_result.output.zip,
         libs = f"DIANN_Libs_WU{WORKUNITID}.zip" if INCLUDE_LIBS else []
     output:
@@ -431,7 +430,7 @@ rule outputsyml:
         logfile = "logs/outputsyml.log"
     run:
         libs_zip = input.libs if INCLUDE_LIBS else None
-        write_outputs_yml(output.yaml, input.diann, input.qc, libs_zip=libs_zip)
+        write_outputs_yml(output.yaml, input.diann, libs_zip=libs_zip)
 
 rule stageoutput:
     input:

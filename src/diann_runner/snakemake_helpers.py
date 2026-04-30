@@ -11,7 +11,12 @@ import pandas as pd
 import yaml
 
 
-def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str, libs_zip: str | None = None) -> None:
+def write_outputs_yml(
+    output_file: str,
+    diann_zip: str,
+    qc_zip: str | None = None,
+    libs_zip: str | None = None,
+) -> None:
     """Write outputs.yml for bfabric-app-runner staging."""
     outputs = [
         {
@@ -19,12 +24,13 @@ def write_outputs_yml(output_file: str, diann_zip: str, qc_zip: str, libs_zip: s
             "store_entry_path": diann_zip,
             "type": "bfabric_copy_resource",
         },
-        {
+    ]
+    if qc_zip:
+        outputs.append({
             "local_path": str(Path(qc_zip).resolve()),
             "store_entry_path": qc_zip,
             "type": "bfabric_copy_resource",
-        },
-    ]
+        })
     if libs_zip:
         outputs.append({
             "local_path": str(Path(libs_zip).resolve()),
@@ -422,7 +428,12 @@ def convert_parquet_to_tsv(parquet_path: str, tsv_path: str, is_dda: bool = Fals
     print(f"Converted {parquet_path} -> {tsv_path}")
 
 
-def zip_diann_results(output_dir: str, zip_path: str, extra_files: list[str | Path] | None = None) -> None:
+def zip_diann_results(
+    output_dir: str,
+    zip_path: str,
+    extra_files: list[str | Path] | None = None,
+    extra_dirs: list[str | Path] | None = None,
+) -> None:
     """
     Zip DIA-NN results directory.
 
@@ -430,6 +441,7 @@ def zip_diann_results(output_dir: str, zip_path: str, extra_files: list[str | Pa
         output_dir: Output directory to zip (e.g., "out-DIANN_quantB")
         zip_path: Path to output zip file
         extra_files: Additional files to include at the archive root
+        extra_dirs: Additional directories to include with their relative paths preserved
     """
     import zipfile
 
@@ -457,6 +469,19 @@ def zip_diann_results(output_dir: str, zip_path: str, extra_files: list[str | Pa
                 zipf.write(extra_path, arcname)
                 written_arcnames.add(arcname)
                 print(f"  adding: {arcname}")
+
+        for extra_dir in extra_dirs or []:
+            extra_path = Path(extra_dir)
+            if not extra_path.is_dir():
+                raise FileNotFoundError(f"Extra directory {extra_dir} does not exist")
+            for file_path in extra_path.rglob("*"):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(extra_path.parent)
+                    arcname_str = str(arcname)
+                    if arcname_str not in written_arcnames:
+                        zipf.write(file_path, arcname)
+                        written_arcnames.add(arcname_str)
+                        print(f"  adding: {arcname}")
 
     print(f"Created {zip_path} with results from {output_dir}")
 

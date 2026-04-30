@@ -5,7 +5,12 @@ import zipfile
 import os
 from pathlib import Path
 
-from diann_runner.snakemake_helpers import get_fasta_paths, parse_flat_params, zip_diann_results
+from diann_runner.snakemake_helpers import (
+    get_fasta_paths,
+    parse_flat_params,
+    write_outputs_yml,
+    zip_diann_results,
+)
 
 class TestSnakemakeHelpers(unittest.TestCase):
     def test_zip_diann_results_includes_extra_files_at_archive_root(self):
@@ -27,6 +32,38 @@ class TestSnakemakeHelpers(unittest.TestCase):
             self.assertIn("out-DIANN_quantC/report.tsv", names)
             self.assertIn("dataset.csv", names)
             self.assertNotIn("out-DIANN_quantC/report-lib.parquet", names)
+
+    def test_zip_diann_results_includes_extra_directories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            output_dir = tmp_path / "out-DIANN_quantC"
+            output_dir.mkdir()
+            (output_dir / "WU1_report.tsv").write_text("protein\tquantity\n", encoding="utf-8")
+            qc_dir = tmp_path / "qc_result"
+            qc_dir.mkdir()
+            (qc_dir / "dataset.csv").write_text("sample,condition\nsample1,A\n", encoding="utf-8")
+
+            zip_path = tmp_path / "DIANN_Result_WUTEST.zip"
+            zip_diann_results(str(output_dir), str(zip_path), extra_dirs=[qc_dir])
+
+            with zipfile.ZipFile(zip_path) as zip_file:
+                names = set(zip_file.namelist())
+
+            self.assertIn("out-DIANN_quantC/WU1_report.tsv", names)
+            self.assertIn("qc_result/dataset.csv", names)
+
+    def test_write_outputs_yml_can_register_single_combined_zip(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            zip_path = tmp_path / "DIANN_Result_WUTEST.zip"
+            zip_path.write_text("zip", encoding="utf-8")
+            outputs_yml = tmp_path / "outputs.yml"
+
+            write_outputs_yml(str(outputs_yml), str(zip_path))
+
+            content = outputs_yml.read_text(encoding="utf-8")
+            self.assertIn("DIANN_Result_WUTEST.zip", content)
+            self.assertNotIn("store_entry_path: Result_WUTEST.zip", content)
 
     def test_get_fasta_paths_requires_selected_custom_fasta(self):
         original_dir = os.getcwd()
