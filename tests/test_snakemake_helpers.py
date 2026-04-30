@@ -2,9 +2,10 @@
 import tempfile
 import unittest
 import zipfile
+import os
 from pathlib import Path
 
-from diann_runner.snakemake_helpers import parse_flat_params, zip_diann_results
+from diann_runner.snakemake_helpers import get_fasta_paths, parse_flat_params, zip_diann_results
 
 class TestSnakemakeHelpers(unittest.TestCase):
     def test_zip_diann_results_includes_extra_files_at_archive_root(self):
@@ -26,6 +27,32 @@ class TestSnakemakeHelpers(unittest.TestCase):
             self.assertIn("out-DIANN_quantC/report.tsv", names)
             self.assertIn("dataset.csv", names)
             self.assertNotIn("out-DIANN_quantC/report-lib.parquet", names)
+
+    def test_get_fasta_paths_requires_selected_custom_fasta(self):
+        original_dir = os.getcwd()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            os.chdir(tmpdir)
+            try:
+                fasta_config = {
+                    "database_path": "input/database.fasta",
+                    "use_custom_fasta": True,
+                }
+
+                with self.assertRaises(FileNotFoundError):
+                    get_fasta_paths(fasta_config)
+
+                Path("input").mkdir()
+                Path("input/order.fasta").write_text("", encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    get_fasta_paths(fasta_config)
+
+                Path("input/order.fasta").write_text(">custom\nPEPTIDE\n", encoding="utf-8")
+                self.assertEqual(
+                    get_fasta_paths(fasta_config),
+                    ["input/database.fasta", "input/order.fasta"],
+                )
+            finally:
+                os.chdir(original_dir)
 
     def test_parse_scan_window_auto(self):
         flat_params = {

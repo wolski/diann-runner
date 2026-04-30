@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 from pathlib import Path
 
 import pandas as pd
@@ -295,7 +296,7 @@ def create_diann_workflow(
     workunit_id: str,
     output_prefix: str,
     temp_dir_base: str,
-    fasta_path: str,
+    fasta_path: str | list[str],
     var_mods: list,
     diann_params: dict,
     deploy_params: dict
@@ -311,7 +312,7 @@ def create_diann_workflow(
         workunit_id: Workunit ID (will be prefixed with "WU")
         output_prefix: Output directory prefix (e.g., "out-DIANN")
         temp_dir_base: Base name for temporary directories
-        fasta_path: Path to FASTA database file
+        fasta_path: Path(s) to FASTA database file
         var_mods: List of variable modification tuples
         diann_params: Dictionary of DIA-NN parameters from parse_flat_params()
         deploy_params: Dictionary of deployment settings from load_deploy_config()
@@ -483,22 +484,24 @@ def zip_library_files(output_prefix: str, zip_path: str) -> None:
     print(f"Created {zip_path} with library files from {output_prefix}_* directories")
 
 
-def copy_fasta_if_missing(output_dir: str, fasta_path: str) -> str:
+def copy_fasta_if_missing(output_dir: str, fasta_path: str | list[str]) -> str:
     """
     Generate shell command to copy FASTA to output directory if not already present.
 
     Args:
         output_dir: Output directory path
-        fasta_path: Source FASTA file path
+        fasta_path: Source FASTA file path(s)
 
     Returns:
         Shell command string for FASTA copy with existence check
     """
-    return f'''
-# Copy FASTA if none exists in output directory
-if ! ls "{output_dir}"/*.fasta 1> /dev/null 2>&1; then
-    cp "{fasta_path}" "{output_dir}"/$(basename "{fasta_path}")
-fi'''
+    fasta_paths = [fasta_path] if isinstance(fasta_path, str) else fasta_path
+    output_dir_arg = shlex.quote(output_dir)
+    commands = ["# Copy FASTA files into output directory"]
+    for path in fasta_paths:
+        path_arg = shlex.quote(path)
+        commands.append(f'cp -n {path_arg} {output_dir_arg}/$(basename {path_arg})')
+    return "\n".join(commands)
 
 
 def build_oktoberfest_config(
@@ -591,11 +594,13 @@ def get_fasta_paths(fasta_config: dict) -> list[str]:
     """
     paths = [fasta_config["database_path"]]
 
-    # Add custom order.fasta if enabled and exists
     if fasta_config["use_custom_fasta"]:
         order_fasta = Path("input/order.fasta")
-        if order_fasta.exists() and order_fasta.stat().st_size > 0:
-            paths.append(str(order_fasta))
+        if not order_fasta.exists():
+            raise FileNotFoundError("Custom FASTA was enabled, but input/order.fasta does not exist")
+        if order_fasta.stat().st_size == 0:
+            raise ValueError("Custom FASTA was enabled, but input/order.fasta is empty")
+        paths.append(str(order_fasta))
 
     return paths
 

@@ -151,7 +151,7 @@ if WORKFLOW_MODE == "single_step":
 
             workflow = create_diann_workflow(
                 WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-                fasta_paths[0], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+                fasta_paths, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
                 deploy_dict
             )
 
@@ -175,7 +175,7 @@ if WORKFLOW_MODE == "single_step":
         log:
             logfile = "logs/run_diann_single_step.log"
         params:
-            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", FASTA_PATHS)
         shell:
             """
             echo "Running single-step DIA-NN: library prediction + quantification"
@@ -206,10 +206,9 @@ else:
             fasta_paths = [str(f) for f in input.fasta_files]
 
             # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
-            # Use first FASTA (database) for workflow initialization
             workflow = create_diann_workflow(
                 WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-                fasta_paths[0], WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+                fasta_paths, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
                 deploy_dict
             )
 
@@ -244,9 +243,8 @@ else:
         log:
             logfile = "logs/run_diann_step_a.log"
         params:
-            fasta = lambda wildcards: fasta_config["database_path"],
             output_dir = f"{OUTPUT_PREFIX}_libA",
-            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_libA", fasta_config["database_path"])
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_libA", FASTA_PATHS)
         shell:
             """
             echo "Running Step A: Library Search"
@@ -269,7 +267,7 @@ else:
         log:
             logfile = "logs/run_diann_step_b.log"
         params:
-            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", fasta_config["database_path"])
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantB", FASTA_PATHS)
         shell:
             """
             echo "Running Step B: Quantification with Refinement"
@@ -297,7 +295,7 @@ else:
         log:
             logfile = "logs/run_diann_step_c.log"
         params:
-            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantC", fasta_config["database_path"])
+            copy_fasta_cmd = lambda wildcards: copy_fasta_if_missing(f"{OUTPUT_PREFIX}_quantC", FASTA_PATHS)
         shell:
             """
             echo "Running Step C: Final Quantification"

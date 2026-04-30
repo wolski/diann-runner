@@ -70,7 +70,7 @@ class DiannWorkflow:
         var_mods: tuple[tuple[str, str, str], ...] = (),
         diann_bin: str = 'diann-docker',
         docker_image: str | None = None,
-        fasta_file: str | None = None,
+        fasta_file: str | list[str] | None = None,
         threads: int = 64,
         qvalue: float = 0.01,
         min_pep_len: int = 6,
@@ -107,7 +107,7 @@ class DiannWorkflow:
             var_mods: List of (unimod_id, mass_delta, residues) tuples for variable modifications
             diann_bin: Path to DIA-NN binary (e.g., 'diann-docker' or 'diann')
             docker_image: Docker image for diann-docker (e.g., 'diann:2.3.2'), required when using diann-docker
-            fasta_file: Path to FASTA database (optional, needed for proteotypic annotation in Steps B/C)
+            fasta_file: Path(s) to FASTA database (optional, needed for proteotypic annotation in Steps B/C)
             threads: Number of threads to use
             qvalue: FDR threshold (default 0.01 = 1%)
             min_pep_len: Minimum peptide length
@@ -177,6 +177,13 @@ class DiannWorkflow:
         self.lib_dir = f"{output_base_dir}_libA"
         self.quant_b_dir = f"{output_base_dir}_quantB"
         self.quant_c_dir = f"{output_base_dir}_quantC"
+
+    def _fasta_files(self) -> list[str]:
+        if self.fasta_file is None:
+            return []
+        if isinstance(self.fasta_file, str):
+            return [self.fasta_file]
+        return list(self.fasta_file)
     
     def to_config_dict(self) -> dict:
         """
@@ -486,8 +493,10 @@ class DiannWorkflow:
         # FASTA for proteotypic annotation and protein inference
         # --fasta is needed for protein inference even when using .quant files
         # but --reannotate changes library size and invalidates .quant files
-        if self.fasta_file:
-            cmd.append(f'--fasta "{self.fasta_file}"')
+        fasta_files = self._fasta_files()
+        if fasta_files:
+            for fasta_file in fasta_files:
+                cmd.append(f'--fasta "{fasta_file}"')
             # Only reannotate when NOT using .quant files
             if not use_quant:
                 cmd.append("--reannotate")

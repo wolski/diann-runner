@@ -129,6 +129,25 @@ class TestDiannWorkflow(unittest.TestCase):
         self.assertNotIn('--fasta-search', content)
         self.assertNotIn('--predictor', content)
         self.assertNotIn('--use-quant', content)  # Only in Step C
+
+    def test_step_b_generation_with_multiple_annotation_fastas(self):
+        """Test Step B reannotation uses all configured FASTA files."""
+        fasta_paths = ['/test/database.fasta', '/test/order.fasta']
+        workflow = DiannWorkflow(
+            workunit_id='TEST_MULTI_FASTA',
+            output_base_dir='test-out',
+            fasta_file=fasta_paths,
+        )
+
+        script_path = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files,
+            script_name='test_step_b_multi_fasta.sh'
+        )
+
+        content = self.read_script(script_path)
+        for fasta_path in fasta_paths:
+            self.assertIn(f'--fasta "{fasta_path}"', content)
+        self.assertIn('--reannotate', content)
     
     def test_step_b_generation_without_quantification(self):
         """Test Step B script generation with quantification disabled."""
