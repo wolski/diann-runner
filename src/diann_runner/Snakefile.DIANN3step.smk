@@ -78,7 +78,7 @@ def final_quant_outputs(wildcards):
 
 rule all:
     input:
-        diann_zip = f"DIANN_Result_WU{WORKUNITID}.zip",
+        result_zip = f"Result_WU{WORKUNITID}.zip",
         outputs_yml = "outputs.yml"
 
 # ============================================================================
@@ -362,7 +362,7 @@ rule zip_diann_result:
         dataset = "dataset.csv",
         qc_dir = "qc_result"
     output:
-        zip = f"DIANN_Result_WU{WORKUNITID}.zip"
+        zip = f"Result_WU{WORKUNITID}.zip"
     log:
         logfile = "logs/zip_diann_result.log"
     params:

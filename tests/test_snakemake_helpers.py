@@ -23,7 +23,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
             dataset_csv = tmp_path / "dataset.csv"
             dataset_csv.write_text("sample,condition\nsample1,A\n", encoding="utf-8")
 
-            zip_path = tmp_path / "DIANN_Result_WUTEST.zip"
+            zip_path = tmp_path / "Result_WUTEST.zip"
             zip_diann_results(str(output_dir), str(zip_path), extra_files=[dataset_csv])
 
             with zipfile.ZipFile(zip_path) as zip_file:
@@ -43,7 +43,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
             qc_dir.mkdir()
             (qc_dir / "dataset.csv").write_text("sample,condition\nsample1,A\n", encoding="utf-8")
 
-            zip_path = tmp_path / "DIANN_Result_WUTEST.zip"
+            zip_path = tmp_path / "Result_WUTEST.zip"
             zip_diann_results(str(output_dir), str(zip_path), extra_dirs=[qc_dir])
 
             with zipfile.ZipFile(zip_path) as zip_file:
@@ -55,15 +55,15 @@ class TestSnakemakeHelpers(unittest.TestCase):
     def test_write_outputs_yml_can_register_single_combined_zip(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
-            zip_path = tmp_path / "DIANN_Result_WUTEST.zip"
+            zip_path = tmp_path / "Result_WUTEST.zip"
             zip_path.write_text("zip", encoding="utf-8")
             outputs_yml = tmp_path / "outputs.yml"
 
             write_outputs_yml(str(outputs_yml), str(zip_path))
 
             content = outputs_yml.read_text(encoding="utf-8")
-            self.assertIn("DIANN_Result_WUTEST.zip", content)
-            self.assertNotIn("store_entry_path: Result_WUTEST.zip", content)
+            self.assertIn("Result_WUTEST.zip", content)
+            self.assertEqual(content.count("store_entry_path:"), 1)
 
     def test_get_fasta_paths_requires_selected_custom_fasta(self):
         original_dir = os.getcwd()
