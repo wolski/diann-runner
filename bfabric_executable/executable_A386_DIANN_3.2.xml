@@ -219,26 +219,6 @@
         <value>false</value>
     </parameter>
 
-    <!-- 98: DIA-NN Binary Configuration -->
-    <parameter>
-        <deletable>false</deletable>
-        <updatable>false</updatable>
-        <description>DIA-NN binary or Docker wrapper to use. Default: diann-docker</description>
-        <context>APPLICATION</context>
-        <enumeration>diann-docker</enumeration>
-        <enumeration>diann-docker-v2.3.0</enumeration>
-        <executable classname="executable" id="26960"/>
-        <inUse>true</inUse>
-        <key>98_diann_binary</key>
-        <label>DIA-NN Binary</label>
-        <modifiable>true</modifiable>
-        <parentAllowsModification>true</parentAllowsModification>
-        <required>true</required>
-        <type>STRING</type>
-        <value>diann-docker</value>
-    </parameter>
-
-
     <!-- 05: Data Type Configuration -->
     <parameter>
         <deletable>false</deletable>

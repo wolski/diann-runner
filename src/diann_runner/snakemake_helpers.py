@@ -253,7 +253,7 @@ def parse_flat_params(flat_params):
 
     # Parse other settings
     diann['verbose'] = int(flat_params['99_other_verbose'])
-    diann['diann_bin'] = flat_params['98_diann_binary']
+    diann['diann_bin'] = 'diann-docker'
 
     # Parse DDA mode
     diann['is_dda'] = flat_params['05_diann_is_dda'].lower() == 'true'

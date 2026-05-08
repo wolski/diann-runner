@@ -39,7 +39,6 @@ BASE_FLAT_PARAMS = {
     '12a_diann_quantification_reanalyse': 'true',
     '12b_diann_quantification_no_norm': 'false',
     '99_other_verbose': '1',
-    '98_diann_binary': 'diann-docker',
     '05_diann_is_dda': 'false',
     '03_fasta_database_path': '/path/to/fasta',
     '03_fasta_use_custom': 'false',
@@ -148,7 +147,6 @@ class TestSnakemakeHelpers(unittest.TestCase):
             '12a_diann_quantification_reanalyse': 'true',
             '12b_diann_quantification_no_norm': 'false',
             '99_other_verbose': '1',
-            '98_diann_binary': 'diann-docker',
             '05_diann_is_dda': 'false',
             '03_fasta_database_path': '/path/to/fasta',
             '03_fasta_use_custom': 'false',
@@ -182,7 +180,6 @@ class TestSnakemakeHelpers(unittest.TestCase):
             '12a_diann_quantification_reanalyse': 'true',
             '12b_diann_quantification_no_norm': 'false',
             '99_other_verbose': '1',
-            '98_diann_binary': 'diann-docker',
             '05_diann_is_dda': 'false',
             '03_fasta_database_path': '/path/to/fasta',
             '03_fasta_use_custom': 'false',
@@ -195,6 +192,10 @@ class TestSnakemakeHelpers(unittest.TestCase):
     def test_parse_diann_version_default(self):
         params = parse_flat_params(dict(BASE_FLAT_PARAMS))
         self.assertEqual(params['diann']['diann_version'], '2.3.2')
+
+    def test_parse_diann_bin_is_internal_default(self):
+        params = parse_flat_params(dict(BASE_FLAT_PARAMS))
+        self.assertEqual(params['diann']['diann_bin'], 'diann-docker')
 
     def test_parse_diann_version_explicit(self):
         flat = dict(BASE_FLAT_PARAMS)
@@ -284,7 +285,6 @@ class TestSnakemakeHelpers(unittest.TestCase):
             '12a_diann_quantification_reanalyse': 'true',
             '12b_diann_quantification_no_norm': 'false',
             '99_other_verbose': '1',
-            '98_diann_binary': 'diann-docker',
             '05_diann_is_dda': 'false',
             '03_fasta_database_path': '/path/to/fasta',
             '03_fasta_use_custom': 'false',
