@@ -25,6 +25,7 @@ Configuration:
     Set via --config:
     - force_rebuild: Force rebuild of Docker images (default: false)
     - diann_version: DIA-NN version to build (default: 2.3.2)
+    - diann_thermo_version: DIA-NN version for native Thermo image (default: 2.5.0)
 """
 
 from pathlib import Path
@@ -44,6 +45,7 @@ workdir: str(BASE_DIR)
 # Configuration with defaults
 FORCE_REBUILD = config.get("force_rebuild", False)
 DIANN_VERSION = config.get("diann_version", "2.3.2")
+DIANN_THERMO_VERSION = config.get("diann_thermo_version", "2.5.0")
 
 # Deployment flags and logs directories
 FLAGS_DIR = BASE_DIR / ".deploy_flags"
@@ -95,6 +97,32 @@ rule build_diann_docker:
         """
 
 
+rule build_diann_thermo_docker:
+    """Build DIA-NN image with native Thermo .raw reader (.NET 8 + DIA-NN 2.5+)."""
+    input:
+        dockerfile = "docker/Dockerfile.diann_thermofilereader",
+        prereq_flag = FLAGS_DIR / "prerequisites_checked.flag"
+    output:
+        flag = FLAGS_DIR / "diann_thermo_docker_built.flag"
+    log:
+        LOGS_DIR / "build_diann_thermo_docker.log"
+    params:
+        force_rebuild = FORCE_REBUILD,
+        version = DIANN_THERMO_VERSION
+    shell:
+        """
+        TAG="diann:{params.version}-thermo"
+        if docker images --format "{{{{.Repository}}}}:{{{{.Tag}}}}" | grep -q "^${{TAG}}$" && [ "{params.force_rebuild}" != "True" ]; then
+            echo "${{TAG}} already exists (use --config force_rebuild=true to rebuild)"
+        else
+            echo "Building ${{TAG}}..."
+            docker build --platform linux/amd64 --build-arg DIANN_VERSION={params.version} \
+                -f {input.dockerfile:q} -t "${{TAG}}" . 2>&1 | tee {log:q}
+        fi
+        touch {output.flag:q}
+        """
+
+
 rule build_thermorawfileparser_docker:
     """Build thermorawfileparser:2.0.0 Docker image."""
     input:
@@ -122,6 +150,7 @@ rule deployment_complete:
     """Final deployment marker with summary."""
     input:
         FLAGS_DIR / "diann_docker_built.flag",
+        FLAGS_DIR / "diann_thermo_docker_built.flag",
         FLAGS_DIR / "thermorawfileparser_docker_built.flag"
     output:
         flag = FLAGS_DIR / "deployment_complete.flag"
@@ -136,9 +165,10 @@ rule deployment_complete:
 rule check_images:
     """Check if required Docker images are available."""
     params:
-        version = DIANN_VERSION
+        version = DIANN_VERSION,
+        thermo_version = DIANN_THERMO_VERSION
     run:
-        check_docker_images(diann_version=params.version)
+        check_docker_images(diann_version=params.version, diann_thermo_version=params.thermo_version)
 
 
 rule clean:
@@ -157,18 +187,20 @@ rule clean_all:
     """Remove deployment flags and Docker images."""
     params:
         flags_dir = FLAGS_DIR,
-        version = DIANN_VERSION
+        version = DIANN_VERSION,
+        thermo_version = DIANN_THERMO_VERSION
     shell:
         """
         echo "This will remove:"
         echo "  - Deployment flags (.deploy_flags/)"
-        echo "  - Docker images (diann:{params.version}, thermorawfileparser:2.0.0)"
+        echo "  - Docker images (diann:{params.version}, diann:{params.thermo_version}-thermo, thermorawfileparser:2.0.0)"
         echo ""
         read -p "Continue? [y/N]: " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -rf {params.flags_dir:q}
             docker rmi diann:{params.version} 2>/dev/null || true
+            docker rmi diann:{params.thermo_version}-thermo 2>/dev/null || true
             docker rmi thermorawfileparser:2.0.0 2>/dev/null || true
             echo "Done"
         else

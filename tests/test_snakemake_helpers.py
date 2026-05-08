@@ -6,11 +6,43 @@ import os
 from pathlib import Path
 
 from diann_runner.snakemake_helpers import (
+    get_diann_input_path,
     get_fasta_paths,
     parse_flat_params,
+    resolve_diann_docker_image,
     write_outputs_yml,
     zip_diann_results,
 )
+
+
+BASE_FLAT_PARAMS = {
+    '06a_diann_mods_variable': 'None',
+    '06b_diann_mods_no_peptidoforms': 'false',
+    '06c_diann_mods_unimod4': 'true',
+    '06d_diann_mods_met_excision': 'true',
+    '07_diann_peptide_min_length': '7',
+    '07_diann_peptide_max_length': '30',
+    '07_diann_peptide_precursor_charge_min': '2',
+    '07_diann_peptide_precursor_charge_max': '3',
+    '07_diann_peptide_precursor_mz_min': '400',
+    '07_diann_peptide_precursor_mz_max': '1500',
+    '07_diann_peptide_fragment_mz_min': '200',
+    '07_diann_peptide_fragment_mz_max': '1800',
+    '08_diann_digestion_cut': 'K*,R*',
+    '08_diann_digestion_missed_cleavages': '1',
+    '09_diann_mass_acc_ms2': 'AUTO',
+    '09_diann_mass_acc_ms1': 'AUTO',
+    '10_diann_scoring_qvalue': '0.01',
+    '11a_diann_protein_pg_level': 'protein_names_1',
+    '11b_diann_protein_relaxed_prot_inf': 'true',
+    '12a_diann_quantification_reanalyse': 'true',
+    '12b_diann_quantification_no_norm': 'false',
+    '99_other_verbose': '1',
+    '98_diann_binary': 'diann-docker',
+    '05_diann_is_dda': 'false',
+    '03_fasta_database_path': '/path/to/fasta',
+    '03_fasta_use_custom': 'false',
+}
 
 class TestSnakemakeHelpers(unittest.TestCase):
     def test_zip_diann_results_includes_extra_files_at_archive_root(self):
@@ -158,6 +190,56 @@ class TestSnakemakeHelpers(unittest.TestCase):
         
         params = parse_flat_params(flat_params)
         self.assertEqual(params['diann']['scan_window'], 8)
+
+    def test_parse_diann_version_default(self):
+        params = parse_flat_params(dict(BASE_FLAT_PARAMS))
+        self.assertEqual(params['diann']['diann_version'], '2.3.2')
+
+    def test_parse_diann_version_explicit(self):
+        flat = dict(BASE_FLAT_PARAMS)
+        flat['01_diann_version'] = '2.5.0'
+        params = parse_flat_params(flat)
+        self.assertEqual(params['diann']['diann_version'], '2.5.0')
+
+    def test_resolve_diann_docker_image_uses_version_map(self):
+        deploy = {
+            'diann_images': {'2.3.2': 'diann:2.3.2', '2.5.0': 'diann:2.5.0-thermo'},
+            'diann_docker_image': 'diann:2.3.2',
+        }
+        self.assertEqual(resolve_diann_docker_image('2.5.0', deploy), 'diann:2.5.0-thermo')
+        self.assertEqual(resolve_diann_docker_image('2.3.2', deploy), 'diann:2.3.2')
+
+    def test_resolve_diann_docker_image_falls_back_to_legacy(self):
+        deploy = {'diann_docker_image': 'diann:2.3.2'}
+        # Unknown version + no map -> legacy single image
+        self.assertEqual(resolve_diann_docker_image('2.5.0', deploy), 'diann:2.3.2')
+        # None version -> legacy
+        self.assertEqual(resolve_diann_docker_image(None, deploy), 'diann:2.3.2')
+
+    def test_resolve_diann_docker_image_raises_when_unresolvable(self):
+        with self.assertRaises(KeyError):
+            resolve_diann_docker_image('2.5.0', {})
+
+    def test_get_diann_input_path_matrix(self):
+        raw_dir = Path('input/raw')
+        cases = [
+            # (version, converter, input_type, sample, expected_name)
+            ('2.3.2', 'thermoraw', 'raw', 's1', 's1.mzML'),
+            ('2.3.2', 'msconvert', 'raw', 's1', 's1.mzML'),
+            ('2.3.2', 'msconvert-demultiplex', 'raw', 's1', 's1.mzML'),
+            ('2.5.0', 'thermoraw', 'raw', 's1', 's1.raw'),  # native reader
+            ('2.5.0', 'msconvert', 'raw', 's1', 's1.mzML'),
+            ('2.5.0', 'msconvert-demultiplex', 'raw', 's1', 's1.mzML'),
+            # passthroughs
+            ('2.3.2', 'thermoraw', 'mzML', 's1', 's1.mzML'),
+            ('2.5.0', 'thermoraw', 'mzML', 's1', 's1.mzML'),
+            ('2.3.2', 'thermoraw', 'd.zip', 's1', 's1.d'),
+            ('2.5.0', 'thermoraw', 'd.zip', 's1', 's1.d'),
+        ]
+        for version, converter, input_type, sample, expected in cases:
+            with self.subTest(version=version, converter=converter, input_type=input_type):
+                result = get_diann_input_path(sample, input_type, version, converter, raw_dir)
+                self.assertEqual(result, raw_dir / expected)
 
     def test_parse_scan_window_default(self):
         # Missing scan_window should default to 0

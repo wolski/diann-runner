@@ -12,6 +12,7 @@ import pandas as pd
 # Import helpers from diann_runner package
 from diann_runner.snakemake_helpers import (
     copy_fasta_if_missing,
+    get_diann_input_path,
     get_fasta_paths,
     get_final_quantification_outputs,
     get_msconvert_options,
@@ -55,6 +56,8 @@ WORKFLOW_PARAMS = parse_flat_params(config_dict["params"])
 
 # Only create globals needed for Snakemake wildcards and conditionals
 ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
+DIANN_VERSION = WORKFLOW_PARAMS["diann"]["diann_version"]
+RAW_CONVERTER = WORKFLOW_PARAMS["raw_converter"]
 fasta_config = WORKFLOW_PARAMS["fasta"]  # Alias for fasta parameters used in rules
 # Resolve FASTA path (handles /misc/fasta/... paths that don't exist locally)
 fasta_config["database_path"] = str(resolve_fasta_path(fasta_config["database_path"]))
@@ -124,10 +127,8 @@ rule convert_raw:
         """
 
 def get_converted_file(sample: str):
-    """Returns the formatted output file path for a given sample."""
-    if INPUT_TYPE == "d.zip":
-        return RAW_DIR / f"{sample}.d"
-    return RAW_DIR / f"{sample}.mzML"
+    """Returns the input path for DIA-NN for a given sample."""
+    return get_diann_input_path(sample, INPUT_TYPE, DIANN_VERSION, RAW_CONVERTER, RAW_DIR)
 
 # ============================================================================
 # DIA-NN workflow rules (conditional on WORKFLOW_MODE)

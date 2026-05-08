@@ -283,6 +283,10 @@ def parse_flat_params(flat_params):
     # raw_converter: thermoraw (default), msconvert, msconvert-demultiplex
     raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
 
+    # DIA-NN version dropdown. Default '2.3.2' for back-compat with old
+    # params.yml that predate the dropdown.
+    diann['diann_version'] = flat_params.get('01_diann_version', '2.3.2')
+
     # Parse output options
     include_libs = flat_params.get('14_include_libs', 'false').lower() == 'true'
 
@@ -296,6 +300,46 @@ def parse_flat_params(flat_params):
         'raw_converter': raw_converter,
         'include_libs': include_libs,
     }
+
+
+def resolve_diann_docker_image(diann_version: str | None, deploy_params: dict) -> str:
+    """Resolve the DIA-NN Docker image tag for a given version.
+
+    Order:
+      1. ``deploy_params['diann_images'][diann_version]`` if both present
+      2. ``deploy_params['diann_docker_image']`` (legacy single-image fallback)
+    Raises KeyError if neither resolves.
+    """
+    images = deploy_params.get("diann_images") or {}
+    if diann_version and diann_version in images:
+        return images[diann_version]
+    if "diann_docker_image" in deploy_params:
+        return deploy_params["diann_docker_image"]
+    raise KeyError(
+        f"Cannot resolve DIA-NN docker image for version {diann_version!r}: "
+        "neither diann_images[version] nor legacy diann_docker_image is set."
+    )
+
+
+def get_diann_input_path(
+    sample: str,
+    input_type: str,
+    diann_version: str,
+    raw_converter: str,
+    raw_dir: Path,
+) -> Path:
+    """Return the file/dir to feed into DIA-NN for one sample.
+
+    DIA-NN 2.5.0 ships a native Thermo .raw reader: when version is 2.5.0,
+    converter is 'thermoraw', and inputs are .raw, we skip mzML conversion
+    and pass the .raw straight through. Every other combination keeps the
+    existing behavior.
+    """
+    if input_type == "d.zip":
+        return raw_dir / f"{sample}.d"
+    if input_type == "raw" and diann_version == "2.5.0" and raw_converter == "thermoraw":
+        return raw_dir / f"{sample}.raw"
+    return raw_dir / f"{sample}.mzML"
 
 
 def create_diann_workflow(
@@ -335,7 +379,7 @@ def create_diann_workflow(
         fasta_file=fasta_path,
         var_mods=var_mods,
         diann_bin=diann_params["diann_bin"],
-        docker_image=deploy_params["diann_docker_image"],
+        docker_image=resolve_diann_docker_image(diann_params.get("diann_version"), deploy_params),
         threads=deploy_params["threads"],
         qvalue=diann_params["qvalue"],
         min_pep_len=diann_params["min_pep_len"],

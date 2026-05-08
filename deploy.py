@@ -49,19 +49,25 @@ def check_prerequisites(output_flag: Path) -> None:
     output_flag.touch()
 
 
-def check_docker_images(diann_version: str = "2.3.2") -> None:
+def check_docker_images(
+    diann_version: str = "2.3.2",
+    diann_thermo_version: str = "2.5.0",
+) -> None:
     """
     Check if required Docker images are available.
 
     Args:
         diann_version: DIA-NN version to check for
+        diann_thermo_version: DIA-NN version for the native Thermo image
     """
     print("=" * 60)
     print("Checking Docker Images")
     print("=" * 60)
 
+    thermo_tag = f"diann:{diann_thermo_version}-thermo"
     images_to_check = [
         (f"diann:{diann_version}", f"diann:{diann_version}"),
+        (thermo_tag, thermo_tag),
         ("thermorawfileparser:2.0.0", "thermorawfileparser:2.0.0"),
     ]
 

@@ -2,6 +2,11 @@
 
 # DIA-NN settings
 threads: 8
+# Image map keyed by 01_diann_version dropdown value.
+diann_images:
+  "2.3.2": "diann:2.3.2"
+  "2.5.0": "diann:2.5.0-thermo"
+# Legacy fallback for old params.yml without 01_diann_version.
 diann_docker_image: "diann:2.3.2"
 
 # File conversion (Docker images for thermoraw CLI)
