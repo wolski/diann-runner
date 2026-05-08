@@ -19,7 +19,7 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>DIA-NN version. 2.3.2: production default (uses thermoraw/msconvert for .raw conversion). 2.5.0: ships native Thermo .raw reader — when combined with 'thermoraw' converter and .raw inputs, .raw files are passed straight to DIA-NN with no prior conversion. msconvert paths still convert.</description>
+        <description>DIA-NN version. 2.3.2: production default. 2.5.0: supports native Thermo RAW input when raw converter is thermoraw; msconvert modes still convert first.</description>
         <context>APPLICATION</context>
         <enumeration>2.3.2</enumeration>
         <enumeration>2.5.0</enumeration>

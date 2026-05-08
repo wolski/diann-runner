@@ -102,7 +102,7 @@ rule convert_d_zip:
         logfile = "logs/convert_d_zip_{sample}.log"
     params:
         extract_dir = RAW_DIR,
-        folder = RAW_DIR / "{sample}.d"
+        folder = lambda wildcards: RAW_DIR / f"{wildcards.sample}.d"
     retries: 3
     shell:
         """
