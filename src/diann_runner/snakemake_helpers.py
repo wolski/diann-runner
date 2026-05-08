@@ -342,6 +342,25 @@ def get_diann_input_path(
     return raw_dir / f"{sample}.mzML"
 
 
+def get_diann_input_dependency(
+    sample: str,
+    input_type: str,
+    diann_version: str,
+    raw_converter: str,
+    raw_dir: Path,
+) -> Path:
+    """Return the workflow dependency that prepares a DIA-NN input.
+
+    Bruker .d directories are vendor data folders. Do not make Snakemake own
+    them as directory() outputs because Snakemake writes metadata inside managed
+    output directories. Use a sibling marker file for the extraction step while
+    passing the real .d path to DIA-NN via get_diann_input_path().
+    """
+    if input_type == "d.zip":
+        return raw_dir / f"{sample}.done"
+    return get_diann_input_path(sample, input_type, diann_version, raw_converter, raw_dir)
+
+
 def create_diann_workflow(
     workunit_id: str,
     output_prefix: str,

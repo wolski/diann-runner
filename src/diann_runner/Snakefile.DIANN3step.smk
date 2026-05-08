@@ -12,6 +12,7 @@ import pandas as pd
 # Import helpers from diann_runner package
 from diann_runner.snakemake_helpers import (
     copy_fasta_if_missing,
+    get_diann_input_dependency,
     get_diann_input_path,
     get_fasta_paths,
     get_final_quantification_outputs,
@@ -96,14 +97,19 @@ rule convert_d_zip:
     input:
         file = RAW_DIR / "{sample}.d.zip"
     output:
-        folder = directory(RAW_DIR / "{sample}.d")
+        marker = RAW_DIR / "{sample}.done"
     log:
         logfile = "logs/convert_d_zip_{sample}.log"
+    params:
+        extract_dir = RAW_DIR,
+        folder = RAW_DIR / "{sample}.d"
     retries: 3
     shell:
         """
         echo "Extracting {input.file:q}"
-        unzip -o {input.file:q} -d input/raw
+        unzip -o {input.file:q} -d {params.extract_dir:q}
+        test -d {params.folder:q}
+        touch {output.marker:q}
         """
 
 rule convert_raw:
@@ -130,6 +136,10 @@ def get_converted_file(sample: str):
     """Returns the input path for DIA-NN for a given sample."""
     return get_diann_input_path(sample, INPUT_TYPE, DIANN_VERSION, RAW_CONVERTER, RAW_DIR)
 
+def get_conversion_dependency(sample: str):
+    """Returns the Snakemake dependency that prepares a DIA-NN input."""
+    return get_diann_input_dependency(sample, INPUT_TYPE, DIANN_VERSION, RAW_CONVERTER, RAW_DIR)
+
 # ============================================================================
 # DIA-NN workflow rules (conditional on WORKFLOW_MODE)
 # ============================================================================
@@ -139,7 +149,7 @@ if WORKFLOW_MODE == "single_step":
     rule diann_generate_single_step_script:
         """Generate single-step DIA-NN script (library prediction + quantification)."""
         input:
-            mzml_files = [get_converted_file(sample) for sample in SAMPLES],
+            raw_dependencies = [get_conversion_dependency(sample) for sample in SAMPLES],
             fasta_files = FASTA_PATHS,
         output:
             script = "step_single.sh",
@@ -155,7 +165,7 @@ if WORKFLOW_MODE == "single_step":
                 deploy_dict
             )
 
-            raw_files = [str(f) for f in input.mzml_files]
+            raw_files = [str(get_converted_file(sample)) for sample in SAMPLES]
 
             workflow.generate_single_step(
                 fasta_paths=fasta_paths,
@@ -190,7 +200,7 @@ else:
     rule diann_generate_scripts:
         """Generate DIA-NN workflow shell scripts using DiannWorkflow class."""
         input:
-            mzml_files = [get_converted_file(sample) for sample in SAMPLES],
+            raw_dependencies = [get_conversion_dependency(sample) for sample in SAMPLES],
             fasta_files = FASTA_PATHS,
         output:
             step_a_script = "step_A_library_search.sh",
@@ -212,8 +222,8 @@ else:
                 deploy_dict
             )
 
-            # Convert input mzML files to list of strings
-            raw_files = [str(f) for f in input.mzml_files]
+            # Convert input files to DIA-NN input paths.
+            raw_files = [str(get_converted_file(sample)) for sample in SAMPLES]
 
             # Generate all three scripts (pass all FASTA paths - DIA-NN merges them)
             scripts = workflow.generate_all_scripts(

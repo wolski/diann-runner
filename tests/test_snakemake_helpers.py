@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from diann_runner.snakemake_helpers import (
+    get_diann_input_dependency,
     get_diann_input_path,
     get_fasta_paths,
     parse_flat_params,
@@ -239,6 +240,23 @@ class TestSnakemakeHelpers(unittest.TestCase):
         for version, converter, input_type, sample, expected in cases:
             with self.subTest(version=version, converter=converter, input_type=input_type):
                 result = get_diann_input_path(sample, input_type, version, converter, raw_dir)
+                self.assertEqual(result, raw_dir / expected)
+
+    def test_get_diann_input_dependency_uses_marker_for_dzip(self):
+        raw_dir = Path('input/raw')
+        result = get_diann_input_dependency('s1', 'd.zip', '2.3.2', 'thermoraw', raw_dir)
+        self.assertEqual(result, raw_dir / 's1.done')
+
+    def test_get_diann_input_dependency_uses_diann_input_path_for_other_types(self):
+        raw_dir = Path('input/raw')
+        cases = [
+            ('2.3.2', 'thermoraw', 'raw', 's1.mzML'),
+            ('2.5.0', 'thermoraw', 'raw', 's1.raw'),
+            ('2.3.2', 'thermoraw', 'mzML', 's1.mzML'),
+        ]
+        for version, converter, input_type, expected in cases:
+            with self.subTest(version=version, converter=converter, input_type=input_type):
+                result = get_diann_input_dependency('s1', input_type, version, converter, raw_dir)
                 self.assertEqual(result, raw_dir / expected)
 
     def test_parse_scan_window_default(self):
