@@ -132,3 +132,4 @@ tools/
 uv.lock
 tests/bfabric_integration/
 data/dia_raw/
+data/proteobench_results/
