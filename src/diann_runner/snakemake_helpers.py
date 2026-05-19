@@ -321,6 +321,15 @@ def resolve_diann_docker_image(diann_version: str | None, deploy_params: dict) -
     )
 
 
+def resolve_raw_converter_image(raw_converter: str, deploy_params: dict) -> str:
+    """Resolve the Docker image used by the Thermo RAW conversion wrapper."""
+    if raw_converter == "thermoraw":
+        return deploy_params["thermoraw_image"]
+    if raw_converter in ("msconvert", "msconvert-demultiplex"):
+        return deploy_params["msconvert_docker"]
+    raise ValueError(f"Unsupported raw converter: {raw_converter!r}")
+
+
 def get_diann_input_path(
     sample: str,
     input_type: str,

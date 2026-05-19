@@ -18,6 +18,7 @@ from diann_runner.snakemake_helpers import (
     get_final_quantification_outputs,
     get_msconvert_options,
     parse_flat_params,
+    resolve_raw_converter_image,
     create_diann_workflow,
     detect_input_files,
     convert_parquet_to_tsv,
@@ -125,7 +126,7 @@ rule convert_raw:
         logfile = "logs/convert_raw_{sample}.log"
     params:
         converter = WORKFLOW_PARAMS["raw_converter"],
-        image = deploy_dict["thermoraw_image"]
+        image = resolve_raw_converter_image(WORKFLOW_PARAMS["raw_converter"], deploy_dict)
     retries: 3
     shell:
         """

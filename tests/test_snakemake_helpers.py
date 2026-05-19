@@ -11,6 +11,7 @@ from diann_runner.snakemake_helpers import (
     get_fasta_paths,
     parse_flat_params,
     resolve_diann_docker_image,
+    resolve_raw_converter_image,
     write_outputs_yml,
     zip_diann_results,
 )
@@ -233,6 +234,34 @@ class TestSnakemakeHelpers(unittest.TestCase):
     def test_resolve_diann_docker_image_raises_when_unresolvable(self):
         with self.assertRaises(KeyError):
             resolve_diann_docker_image('2.5.0', {})
+
+    def test_resolve_raw_converter_image_uses_thermoraw_image(self):
+        deploy = {
+            'thermoraw_image': 'thermorawfileparser:2.0.0',
+            'msconvert_docker': 'chambm/pwiz-skyline-i-agree-to-the-vendor-licenses',
+        }
+        self.assertEqual(
+            resolve_raw_converter_image('thermoraw', deploy),
+            'thermorawfileparser:2.0.0',
+        )
+
+    def test_resolve_raw_converter_image_uses_msconvert_image(self):
+        deploy = {
+            'thermoraw_image': 'thermorawfileparser:2.0.0',
+            'msconvert_docker': 'chambm/pwiz-skyline-i-agree-to-the-vendor-licenses',
+        }
+        self.assertEqual(
+            resolve_raw_converter_image('msconvert', deploy),
+            'chambm/pwiz-skyline-i-agree-to-the-vendor-licenses',
+        )
+        self.assertEqual(
+            resolve_raw_converter_image('msconvert-demultiplex', deploy),
+            'chambm/pwiz-skyline-i-agree-to-the-vendor-licenses',
+        )
+
+    def test_resolve_raw_converter_image_raises_for_unknown_converter(self):
+        with self.assertRaises(ValueError):
+            resolve_raw_converter_image('unknown', {})
 
     def test_get_diann_input_path_matrix(self):
         raw_dir = Path('input/raw')
