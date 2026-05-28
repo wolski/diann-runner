@@ -70,6 +70,7 @@ class DiannWorkflow:
         var_mods: tuple[tuple[str, str, str], ...] = (),
         diann_bin: str = 'diann-docker',
         docker_image: str | None = None,
+        container_runtime: str = 'docker',
         fasta_file: str | list[str] | None = None,
         threads: int = 64,
         qvalue: float = 0.01,
@@ -106,7 +107,8 @@ class DiannWorkflow:
             output_base_dir: Base directory for all outputs
             var_mods: List of (unimod_id, mass_delta, residues) tuples for variable modifications
             diann_bin: Path to DIA-NN binary (e.g., 'diann-docker' or 'diann')
-            docker_image: Docker image for diann-docker (e.g., 'diann:2.3.2'), required when using diann-docker
+            docker_image: Container image for diann-docker (e.g., 'diann:2.3.2' or '/opt/sif/diann_2.3.2.sif')
+            container_runtime: Container runtime for diann-docker ('docker' or 'apptainer')
             fasta_file: Path(s) to FASTA database (optional, needed for proteotypic annotation in Steps B/C)
             threads: Number of threads to use
             qvalue: FDR threshold (default 0.01 = 1%)
@@ -140,6 +142,7 @@ class DiannWorkflow:
         self.output_base_dir = output_base_dir
         self.diann_bin = diann_bin
         self.docker_image = docker_image
+        self.container_runtime = container_runtime
         self.temp_dir_base = temp_dir_base
         self.fasta_file = fasta_file
 
@@ -184,6 +187,18 @@ class DiannWorkflow:
         if isinstance(self.fasta_file, str):
             return [self.fasta_file]
         return list(self.fasta_file)
+
+    def _diann_invocation_prefix(self) -> list[str]:
+        """Build the wrapper invocation prefix (binary + container flags + --).
+
+        Produces lines like:
+            "diann-docker" --runtime apptainer --image /opt/sif/diann.sif --
+        """
+        cmd = [f'"{self.diann_bin}"', f"--runtime {self.container_runtime}"]
+        if self.docker_image:
+            cmd.append(f'--image {self.docker_image}')
+        cmd.append('--')
+        return cmd
     
     def to_config_dict(self) -> dict:
         """
@@ -197,6 +212,7 @@ class DiannWorkflow:
             'output_base_dir': self.output_base_dir,
             'diann_bin': self.diann_bin,
             'docker_image': self.docker_image,
+            'container_runtime': self.container_runtime,
             'temp_dir_base': self.temp_dir_base,
             'fasta_file': self.fasta_file,
             'var_mods': self.var_mods,
@@ -396,10 +412,7 @@ class DiannWorkflow:
 
         # Build command
         # Use -- to separate diann-docker options from DIA-NN arguments
-        cmd = [f'"{self.diann_bin}"']
-        if self.docker_image:
-            cmd.append(f'--image {self.docker_image}')
-        cmd.append('--')
+        cmd = self._diann_invocation_prefix()
 
         # FASTA search mode with all FASTA files
         cmd.append("--fasta-search")
@@ -482,10 +495,7 @@ class DiannWorkflow:
 
         # Build command (same for both steps!)
         # Use -- to separate diann-docker options from DIA-NN arguments
-        cmd = [f'"{self.diann_bin}"']
-        if self.docker_image:
-            cmd.append(f'--image {self.docker_image}')
-        cmd.append('--')
+        cmd = self._diann_invocation_prefix()
 
         # Library
         cmd.append(f'--lib "{input_lib_path}"')
@@ -632,10 +642,7 @@ class DiannWorkflow:
         log_file = f"{output_dir}/diann_quantB.log.txt"
 
         # Build command
-        cmd = [f'"{self.diann_bin}"']
-        if self.docker_image:
-            cmd.append(f'--image {self.docker_image}')
-        cmd.append('--')
+        cmd = self._diann_invocation_prefix()
 
         # Empty --lib triggers library-free mode with predictor
         cmd.append("--lib")

@@ -1,18 +1,35 @@
-# Production server deployment settings
+# Production server deployment settings.
+#
+# Both runtime blocks live here. The right one is selected at runtime
+# based on what is installed on the host (apptainer wins if both are
+# present). See diann_runner.container_utils.detect_runtime().
 
-# DIA-NN settings
 threads: 64
-# Image map keyed by 01_diann_version dropdown value.
-diann_images:
-  "2.3.2": "diann:2.3.2"
-  "2.5.0": "diann:2.5.0-thermo"
-# Legacy fallback for old params.yml without 01_diann_version.
-diann_docker_image: "diann:2.3.2"
-
-# File conversion (Docker images for thermoraw CLI)
-thermoraw_image: "thermorawfileparser:2.0.0"
-msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
-
-# QC and staging
-prolfquapp_image: "prolfqua/prolfquapp:2.0.10"
 app_runner: "fgcz_app_runner"
+
+images:
+  docker:
+    # DIA-NN images keyed by 01_diann_version dropdown value.
+    diann_images:
+      "2.3.2": "diann:2.3.2"
+      "2.5.0": "diann:2.5.0-thermo"
+    # Legacy fallback for old params.yml without 01_diann_version.
+    diann_docker_image: "diann:2.3.2"
+    # File conversion images.
+    thermoraw_image: "thermorawfileparser:2.0.0"
+    msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
+    # QC.
+    prolfquapp_image: "prolfqua/prolfquapp:2.0.10"
+
+  apptainer:
+    # SIF paths. Canonical layout: /opt/sif/<image>_<version>.sif.
+    # See README_DEPLOYMENT.md for how to populate these (apptainer pull
+    # from docker-daemon:// for locally-built images, from docker:// for
+    # upstream images).
+    diann_images:
+      "2.3.2": "/opt/sif/diann_2.3.2.sif"
+      "2.5.0": "/opt/sif/diann_2.5.0-thermo.sif"
+    diann_docker_image: "/opt/sif/diann_2.3.2.sif"
+    thermoraw_image: "/opt/sif/thermorawfileparser_2.0.0.sif"
+    msconvert_docker: "/opt/sif/pwiz.sif"
+    prolfquapp_image: "/opt/sif/prolfquapp_2.0.10.sif"

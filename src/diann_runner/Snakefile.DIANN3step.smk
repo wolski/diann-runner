@@ -126,11 +126,12 @@ rule convert_raw:
         logfile = "logs/convert_raw_{sample}.log"
     params:
         converter = WORKFLOW_PARAMS["raw_converter"],
-        image = resolve_raw_converter_image(WORKFLOW_PARAMS["raw_converter"], deploy_dict)
+        image = resolve_raw_converter_image(WORKFLOW_PARAMS["raw_converter"], deploy_dict),
+        runtime = deploy_dict["container_runtime"]
     retries: 3
     shell:
         """
-        thermoraw --image {params.image:q} -i {input.file:q} -o {output.file:q} --converter {params.converter}
+        thermoraw --runtime {params.runtime} --image {params.image:q} -i {input.file:q} -o {output.file:q} --converter {params.converter}
         """
 
 def get_converted_file(sample: str):
@@ -419,12 +420,13 @@ rule prolfqua_qc:
         logfile = "logs/prolfqua_qc.log"
     params:
         prolfquapp_image = deploy_dict["prolfquapp_image"],
+        runtime = deploy_dict["container_runtime"],
         indir = lambda wildcards, input: str(Path(input.report_tsv).parent),
         container_id = CONTAINERID,
         workunit_id = WORKUNITID
     shell:
         """
-        prolfquapp-docker --image {params.prolfquapp_image} -- prolfqua_qc.sh \
+        prolfquapp-docker --runtime {params.runtime} --image {params.prolfquapp_image} -- prolfqua_qc.sh \
             --indir {params.indir:q} -s DIANN \
             --dataset {input.dataset:q} \
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \

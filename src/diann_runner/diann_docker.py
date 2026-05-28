@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-diann_docker.py — Run DIA-NN inside Docker.
+diann_docker.py — Run DIA-NN inside a container (Docker or Apptainer).
 
 Usage:
-  diann-docker --image <image:tag> [OPTIONS] <DIA-NN args>
+  diann-docker --image <image> [--runtime docker|apptainer] [OPTIONS] <DIA-NN args>
 
 Examples:
   diann-docker --image diann:2.3.2 --f data/sample.mzML --fasta ref.fasta --out report.tsv
+  diann-docker --runtime apptainer --image /opt/sif/diann_2.3.2.sif --f data/sample.mzML ...
 
 Note: Use relative paths or run from your data directory.
       Current directory is mounted to /work in the container.
@@ -18,22 +19,27 @@ from typing import Annotated
 
 import cyclopts
 
-from diann_runner.docker_utils import DockerCommandBuilder, run_container
+from diann_runner.container_utils import (
+    ContainerCommandBuilder,
+    Runtime,
+    run_container,
+)
 
 app = cyclopts.App(
     name="diann-docker",
-    help="Run DIA-NN inside Docker container",
+    help="Run DIA-NN inside a container (Docker or Apptainer)",
 )
 
 
-def build_docker_cmd(
+def build_container_cmd(
     diann_args: list[str],
     image: str,
+    runtime: Runtime,
     platform_override: str,
 ) -> list[str]:
-    """Build the Docker command for DIA-NN."""
+    """Build the container command for DIA-NN."""
     builder = (
-        DockerCommandBuilder(image)
+        ContainerCommandBuilder(image, runtime=runtime)
         .with_cleanup()
         .with_init()
         .with_platform(force_amd64_on_arm=True, override=platform_override)
@@ -49,17 +55,24 @@ def build_docker_cmd(
 @app.default
 def run(
     *diann_args: Annotated[str, cyclopts.Parameter(show=False)],
-    image: Annotated[str, cyclopts.Parameter(help="Docker image (required)")],
-    platform: Annotated[str, cyclopts.Parameter(help="Docker platform (e.g., linux/amd64)")] = "",
+    image: Annotated[str, cyclopts.Parameter(help="Container image (required)")],
+    runtime: Annotated[
+        Runtime,
+        cyclopts.Parameter(help="Container runtime: docker or apptainer"),
+    ] = "docker",
+    platform: Annotated[
+        str,
+        cyclopts.Parameter(help="Docker platform (e.g., linux/amd64). Ignored under apptainer."),
+    ] = "",
 ) -> None:
     """
-    Run DIA-NN with the provided arguments inside a Docker container.
+    Run DIA-NN with the provided arguments inside a container.
 
     Example:
         diann-docker --image diann:2.3.2 --f data/sample.mzML --fasta ref.fasta --out report.tsv
     """
-    docker_cmd = build_docker_cmd(list(diann_args), image, platform)
-    returncode = run_container(docker_cmd)
+    cmd = build_container_cmd(list(diann_args), image, runtime, platform)
+    returncode = run_container(cmd)
     sys.exit(returncode)
 
 

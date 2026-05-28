@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-prolfquapp_docker.py — Run prolfquapp/prolfqua tools inside Docker.
+prolfquapp_docker.py — Run prolfquapp/prolfqua tools inside a container.
 
 Usage:
-  prolfquapp-docker --image <image:tag> <command> [args...]
+  prolfquapp-docker --image <image> [--runtime docker|apptainer] <command> [args...]
 
 Examples:
   prolfquapp-docker --image prolfqua/prolfquapp:2.0.8 prolfqua_qc.sh --indir out-DIANN -s DIANN ...
+  prolfquapp-docker --runtime apptainer --image /opt/sif/prolfquapp.sif prolfqua_qc.sh ...
 
 Note: Use relative paths or run from your data directory.
       Current directory is mounted to /work in the container.
@@ -18,18 +19,22 @@ from typing import Annotated
 
 import cyclopts
 
-from diann_runner.docker_utils import DockerCommandBuilder, run_container
+from diann_runner.container_utils import (
+    ContainerCommandBuilder,
+    Runtime,
+    run_container,
+)
 
 app = cyclopts.App(
     name="prolfquapp-docker",
-    help="Run prolfquapp/prolfqua tools inside Docker",
+    help="Run prolfquapp/prolfqua tools inside a container",
 )
 
 
-def build_docker_cmd(image: str, argv: list[str]) -> list[str]:
-    """Build the Docker command for prolfquapp."""
+def build_container_cmd(image: str, runtime: Runtime, argv: list[str]) -> list[str]:
+    """Build the container command for prolfquapp."""
     builder = (
-        DockerCommandBuilder(image)
+        ContainerCommandBuilder(image, runtime=runtime)
         .with_cleanup()
         .with_init()
         .with_uid_gid(flag="--user")
@@ -43,16 +48,20 @@ def build_docker_cmd(image: str, argv: list[str]) -> list[str]:
 @app.default
 def run(
     *container_args: Annotated[str, cyclopts.Parameter(show=False)],
-    image: Annotated[str, cyclopts.Parameter(help="Docker image (required)")],
+    image: Annotated[str, cyclopts.Parameter(help="Container image (required)")],
+    runtime: Annotated[
+        Runtime,
+        cyclopts.Parameter(help="Container runtime: docker or apptainer"),
+    ] = "docker",
 ) -> None:
     """
-    Run a command inside the prolfquapp Docker container.
+    Run a command inside the prolfquapp container.
 
     Example:
         prolfquapp-docker --image prolfqua/prolfquapp:2.0.8 prolfqua_qc.sh --indir out-DIANN -s DIANN
     """
-    docker_cmd = build_docker_cmd(image, list(container_args))
-    returncode = run_container(docker_cmd)
+    cmd = build_container_cmd(image, runtime, list(container_args))
+    returncode = run_container(cmd)
     sys.exit(returncode)
 
 

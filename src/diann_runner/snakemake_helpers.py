@@ -71,27 +71,54 @@ def load_config(raw_dir: Path) -> dict:
 
 
 def load_deploy_config(raw_dir: Path) -> dict:
-    """Load deployment config (docker images, threads, etc.).
+    """Load deployment config (container images, threads, etc.).
 
     Loads defaults_server.yml or defaults_local.yml based on environment.
     Search order: raw_dir first, then package config/ dir.
 
+    The shipped YAML carries both runtime image blocks under
+    ``images.docker`` and ``images.apptainer``. This function auto-detects
+    the runtime (via :func:`diann_runner.container_utils.detect_runtime`),
+    flattens the matching sub-block to the top level so existing callers
+    see ``deploy_dict["diann_images"]`` etc. unchanged, and adds
+    ``deploy_dict["container_runtime"]`` for downstream forwarding.
+
     Returns:
-        Dict with deployment settings from the yaml file.
+        Dict with deployment settings flattened for the active runtime.
     """
+    from diann_runner.container_utils import detect_runtime
+
     env = "server" if is_server_environment() else "local"
     defaults_filename = f"defaults_{env}.yml"
 
     package_config_dir = Path(__file__).parent / "config"
     search_paths = [Path(raw_dir), package_config_dir]
 
+    raw_config: dict | None = None
     for search_dir in search_paths:
         defaults_path = search_dir / defaults_filename
         if defaults_path.exists():
             with open(defaults_path) as f:
-                return yaml.safe_load(f)
+                raw_config = yaml.safe_load(f)
+            break
 
-    raise FileNotFoundError(f"Deploy config not found: {defaults_filename} (searched: {search_paths})")
+    if raw_config is None:
+        raise FileNotFoundError(
+            f"Deploy config not found: {defaults_filename} (searched: {search_paths})"
+        )
+
+    runtime = detect_runtime()
+    images_by_runtime = raw_config.get("images")
+    if not images_by_runtime or runtime not in images_by_runtime:
+        raise KeyError(
+            f"Deploy config {defaults_filename} is missing 'images.{runtime}' block "
+            f"(found runtimes: {sorted(images_by_runtime or {})})."
+        )
+
+    deploy_dict = {k: v for k, v in raw_config.items() if k != "images"}
+    deploy_dict.update(images_by_runtime[runtime])
+    deploy_dict["container_runtime"] = runtime
+    return deploy_dict
 
 
 def detect_input_files(raw_dir: Path) -> tuple[list[str], str, dict[str, list[Path]]]:
@@ -408,6 +435,7 @@ def create_diann_workflow(
         var_mods=var_mods,
         diann_bin=diann_params["diann_bin"],
         docker_image=resolve_diann_docker_image(diann_params.get("diann_version"), deploy_params),
+        container_runtime=deploy_params.get("container_runtime", "docker"),
         threads=deploy_params["threads"],
         qvalue=diann_params["qvalue"],
         min_pep_len=diann_params["min_pep_len"],

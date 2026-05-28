@@ -614,6 +614,84 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(content.count('--f sample'), 100)
 
 
+class TestContainerRuntimeInGeneratedScripts(unittest.TestCase):
+    """DiannWorkflow must bake --runtime into the generated bash scripts."""
+
+    def setUp(self):
+        self.test_dir = tempfile.mkdtemp(prefix='diann_runtime_test_')
+        self.original_dir = os.getcwd()
+        os.chdir(self.test_dir)
+
+    def tearDown(self):
+        os.chdir(self.original_dir)
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
+    def _read(self, path):
+        with open(path) as f:
+            return f.read()
+
+    def test_default_runtime_is_docker(self):
+        wf = DiannWorkflow(workunit_id='T', docker_image='diann:2.3.2')
+        script = wf.generate_step_a_library(fasta_paths='/db.fasta', script_name='a.sh')
+        content = self._read(script)
+        self.assertIn('--runtime docker', content)
+        self.assertIn('--image diann:2.3.2', content)
+
+    def test_apptainer_runtime_baked_in(self):
+        wf = DiannWorkflow(
+            workunit_id='T',
+            docker_image='/opt/sif/diann_2.3.2.sif',
+            container_runtime='apptainer',
+        )
+        script = wf.generate_step_a_library(fasta_paths='/db.fasta', script_name='a.sh')
+        content = self._read(script)
+        self.assertIn('--runtime apptainer', content)
+        self.assertIn('--image /opt/sif/diann_2.3.2.sif', content)
+        self.assertNotIn('--runtime docker', content)
+
+    def test_runtime_appears_in_all_three_steps(self):
+        wf = DiannWorkflow(
+            workunit_id='T',
+            docker_image='/opt/sif/diann.sif',
+            container_runtime='apptainer',
+        )
+        wf.generate_all_scripts(
+            fasta_paths='/db.fasta',
+            raw_files_step_b=['s1.mzML'],
+            raw_files_step_c=['s1.mzML'],
+        )
+        for script in ('step_A_library_search.sh',
+                       'step_B_quantification_refinement.sh',
+                       'step_C_final_quantification.sh'):
+            self.assertIn('--runtime apptainer', self._read(script),
+                          f"Missing --runtime apptainer in {script}")
+
+    def test_runtime_in_single_step(self):
+        wf = DiannWorkflow(
+            workunit_id='T',
+            docker_image='/opt/sif/diann.sif',
+            container_runtime='apptainer',
+        )
+        script = wf.generate_single_step(
+            fasta_paths='/db.fasta',
+            raw_files=['s1.mzML'],
+            script_name='single.sh',
+        )
+        self.assertIn('--runtime apptainer', self._read(script))
+
+    def test_config_round_trip_preserves_runtime(self):
+        wf = DiannWorkflow(
+            workunit_id='T',
+            output_base_dir='out-DIANN',
+            docker_image='/opt/sif/diann.sif',
+            container_runtime='apptainer',
+        )
+        wf.generate_step_a_library(fasta_paths='/db.fasta')
+        config_path = Path('out-DIANN_libA') / 'T_libA.config.json'
+        loaded = DiannWorkflow.from_config_file(str(config_path))
+        self.assertEqual(loaded.container_runtime, 'apptainer')
+
+
 def run_tests():
     """Run the test suite with nice output."""
     print("=" * 70)

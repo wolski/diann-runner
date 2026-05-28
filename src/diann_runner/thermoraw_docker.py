@@ -3,17 +3,18 @@
 thermoraw_docker.py — Convert Thermo RAW files to mzML format.
 
 Provides 3 converter options:
-- thermoraw: ThermoRawFileParser (native on macOS ARM, Docker elsewhere)
+- thermoraw: ThermoRawFileParser (native on macOS ARM, container elsewhere)
 - msconvert: msconvert standard conversion (x86/Linux only)
 - msconvert-demultiplex: msconvert with demultiplex filter (x86/Linux only)
 
 Usage:
-  thermoraw --image <image:tag> -i sample.raw -o sample.mzML
-  thermoraw --image <image:tag> -i sample.raw -o sample.mzML --converter msconvert
+  thermoraw --image <image> [--runtime docker|apptainer] -i sample.raw -o sample.mzML
+  thermoraw --image <image> -i sample.raw -o sample.mzML --converter msconvert
 
 Examples:
   thermoraw --image thermorawfileparser:2.0.0 -i sample.raw -o sample.mzML
   thermoraw --image chambm/pwiz-skyline-i-agree-to-the-vendor-licenses -i sample.raw -o out.mzML --converter msconvert
+  thermoraw --runtime apptainer --image /opt/sif/pwiz.sif -i sample.raw -o out.mzML --converter msconvert
 """
 
 import os
@@ -25,8 +26,9 @@ from typing import Annotated
 
 import cyclopts
 
-from diann_runner.docker_utils import (
-    DockerCommandBuilder,
+from diann_runner.container_utils import (
+    ContainerCommandBuilder,
+    Runtime,
     is_apple_silicon,
     print_command,
     run_container,
@@ -76,15 +78,19 @@ def _run_thermoraw_native(input_file: Path, output_dir: Path) -> int:
     return result.returncode
 
 
-def _run_thermoraw_docker(input_file: Path, output_dir: Path, image: str) -> int:
-    """Run ThermoRawFileParser using Docker."""
+def _run_thermoraw_container(
+    input_file: Path,
+    output_dir: Path,
+    image: str,
+    runtime: Runtime,
+) -> int:
+    """Run ThermoRawFileParser inside a container."""
     cwd = os.getcwd()
-    # Paths relative to mount point
     container_input = f"/data/{input_file.resolve().relative_to(cwd)}"
     container_output = f"/data/{output_dir.resolve().relative_to(cwd)}"
 
     cmd = (
-        DockerCommandBuilder(image)
+        ContainerCommandBuilder(image, runtime=runtime)
         .with_cleanup()
         .with_init()
         .with_platform(force_amd64_on_arm=True)
@@ -94,57 +100,61 @@ def _run_thermoraw_docker(input_file: Path, output_dir: Path, image: str) -> int
         .build(["-i", container_input, "-o", container_output, "-f", "2"])
     )
 
-    return run_container(cmd, label="Running (ThermoRawFileParser Docker)")
+    return run_container(cmd, label=f"Running (ThermoRawFileParser {runtime})")
 
 
-def _run_msconvert_docker(
+def _run_msconvert_container(
     input_file: Path,
     output_dir: Path,
     image: str,
+    runtime: Runtime,
     demultiplex: bool = False,
 ) -> int:
-    """Run msconvert using Docker (requires Wine, x86 only)."""
+    """Run msconvert inside a container (requires Wine, x86 only)."""
     cwd = os.getcwd()
     container_input = f"/data/{input_file.resolve().relative_to(cwd)}"
     container_output = f"/data/{output_dir.resolve().relative_to(cwd)}"
 
-    # Build msconvert options
     options = MSCONVERT_BASE_OPTIONS
     if demultiplex:
         options = f"{options} {MSCONVERT_DEMUX_FILTER}"
 
-    # msconvert via Wine in Docker
     msconvert_cmd = f"wine msconvert {container_input} {options} -o {container_output}"
 
     cmd = (
-        DockerCommandBuilder(image)
+        ContainerCommandBuilder(image, runtime=runtime)
         .with_cleanup()
         .with_init()
         .with_mount(cwd, "/data")
         .with_workdir("/data")
+        .with_wine_compat()
         .build(["sh", "-c", msconvert_cmd])
     )
 
-    return run_container(cmd, label="Running (msconvert Docker)")
+    return run_container(cmd, label=f"Running (msconvert {runtime})")
 
 
 @app.default
 def run(
     input_file: Annotated[Path, cyclopts.Parameter(name=["-i", "--input"])],
     output_file: Annotated[Path, cyclopts.Parameter(name=["-o", "--output"])],
-    image: Annotated[str, cyclopts.Parameter(help="Docker image (required for Docker converters)")],
+    image: Annotated[str, cyclopts.Parameter(help="Container image (required for container converters)")],
     converter: Annotated[
         str,
         cyclopts.Parameter(
             help="Converter: thermoraw, msconvert, msconvert-demultiplex"
         ),
     ] = "thermoraw",
+    runtime: Annotated[
+        Runtime,
+        cyclopts.Parameter(help="Container runtime: docker or apptainer"),
+    ] = "docker",
 ) -> None:
     """
     Convert Thermo RAW files to mzML format.
 
     Converter options:
-      thermoraw           ThermoRawFileParser (native on ARM Mac, Docker elsewhere)
+      thermoraw           ThermoRawFileParser (native on ARM Mac, container elsewhere)
       msconvert           msconvert standard conversion (x86/Linux only)
       msconvert-demultiplex  msconvert with demultiplex for overlapping DIA windows
 
@@ -152,14 +162,12 @@ def run(
         thermoraw --image thermorawfileparser:2.0.0 -i sample.raw -o sample.mzML
         thermoraw --image chambm/pwiz-skyline-i-agree-to-the-vendor-licenses -i in.raw -o out.mzML --converter msconvert
     """
-    # Validate converter option
     valid_converters = ("thermoraw", "msconvert", "msconvert-demultiplex")
     if converter not in valid_converters:
         print(f"Error: Invalid converter '{converter}'", file=sys.stderr)
         print(f"Valid options: {', '.join(valid_converters)}", file=sys.stderr)
         sys.exit(1)
 
-    # Check ARM Mac compatibility for msconvert
     if converter in ("msconvert", "msconvert-demultiplex") and is_apple_silicon():
         print(
             "Error: msconvert requires Wine which doesn't run on ARM Mac.",
@@ -168,23 +176,19 @@ def run(
         print("Use --converter thermoraw instead.", file=sys.stderr)
         sys.exit(1)
 
-    # Extract output directory from output file path
     output_dir = output_file.parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Route to appropriate converter
     if converter == "thermoraw":
-        # Use native binary on macOS if available
         if NATIVE_BINARY:
             sys.exit(_run_thermoraw_native(input_file, output_dir))
-        else:
-            sys.exit(_run_thermoraw_docker(input_file, output_dir, image))
+        sys.exit(_run_thermoraw_container(input_file, output_dir, image, runtime))
 
     elif converter == "msconvert":
-        sys.exit(_run_msconvert_docker(input_file, output_dir, image, demultiplex=False))
+        sys.exit(_run_msconvert_container(input_file, output_dir, image, runtime, demultiplex=False))
 
     elif converter == "msconvert-demultiplex":
-        sys.exit(_run_msconvert_docker(input_file, output_dir, image, demultiplex=True))
+        sys.exit(_run_msconvert_container(input_file, output_dir, image, runtime, demultiplex=True))
 
 
 def main():

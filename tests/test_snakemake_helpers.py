@@ -5,10 +5,13 @@ import zipfile
 import os
 from pathlib import Path
 
+from unittest.mock import patch
+
 from diann_runner.snakemake_helpers import (
     get_diann_input_dependency,
     get_diann_input_path,
     get_fasta_paths,
+    load_deploy_config,
     parse_flat_params,
     resolve_diann_docker_image,
     resolve_raw_converter_image,
@@ -333,3 +336,79 @@ class TestSnakemakeHelpers(unittest.TestCase):
         
         params = parse_flat_params(flat_params)
         self.assertEqual(params['diann']['scan_window'], 'AUTO')
+
+
+CONFIG_WITH_BOTH_BLOCKS = """\
+threads: 8
+app_runner: fgcz_app_runner
+images:
+  docker:
+    diann_images:
+      "2.3.2": "diann:2.3.2"
+    diann_docker_image: "diann:2.3.2"
+    thermoraw_image: "thermorawfileparser:2.0.0"
+    msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
+    prolfquapp_image: "prolfqua/prolfquapp:2.0.10"
+  apptainer:
+    diann_images:
+      "2.3.2": "/opt/sif/diann_2.3.2.sif"
+    diann_docker_image: "/opt/sif/diann_2.3.2.sif"
+    thermoraw_image: "/opt/sif/thermorawfileparser_2.0.0.sif"
+    msconvert_docker: "/opt/sif/pwiz.sif"
+    prolfquapp_image: "/opt/sif/prolfquapp_2.0.10.sif"
+"""
+
+
+class TestLoadDeployConfig(unittest.TestCase):
+    """load_deploy_config must auto-detect runtime and flatten the right block."""
+
+    def _write_config(self, tmp_path: Path) -> None:
+        (tmp_path / "defaults_local.yml").write_text(CONFIG_WITH_BOTH_BLOCKS)
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/docker" if n == "docker" else None)
+    def test_flattens_docker_block(self, _):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_config(tmp_path)
+            deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(deploy_dict["container_runtime"], "docker")
+        self.assertEqual(deploy_dict["diann_docker_image"], "diann:2.3.2")
+        self.assertEqual(deploy_dict["thermoraw_image"], "thermorawfileparser:2.0.0")
+        self.assertEqual(deploy_dict["threads"], 8)
+        self.assertNotIn("images", deploy_dict)
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/apptainer" if n == "apptainer" else None)
+    def test_flattens_apptainer_block(self, _):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_config(tmp_path)
+            deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(deploy_dict["container_runtime"], "apptainer")
+        self.assertEqual(deploy_dict["diann_docker_image"], "/opt/sif/diann_2.3.2.sif")
+        self.assertEqual(deploy_dict["msconvert_docker"], "/opt/sif/pwiz.sif")
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: f"/usr/bin/{n}")  # both installed
+    def test_apptainer_wins_when_both_installed(self, _):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_config(tmp_path)
+            deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(deploy_dict["container_runtime"], "apptainer")
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/docker" if n == "docker" else None)
+    def test_missing_runtime_block_raises(self, _):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "defaults_local.yml").write_text(
+                "threads: 4\nimages:\n  apptainer:\n    diann_docker_image: x\n"
+            )
+            with self.assertRaises(KeyError):
+                load_deploy_config(tmp_path)
+
+
+if __name__ == "__main__":
+    unittest.main()
