@@ -18,11 +18,11 @@ images:
     prolfquapp_image: "prolfqua/prolfquapp:2.0.10"
 
   apptainer:
-    # SIF paths. Canonical layout: /opt/sif/<image>_<version>.sif.
+    # SIF paths. Shared FGCZ apptainer cache, populated by deploy.smk.
     diann_images:
-      "2.3.2": "/opt/sif/diann_2.3.2.sif"
-      "2.5.0": "/opt/sif/diann_2.5.0-thermo.sif"
-    diann_docker_image: "/opt/sif/diann_2.3.2.sif"
-    thermoraw_image: "/opt/sif/thermorawfileparser_2.0.0.sif"
-    msconvert_docker: "/opt/sif/pwiz.sif"
-    prolfquapp_image: "/opt/sif/prolfquapp_2.0.10.sif"
+      "2.3.2": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
+      "2.5.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.0-thermo.sif"
+    diann_docker_image: "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
+    thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
+    msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
+    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.0.10.sif"
