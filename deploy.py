@@ -1,5 +1,6 @@
 """Helper functions for deploy.smk"""
 
+import re
 import shutil
 import subprocess
 import sys
@@ -144,6 +145,50 @@ def check_apptainer_prerequisites(output_flag: Path) -> None:
 
     print("✓ Apptainer prerequisites OK\n")
     output_flag.touch()
+
+
+def generate_def_from_dockerfile(
+    dockerfile: Path,
+    output_def: Path,
+    overrides: dict[str, str] | None = None,
+) -> None:
+    """Convert a Dockerfile to an apptainer .def file via spython.
+
+    spython turns Dockerfile ARGs into plain shell assignments in the %post
+    section, baking in their default values. To build a non-default version
+    we post-process the generated .def and override the relevant
+    assignment(s).
+
+    Args:
+        dockerfile: Path to the source Dockerfile.
+        output_def: Destination .def path (parent dir is created if needed).
+        overrides: Optional {var: value} map. For each entry, the first
+            line matching ``^<var>=.*$`` in the generated .def is replaced
+            with ``<var>=<value>``. Use this to pin DIANN_VERSION etc.
+    """
+    from spython.main.parse.parsers import DockerParser
+    from spython.main.parse.writers import SingularityWriter
+
+    parser = DockerParser(str(dockerfile))
+    writer = SingularityWriter(parser.recipe)
+    content = writer.convert()
+
+    for var, value in (overrides or {}).items():
+        content, count = re.subn(
+            rf"^{re.escape(var)}=.*$",
+            f"{var}={value}",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        if count == 0:
+            raise RuntimeError(
+                f"Override variable {var!r} not found in .def generated from "
+                f"{dockerfile} (looked for line starting with '{var}=')."
+            )
+
+    output_def.parent.mkdir(parents=True, exist_ok=True)
+    output_def.write_text(content)
 
 
 def print_sif_deployment_complete(output_flag: Path, sif_dir: Path) -> None:

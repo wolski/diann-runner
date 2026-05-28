@@ -33,13 +33,15 @@ Migrating a host from Docker to Apptainer is purely an ops action: install `appt
 
 Tested with `apptainer version 1.4.2`. The SIF paths in `defaults_server.yml` assume the `/opt/sif/` layout. Two ways to populate it:
 
-#### Option A — Build SIFs on the docker host with `deploy.smk` (recommended)
+`deploy.smk all_sif` offers two builders, selected via `--config sif_builder={docker,native}`:
 
-Run on a host that has **both** docker (with daemon running) and apptainer installed. The locally-built images come from the docker daemon; the upstream images (msconvert, prolfquapp) come from Docker Hub.
+#### Option A — Docker builder (default; requires docker + apptainer)
+
+Run on a host with **both** docker (daemon running) and apptainer. Locally-built images come from the docker daemon via `docker-daemon://`; upstream images (msconvert, prolfquapp) come from Docker Hub via `docker://`.
 
 ```bash
-snakemake -s deploy.smk all_sif --cores 1                    # build all SIFs into ./sif/
-snakemake -s deploy.smk all_sif --cores 1 --config sif_output_dir=/opt/sif   # or write straight to /opt/sif
+snakemake -s deploy.smk all_sif --cores 1                              # ./sif/
+snakemake -s deploy.smk all_sif --cores 1 --config sif_output_dir=/opt/sif
 ```
 
 Then copy to the apptainer host:
@@ -48,26 +50,44 @@ Then copy to the apptainer host:
 rsync -av sif/ <apptainer-host>:/opt/sif/
 ```
 
-`deploy.smk` adds these rules for the SIF path:
+#### Option B — Native builder (apptainer-only host, no docker needed)
 
-- `build_diann_sif`, `build_diann_thermo_sif`, `build_thermorawfileparser_sif` — `apptainer pull docker-daemon://<tag>`
-- `pull_msconvert_sif`, `pull_prolfquapp_sif` — `apptainer pull docker://<ref>`
-- `sif_deployment_complete` — combined marker
+Run on a host that has apptainer but no docker. `deploy.smk` calls [spython](https://github.com/singularityhub/singularity-cli) to translate each Dockerfile into an apptainer `.def` file under `build/`, then runs `apptainer build` directly. `spython` is a runtime dependency of `diann_runner`, so it's already installed.
 
-Versions and the msconvert image reference come from `deploy_config.yaml` (`thermoraw_version`, `prolfquapp_version`, `msconvert_image`) and default to the values in `defaults_server.yml`.
+```bash
+# On the apptainer host, e.g. fgcz-c-043
+cd /scratch/diann-runner   # or wherever the repo is checked out
+snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=native --config sif_output_dir=/opt/sif
+```
 
-#### Option B — Pull from a registry on the apptainer host
+The `.def` files are regenerated from the Dockerfiles every time the Dockerfile changes — there's no parallel apptainer recipe to drift out of sync. Build versions are pinned via `--build-arg`–style overrides applied to the generated `.def`.
 
-If you have a registry the apptainer host can reach (and the locally-built images have been pushed to it), pull directly:
+Native builder requires apptainer's user-namespace to be configured on the host (no `--fakeroot` flag needed if `apptainer build /tmp/test.sif docker://hello-world` works without sudo on that host).
+
+#### Option C — Pull from a registry on the apptainer host
+
+If you have a registry the apptainer host can reach (and the locally-built images have been pushed to it), pull directly without `deploy.smk`:
 
 ```bash
 sudo mkdir -p /opt/sif
 apptainer pull /opt/sif/diann_2.3.2.sif docker://<registry>/diann:2.3.2
 apptainer pull /opt/sif/pwiz.sif docker://chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
-# ... etc
 ```
 
-No `deploy.smk` involvement on the apptainer side. Requires registry setup.
+Useful when several apptainer hosts share the same registry.
+
+#### Build rules summary
+
+`deploy.smk` registers these rules for the SIF path:
+
+- `build_diann_sif`, `build_diann_thermo_sif`, `build_thermorawfileparser_sif` — body depends on `sif_builder`:
+  - `docker`: `apptainer pull docker-daemon://<tag>`
+  - `native`: `apptainer build <sif> <generated.def>`
+- `generate_diann_def`, `generate_diann_thermo_def`, `generate_thermorawfileparser_def` — only when `sif_builder=native`; spython conversion
+- `pull_msconvert_sif`, `pull_prolfquapp_sif` — same in both modes (`apptainer pull docker://<ref>`, no docker needed)
+- `sif_deployment_complete` — combined marker
+
+Versions and the msconvert image reference come from `deploy_config.yaml` (`thermoraw_version`, `prolfquapp_version`, `msconvert_image`) and default to the values in `defaults_server.yml`.
 
 #### Verify
 

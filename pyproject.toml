@@ -16,6 +16,7 @@ dependencies = [
     "bfabric-app-runner>=0.5.0",
     "loguru>=0.7.0",
     "ahocorapy>=1.6.0",
+    "spython>=0.3.0",
 ]
 
 [project.scripts]

@@ -34,6 +34,7 @@ from deploy import (
     check_apptainer_prerequisites,
     check_docker_images,
     check_prerequisites,
+    generate_def_from_dockerfile,
     print_deployment_complete,
     print_sif_deployment_complete,
 )
@@ -59,6 +60,14 @@ MSCONVERT_IMAGE = config.get(
 # running on the target apptainer host directly.
 SIF_DIR = Path(config.get("sif_output_dir", BASE_DIR / "sif"))
 
+# SIF builder: "docker" (default; converts via docker-daemon://) or
+# "native" (apptainer build from spython-generated .def, no docker).
+SIF_BUILDER = config.get("sif_builder", "docker")
+if SIF_BUILDER not in ("docker", "native"):
+    raise ValueError(
+        f"sif_builder must be 'docker' or 'native', got {SIF_BUILDER!r}"
+    )
+
 # Deployment flags and logs directories
 FLAGS_DIR = BASE_DIR / ".deploy_flags"
 LOGS_DIR = BASE_DIR / "logs"
@@ -79,10 +88,18 @@ rule all:
 rule all_sif:
     """Build all SIF images for apptainer deployment.
 
-    Convert locally-built docker images to SIF via docker-daemon://, and
-    pull upstream images (msconvert, prolfquapp) from Docker Hub via
-    docker://. Requires both docker and apptainer on the host running
-    this rule.
+    Two builders are available, selected by ``--config sif_builder=...``:
+
+    - ``docker`` (default): convert locally-built docker images to SIF
+      via ``docker-daemon://``. Requires both docker (daemon running)
+      and apptainer on the host running this rule.
+
+    - ``native``: build directly with ``apptainer build`` from .def
+      files generated from the Dockerfiles via spython. No docker
+      needed. Intended for hosts that have apptainer only.
+
+    Upstream images (msconvert, prolfquapp) are always pulled via
+    ``docker://`` — same in both modes.
     """
     input:
         FLAGS_DIR / "sif_deployment_complete.flag"
@@ -189,71 +206,79 @@ rule deployment_complete:
 ################################################################################
 
 rule check_apptainer_prerequisites:
-    """Verify apptainer + docker daemon are available for SIF building."""
+    """Verify apptainer (and docker daemon, when sif_builder=docker) are
+    available for SIF building. Used by docker-daemon:// build rules.
+    """
     output:
         flag = FLAGS_DIR / "apptainer_prereq_checked.flag"
     run:
         check_apptainer_prerequisites(output_flag=Path(output.flag))
 
 
-rule build_diann_sif:
-    """Convert diann:<version> docker image to SIF via docker-daemon://."""
-    input:
-        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
-        docker_flag = FLAGS_DIR / "diann_docker_built.flag"
-    output:
-        sif = SIF_DIR / f"diann_{DIANN_VERSION}.sif"
-    log:
-        LOGS_DIR / "build_diann_sif.log"
-    params:
-        tag = f"diann:{DIANN_VERSION}"
-    shell:
-        """
-        mkdir -p "$(dirname {output.sif:q})"
-        apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
-        """
+# Docker-daemon builders — only registered when sif_builder=docker.
+if SIF_BUILDER == "docker":
 
+    rule build_diann_sif:
+        """Convert diann:<version> docker image to SIF via docker-daemon://."""
+        input:
+            prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
+            docker_flag = FLAGS_DIR / "diann_docker_built.flag"
+        output:
+            sif = SIF_DIR / f"diann_{DIANN_VERSION}.sif"
+        log:
+            LOGS_DIR / "build_diann_sif.log"
+        params:
+            tag = f"diann:{DIANN_VERSION}"
+        shell:
+            """
+            mkdir -p "$(dirname {output.sif:q})"
+            apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
+            """
 
-rule build_diann_thermo_sif:
-    """Convert diann:<version>-thermo docker image to SIF."""
-    input:
-        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
-        docker_flag = FLAGS_DIR / "diann_thermo_docker_built.flag"
-    output:
-        sif = SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif"
-    log:
-        LOGS_DIR / "build_diann_thermo_sif.log"
-    params:
-        tag = f"diann:{DIANN_THERMO_VERSION}-thermo"
-    shell:
-        """
-        mkdir -p "$(dirname {output.sif:q})"
-        apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
-        """
+    rule build_diann_thermo_sif:
+        """Convert diann:<version>-thermo docker image to SIF."""
+        input:
+            prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
+            docker_flag = FLAGS_DIR / "diann_thermo_docker_built.flag"
+        output:
+            sif = SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif"
+        log:
+            LOGS_DIR / "build_diann_thermo_sif.log"
+        params:
+            tag = f"diann:{DIANN_THERMO_VERSION}-thermo"
+        shell:
+            """
+            mkdir -p "$(dirname {output.sif:q})"
+            apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
+            """
 
-
-rule build_thermorawfileparser_sif:
-    """Convert thermorawfileparser:<version> docker image to SIF."""
-    input:
-        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
-        docker_flag = FLAGS_DIR / "thermorawfileparser_docker_built.flag"
-    output:
-        sif = SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif"
-    log:
-        LOGS_DIR / "build_thermorawfileparser_sif.log"
-    params:
-        tag = f"thermorawfileparser:{THERMORAW_VERSION}"
-    shell:
-        """
-        mkdir -p "$(dirname {output.sif:q})"
-        apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
-        """
+    rule build_thermorawfileparser_sif:
+        """Convert thermorawfileparser:<version> docker image to SIF."""
+        input:
+            prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
+            docker_flag = FLAGS_DIR / "thermorawfileparser_docker_built.flag"
+        output:
+            sif = SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif"
+        log:
+            LOGS_DIR / "build_thermorawfileparser_sif.log"
+        params:
+            tag = f"thermorawfileparser:{THERMORAW_VERSION}"
+        shell:
+            """
+            mkdir -p "$(dirname {output.sif:q})"
+            apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
+            """
 
 
 rule pull_msconvert_sif:
-    """Pull the upstream msconvert (pwiz) image from Docker Hub."""
+    """Pull the upstream msconvert (pwiz) image from Docker Hub.
+
+    Uses the apptainer-only prereq check — pulling doesn't need docker,
+    so this works for both all_sif (docker-host) and all_sif_native
+    (apptainer-host-only) flows.
+    """
     input:
-        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag"
+        prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag"
     output:
         sif = SIF_DIR / "pwiz.sif"
     log:
@@ -270,7 +295,7 @@ rule pull_msconvert_sif:
 rule pull_prolfquapp_sif:
     """Pull the upstream prolfquapp image from Docker Hub."""
     input:
-        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag"
+        prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag"
     output:
         sif = SIF_DIR / f"prolfquapp_{PROLFQUAPP_VERSION}.sif"
     log:
@@ -296,6 +321,123 @@ rule sif_deployment_complete:
         flag = FLAGS_DIR / "sif_deployment_complete.flag"
     run:
         print_sif_deployment_complete(output_flag=Path(output.flag), sif_dir=SIF_DIR)
+
+
+################################################################################
+# Native SIF rules — only registered when sif_builder=native.
+# Generated .def files live under build/ (gitignored). Always regenerated
+# from the Dockerfile via spython — single source of truth, no drift risk.
+################################################################################
+
+DEF_DIR = BASE_DIR / "build"
+
+
+rule check_apptainer_only_prerequisites:
+    """Verify apptainer is on PATH (docker not required). Used by both
+    the pull rules and the native-builder rules.
+    """
+    output:
+        flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag"
+    shell:
+        """
+        if ! command -v apptainer >/dev/null 2>&1; then
+            echo "ERROR: apptainer not found on PATH" >&2
+            exit 1
+        fi
+        apptainer --version
+        touch {output.flag:q}
+        """
+
+
+if SIF_BUILDER == "native":
+
+    rule generate_diann_def:
+        """Convert Dockerfile.diann to a .def file with DIANN_VERSION pinned."""
+        input:
+            dockerfile = "docker/Dockerfile.diann"
+        output:
+            deffile = DEF_DIR / f"diann_{DIANN_VERSION}.def"
+        params:
+            version = DIANN_VERSION
+        run:
+            generate_def_from_dockerfile(
+                Path(input.dockerfile),
+                Path(output.deffile),
+                overrides={"DIANN_VERSION": params.version},
+            )
+
+    rule generate_diann_thermo_def:
+        """Convert Dockerfile.diann_thermofilereader to a .def file."""
+        input:
+            dockerfile = "docker/Dockerfile.diann_thermofilereader"
+        output:
+            deffile = DEF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.def"
+        params:
+            version = DIANN_THERMO_VERSION
+        run:
+            generate_def_from_dockerfile(
+                Path(input.dockerfile),
+                Path(output.deffile),
+                overrides={"DIANN_VERSION": params.version},
+            )
+
+    rule generate_thermorawfileparser_def:
+        """Convert Dockerfile.thermorawfileparser-linux to a .def file."""
+        input:
+            dockerfile = "docker/Dockerfile.thermorawfileparser-linux"
+        output:
+            deffile = DEF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.def"
+        run:
+            # No ARG to override — Dockerfile hardcodes 2.0.0-dev.
+            generate_def_from_dockerfile(
+                Path(input.dockerfile),
+                Path(output.deffile),
+            )
+
+    rule build_diann_sif:
+        """Build diann SIF natively from generated .def file (no docker)."""
+        input:
+            prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
+            deffile = DEF_DIR / f"diann_{DIANN_VERSION}.def"
+        output:
+            sif = SIF_DIR / f"diann_{DIANN_VERSION}.sif"
+        log:
+            LOGS_DIR / "build_diann_sif.log"
+        shell:
+            """
+            mkdir -p "$(dirname {output.sif:q})"
+            apptainer build --force {output.sif:q} {input.deffile:q} 2>&1 | tee {log:q}
+            """
+
+    rule build_diann_thermo_sif:
+        """Build diann-thermo SIF natively from generated .def file."""
+        input:
+            prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
+            deffile = DEF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.def"
+        output:
+            sif = SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif"
+        log:
+            LOGS_DIR / "build_diann_thermo_sif.log"
+        shell:
+            """
+            mkdir -p "$(dirname {output.sif:q})"
+            apptainer build --force {output.sif:q} {input.deffile:q} 2>&1 | tee {log:q}
+            """
+
+    rule build_thermorawfileparser_sif:
+        """Build ThermoRawFileParser SIF natively from generated .def file."""
+        input:
+            prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
+            deffile = DEF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.def"
+        output:
+            sif = SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif"
+        log:
+            LOGS_DIR / "build_thermorawfileparser_sif.log"
+        shell:
+            """
+            mkdir -p "$(dirname {output.sif:q})"
+            apptainer build --force {output.sif:q} {input.deffile:q} 2>&1 | tee {log:q}
+            """
 
 
 ################################################################################
