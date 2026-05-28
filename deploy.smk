@@ -31,9 +31,11 @@ Configuration:
 from pathlib import Path
 
 from deploy import (
+    check_apptainer_prerequisites,
     check_docker_images,
     check_prerequisites,
     print_deployment_complete,
+    print_sif_deployment_complete,
 )
 
 # Resolve base directory from the Snakefile location
@@ -46,6 +48,16 @@ workdir: str(BASE_DIR)
 FORCE_REBUILD = config.get("force_rebuild", False)
 DIANN_VERSION = config.get("diann_version", "2.3.2")
 DIANN_THERMO_VERSION = config.get("diann_thermo_version", "2.5.0")
+THERMORAW_VERSION = config.get("thermoraw_version", "2.0.0")
+PROLFQUAPP_VERSION = config.get("prolfquapp_version", "2.0.10")
+MSCONVERT_IMAGE = config.get(
+    "msconvert_image", "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
+)
+
+# SIF output directory (used by all_sif). Defaults to ./sif relative to
+# this Snakefile. Override with --config sif_output_dir=/opt/sif when
+# running on the target apptainer host directly.
+SIF_DIR = Path(config.get("sif_output_dir", BASE_DIR / "sif"))
 
 # Deployment flags and logs directories
 FLAGS_DIR = BASE_DIR / ".deploy_flags"
@@ -62,6 +74,20 @@ rule all:
         FLAGS_DIR / "deployment_complete.flag"
     message:
         "Deployment complete!"
+
+
+rule all_sif:
+    """Build all SIF images for apptainer deployment.
+
+    Convert locally-built docker images to SIF via docker-daemon://, and
+    pull upstream images (msconvert, prolfquapp) from Docker Hub via
+    docker://. Requires both docker and apptainer on the host running
+    this rule.
+    """
+    input:
+        FLAGS_DIR / "sif_deployment_complete.flag"
+    message:
+        "SIF deployment complete!"
 
 
 rule check_prerequisites:
@@ -156,6 +182,120 @@ rule deployment_complete:
         flag = FLAGS_DIR / "deployment_complete.flag"
     run:
         print_deployment_complete(output_flag=Path(output.flag))
+
+
+################################################################################
+# SIF (Apptainer) Rules
+################################################################################
+
+rule check_apptainer_prerequisites:
+    """Verify apptainer + docker daemon are available for SIF building."""
+    output:
+        flag = FLAGS_DIR / "apptainer_prereq_checked.flag"
+    run:
+        check_apptainer_prerequisites(output_flag=Path(output.flag))
+
+
+rule build_diann_sif:
+    """Convert diann:<version> docker image to SIF via docker-daemon://."""
+    input:
+        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
+        docker_flag = FLAGS_DIR / "diann_docker_built.flag"
+    output:
+        sif = SIF_DIR / f"diann_{DIANN_VERSION}.sif"
+    log:
+        LOGS_DIR / "build_diann_sif.log"
+    params:
+        tag = f"diann:{DIANN_VERSION}"
+    shell:
+        """
+        mkdir -p "$(dirname {output.sif:q})"
+        apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
+        """
+
+
+rule build_diann_thermo_sif:
+    """Convert diann:<version>-thermo docker image to SIF."""
+    input:
+        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
+        docker_flag = FLAGS_DIR / "diann_thermo_docker_built.flag"
+    output:
+        sif = SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif"
+    log:
+        LOGS_DIR / "build_diann_thermo_sif.log"
+    params:
+        tag = f"diann:{DIANN_THERMO_VERSION}-thermo"
+    shell:
+        """
+        mkdir -p "$(dirname {output.sif:q})"
+        apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
+        """
+
+
+rule build_thermorawfileparser_sif:
+    """Convert thermorawfileparser:<version> docker image to SIF."""
+    input:
+        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
+        docker_flag = FLAGS_DIR / "thermorawfileparser_docker_built.flag"
+    output:
+        sif = SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif"
+    log:
+        LOGS_DIR / "build_thermorawfileparser_sif.log"
+    params:
+        tag = f"thermorawfileparser:{THERMORAW_VERSION}"
+    shell:
+        """
+        mkdir -p "$(dirname {output.sif:q})"
+        apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
+        """
+
+
+rule pull_msconvert_sif:
+    """Pull the upstream msconvert (pwiz) image from Docker Hub."""
+    input:
+        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag"
+    output:
+        sif = SIF_DIR / "pwiz.sif"
+    log:
+        LOGS_DIR / "pull_msconvert_sif.log"
+    params:
+        ref = MSCONVERT_IMAGE
+    shell:
+        """
+        mkdir -p "$(dirname {output.sif:q})"
+        apptainer pull --force {output.sif:q} docker://{params.ref} 2>&1 | tee {log:q}
+        """
+
+
+rule pull_prolfquapp_sif:
+    """Pull the upstream prolfquapp image from Docker Hub."""
+    input:
+        prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag"
+    output:
+        sif = SIF_DIR / f"prolfquapp_{PROLFQUAPP_VERSION}.sif"
+    log:
+        LOGS_DIR / "pull_prolfquapp_sif.log"
+    params:
+        ref = f"prolfqua/prolfquapp:{PROLFQUAPP_VERSION}"
+    shell:
+        """
+        mkdir -p "$(dirname {output.sif:q})"
+        apptainer pull --force {output.sif:q} docker://{params.ref} 2>&1 | tee {log:q}
+        """
+
+
+rule sif_deployment_complete:
+    """Final SIF deployment marker with summary."""
+    input:
+        SIF_DIR / f"diann_{DIANN_VERSION}.sif",
+        SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif",
+        SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif",
+        SIF_DIR / "pwiz.sif",
+        SIF_DIR / f"prolfquapp_{PROLFQUAPP_VERSION}.sif"
+    output:
+        flag = FLAGS_DIR / "sif_deployment_complete.flag"
+    run:
+        print_sif_deployment_complete(output_flag=Path(output.flag), sif_dir=SIF_DIR)
 
 
 ################################################################################

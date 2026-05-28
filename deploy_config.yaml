@@ -14,3 +14,14 @@ skip_oktoberfest: false
 # Force rebuild of Docker images even if they already exist
 # Useful when updating to a new version
 force_rebuild: false
+
+# ---- SIF / Apptainer (only used by `snakemake -s deploy.smk all_sif`) ----
+# Where to write .sif files. Defaults to ./sif. Override to /opt/sif when
+# running this Snakefile directly on the apptainer host.
+sif_output_dir: sif
+
+# Versions for the upstream images pulled by all_sif. These default to
+# match the values in src/diann_runner/config/defaults_server.yml.
+thermoraw_version: "2.0.0"
+prolfquapp_version: "2.0.10"
+msconvert_image: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"

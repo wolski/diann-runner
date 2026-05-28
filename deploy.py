@@ -101,6 +101,71 @@ def check_docker_images(
         print("  Run: snakemake -s deploy.smk --cores 1\n")
 
 
+def check_apptainer_prerequisites(output_flag: Path) -> None:
+    """Verify apptainer (and docker, for docker-daemon:// pulls) are available.
+
+    The SIF build path needs:
+    - apptainer on PATH (to run `apptainer pull`)
+    - docker on PATH and the daemon running (to satisfy `docker-daemon://`
+      pulls for locally-built images: diann, thermorawfileparser)
+
+    Upstream-only pulls (msconvert, prolfquapp) only need apptainer, but
+    a typical SIF build run needs both — we check for both here.
+    """
+    print("=" * 60)
+    print("Checking Apptainer Prerequisites")
+    print("=" * 60)
+
+    all_good = True
+
+    if check_command("apptainer"):
+        result = subprocess.run(["apptainer", "--version"], capture_output=True, text=True)
+        print(f"✓ {result.stdout.strip()}")
+    else:
+        print("✗ apptainer not found on PATH")
+        all_good = False
+
+    if check_command("docker"):
+        result = subprocess.run(["docker", "ps"], capture_output=True)
+        if result.returncode == 0:
+            print("✓ Docker daemon is running (needed for docker-daemon:// pulls)")
+        else:
+            print("✗ Docker daemon not running — docker-daemon:// pulls will fail")
+            all_good = False
+    else:
+        print("✗ docker not found — docker-daemon:// pulls will fail")
+        all_good = False
+
+    print("=" * 60)
+
+    if not all_good:
+        print("\n✗ Apptainer prerequisites check failed!")
+        sys.exit(1)
+
+    print("✓ Apptainer prerequisites OK\n")
+    output_flag.touch()
+
+
+def print_sif_deployment_complete(output_flag: Path, sif_dir: Path) -> None:
+    """Print final SIF deployment summary."""
+    print("\n" + "=" * 60)
+    print("SIF Images Built")
+    print("=" * 60)
+
+    if sif_dir.exists():
+        for sif in sorted(sif_dir.glob("*.sif")):
+            size_mb = sif.stat().st_size / (1024 * 1024)
+            print(f"  {sif.name}  ({size_mb:.1f} MB)")
+
+    print("=" * 60)
+    print(f"\nSIFs are in: {sif_dir.resolve()}")
+    print("Next: copy them to /opt/sif/ on the apptainer host:")
+    print(f"  rsync -av {sif_dir}/ <apptainer-host>:/opt/sif/")
+    print("=" * 60 + "\n")
+
+    output_flag.touch()
+
+
 def print_deployment_complete(output_flag: Path) -> None:
     """
     Print final deployment summary.
