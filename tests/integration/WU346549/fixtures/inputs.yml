@@ -1,0 +1,12 @@
+inputs:
+- filename: input/raw
+  id: 65109
+  type: bfabric_resource_dataset
+- entity: workunit
+  filename: input/order.fasta
+  id: 346549
+  type: bfabric_order_fasta
+- filename: input/p34486_Proteobench_TripleProteome_20240614.fasta
+  source:
+    local: /misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta
+  type: file

@@ -63,7 +63,6 @@ WU54321_work/
 !requirements.txt
 !pyproject.toml
 !LICENSE.txt
-!tests/integration/*.txt
 
 # Log files
 *.log

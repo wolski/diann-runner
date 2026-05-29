@@ -1,0 +1,32 @@
+.
+├── dataset.csv
+├── input
+│   ├── order.fasta
+│   ├── p34486_Proteobench_TripleProteome_20240614.fasta
+│   └── raw
+│       ├── dataset.parquet
+│       ├── LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_01.raw
+│       ├── LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_02.raw
+│       ├── LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_03.raw
+│       ├── LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_01.raw
+│       ├── LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_02.raw
+│       └── LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_03.raw
+├── inputs.yml
+├── logs
+│   └── diann_generate_scripts.log
+├── out-DIANN_libA
+│   ├── diann_libA.log.txt
+│   └── WU346549_libA.config.json
+├── out-DIANN_quantB
+│   └── WU346549_quantB.config.json
+├── out-DIANN_quantC
+│   └── WU346549_quantC.config.json
+├── params.yml
+├── step_A_library_search.sh
+├── step_B_quantification_refinement.sh
+├── step_C_final_quantification.sh
+├── temp-DIANN_libA
+├── tree.txt
+└── WU346549_work.zip
+
+8 directories, 22 files

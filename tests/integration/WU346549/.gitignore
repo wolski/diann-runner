@@ -1,0 +1,10 @@
+# This directory IS the snakemake work dir. setup_integration_test.py + run.sh
+# generate / download everything else (input/, raws, FASTA, dataset.parquet,
+# out-DIANN_*, logs, Result_*.zip). Track only the sources below.
+/*
+!/.gitignore
+!/setup_integration_test.py
+!/run.sh
+!/tree.txt
+!/fixtures/
+!/fixtures/**
