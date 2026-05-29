@@ -1,0 +1,12 @@
+# ProteoBench DIA Orbitrap AIF raw files (triple-proteome HYE benchmark).
+# PRIDE / ProteomeXchange accession: PXD028735
+# Used by WU346549 (DIA-NN 2.5.0, two_step). ~9.2 GB total, ~1.5 GB each.
+# IMPORTANT: do NOT rename these files once downloaded (ProteoBench requirement).
+# Source: https://proteobench.readthedocs.io/en/stable/available-modules/archived-modules/4-quant-lfq-ion-dia-aif/
+# Mirror: https://proteobench.cubimed.rub.de/raws/DIA/
+https://ftp.pride.ebi.ac.uk/pride/data/archive/2022/02/PXD028735/LFQ%5FOrbitrap%5FAIF%5FCondition%5FA%5FSample%5FAlpha%5F01.raw
+https://ftp.pride.ebi.ac.uk/pride/data/archive/2022/02/PXD028735/LFQ%5FOrbitrap%5FAIF%5FCondition%5FA%5FSample%5FAlpha%5F02.raw
+https://ftp.pride.ebi.ac.uk/pride/data/archive/2022/02/PXD028735/LFQ%5FOrbitrap%5FAIF%5FCondition%5FA%5FSample%5FAlpha%5F03.raw
+https://ftp.pride.ebi.ac.uk/pride/data/archive/2022/02/PXD028735/LFQ%5FOrbitrap%5FAIF%5FCondition%5FB%5FSample%5FAlpha%5F01.raw
+https://ftp.pride.ebi.ac.uk/pride/data/archive/2022/02/PXD028735/LFQ%5FOrbitrap%5FAIF%5FCondition%5FB%5FSample%5FAlpha%5F02.raw
+https://ftp.pride.ebi.ac.uk/pride/data/archive/2022/02/PXD028735/LFQ%5FOrbitrap%5FAIF%5FCondition%5FB%5FSample%5FAlpha%5F03.raw

@@ -67,6 +67,48 @@ python tests/integration/setup_integration_test.py \
 an *informational* expectation only — the runtime is auto-detected by
 `detect_runtime()` (apptainer wins when both are installed).
 
+## Concrete reference case: WU346549 (ProteoBench DIA Orbitrap AIF)
+
+This is the worked example the plan targets — a DIA-NN 2.5.0 `two_step` run on the
+ProteoBench triple-proteome HYE benchmark. Two fixtures live in this folder
+(gitignored, provided out-of-band):
+
+- `WU346549_work.zip` — contains the real `params.yml` and `dataset.csv`.
+- `fastas.zip` — contains `input/order.fasta` + the database FASTA
+  (`input/p34486_Proteobench_TripleProteome_20240614.fasta`).
+
+The six raw files (~9.2 GB total, ~1.5 GB each) are **not** shipped; they are
+downloaded from **PRIDE accession PXD028735** via the tracked manifest
+[`proteobench_PXD028735_dia_aif.txt`](proteobench_PXD028735_dia_aif.txt). The
+download is resumable and skips any file already present at full size, so the
+command is safe to re-run.
+
+```bash
+cd tests/integration
+
+# 1. Unpack the small metadata fixtures (params.yml + dataset.csv)
+unzip -o -j WU346549_work.zip params.yml dataset.csv -d /tmp/wu346549_meta
+
+# 2. Stage + download raws + run (dry-run first; add --run to execute)
+python setup_integration_test.py \
+    --work-dir /tmp/diann_wu346549 \
+    --params-yml /tmp/wu346549_meta/params.yml \
+    --dataset-csv /tmp/wu346549_meta/dataset.csv \
+    --fasta-zip fastas.zip \
+    --raw-manifest proteobench_PXD028735_dia_aif.txt \
+    --cores 32 --run
+```
+
+Notes:
+
+- `--dataset-csv` is converted to the `dataset.parquet` the workflow expects.
+- `--fasta-zip` is extracted at the work-dir root because the zip already carries
+  the `input/...fasta` layout. (`params.yml` has `03_fasta_use_custom: false`, so
+  only the database FASTA is actually used; `order.fasta` is staged but ignored.)
+- Raw files keep their exact names — ProteoBench requires they not be renamed.
+- `enable_step_c` is `false` for this workunit, so the final outputs live in
+  `out-DIANN_quantB/`.
+
 ## Acceptance criteria
 
 With `--run`, the driver checks that these exist and are non-empty:
