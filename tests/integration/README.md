@@ -16,10 +16,13 @@ for the full plan, rationale, and open questions.
 
 ## How a case works
 
-Only the *sources* are committed (the setup script, `run.sh`, `tree.txt`, and the
-small `fixtures/` — `params.yml`, `dataset.csv`, `inputs.yml`, `order.fasta`).
-Everything large is downloaded; everything generated is gitignored (each case
-ships a local `.gitignore` that tracks only those sources).
+Only the *sources* are committed, at their real work-tree positions: the setup
+script, `run.sh`, `tree.txt`, and the small inputs — `params.yml`, `inputs.yml`,
+`input/order.fasta`, and `input/raw/dataset.parquet` (the upstream input the
+Snakefile reads). Everything large is downloaded and everything generated is
+gitignored — including the root `dataset.csv`, which snakemake's `dataset_csv`
+rule regenerates from `dataset.parquet`. Each case ships a local `.gitignore`
+that tracks only those sources.
 
 ```bash
 cd tests/integration/WU346549

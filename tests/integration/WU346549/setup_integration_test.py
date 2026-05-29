@@ -5,20 +5,10 @@ Run it with no arguments::
 
     ./setup_integration_test.py
 
-It builds the full work-directory layout (see ``tree.txt``) in *this* directory:
-
-    WU346549/
-    ├── params.yml                 # from fixtures/  (bfabric flat-key params + registration)
-    ├── dataset.csv                # from fixtures/
-    ├── inputs.yml                 # from fixtures/  (bfabric artifact, informational)
-    ├── input/
-    │   ├── order.fasta            # from fixtures/  (iRT + protein-G spike-ins)
-    │   ├── p34486_Proteobench_TripleProteome_20240614.fasta   # downloaded (ProteoBench)
-    │   └── raw/
-    │       ├── dataset.parquet    # generated from dataset.csv
-    │       └── LFQ_Orbitrap_AIF_Condition_{A,B}_Sample_Alpha_0{1,2,3}.raw   # downloaded (PRIDE)
-
-Large inputs are downloaded, not committed:
+The small inputs are committed in this directory at their real work-tree
+positions (``params.yml``, ``inputs.yml``, ``input/order.fasta``,
+``input/raw/dataset.parquet``) — see ``tree.txt``. This script only fetches the
+large inputs that are *not* committed:
 
 * FASTA  — ProteoBench triple-proteome HYE database (~16.7 MB),
            https://proteobench.cubimed.rub.de/fasta/  (saved under the FGCZ name
@@ -28,6 +18,9 @@ Large inputs are downloaded, not committed:
 
 Downloads are resumable and skip any file already present at full size, so this
 script is safe to re-run. Afterwards, launch the workflow with ``./run.sh``.
+
+(The root ``dataset.csv`` is *not* committed — snakemake's ``dataset_csv`` rule
+generates it from ``input/raw/dataset.parquet`` at run time.)
 """
 
 from __future__ import annotations
@@ -39,11 +32,9 @@ import zipfile
 from pathlib import Path
 from urllib.request import Request, urlopen, urlretrieve
 
-import pandas as pd
 from loguru import logger
 
 BASE = Path(__file__).resolve().parent
-FIXTURES = BASE / "fixtures"
 
 # --- ProteoBench triple-proteome HYE FASTA (downloaded, saved under FGCZ name) ---
 FASTA_ZIP_URL = "https://proteobench.cubimed.rub.de/fasta/ProteoBenchFASTA%5FMixedSpecies%5FHYE.zip"
@@ -63,10 +54,6 @@ RAW_FILES = [
     "LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_03.raw",
 ]
 
-
-# ---------------------------------------------------------------------------
-# Download helpers (resumable, skip-if-present)
-# ---------------------------------------------------------------------------
 
 def _remote_size(url: str) -> int | None:
     """Content-Length for ``url`` via HEAD, or None if unknown."""
@@ -93,24 +80,6 @@ def download(url: str, dest: Path) -> None:
         urlretrieve(url, dest)  # noqa: S310
 
 
-# ---------------------------------------------------------------------------
-# Staging steps
-# ---------------------------------------------------------------------------
-
-def stage_metadata() -> None:
-    """Copy the small committed fixtures into the work-dir root."""
-    for name in ("params.yml", "dataset.csv", "inputs.yml"):
-        logger.info(f"staging {name}")
-        shutil.copy2(FIXTURES / name, BASE / name)
-
-
-def stage_order_fasta() -> None:
-    """Place the small custom order.fasta at input/order.fasta."""
-    (BASE / "input").mkdir(parents=True, exist_ok=True)
-    logger.info("staging input/order.fasta")
-    shutil.copy2(FIXTURES / "order.fasta", BASE / "input" / "order.fasta")
-
-
 def download_database_fasta() -> None:
     """Download the ProteoBench HYE FASTA and save it under the FGCZ name."""
     target = BASE / "input" / FASTA_TARGET_NAME
@@ -125,15 +94,6 @@ def download_database_fasta() -> None:
     zip_path.unlink()
 
 
-def build_dataset_parquet() -> None:
-    """Generate input/raw/dataset.parquet (upstream input of rule dataset_csv)."""
-    raw = BASE / "input" / "raw"
-    raw.mkdir(parents=True, exist_ok=True)
-    target = raw / "dataset.parquet"
-    logger.info("building input/raw/dataset.parquet from dataset.csv")
-    pd.read_csv(FIXTURES / "dataset.csv").to_parquet(target, index=False)
-
-
 def download_raw_files() -> None:
     """Download the 6 ProteoBench DIA Orbitrap AIF raw files from PRIDE."""
     raw = BASE / "input" / "raw"
@@ -146,10 +106,7 @@ def download_raw_files() -> None:
 
 def main() -> int:
     logger.info(f"setting up WU346549 integration test in {BASE}")
-    stage_metadata()
-    stage_order_fasta()
     download_database_fasta()
-    build_dataset_parquet()
     download_raw_files()
     logger.success("setup complete — run the workflow with ./run.sh")
     return 0
