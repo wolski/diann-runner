@@ -5,10 +5,10 @@ Run it with no arguments::
 
     ./setup_integration_test.py
 
-The small inputs are committed in this directory at their real work-tree
-positions (``params.yml``, ``inputs.yml``, ``input/order.fasta``,
-``input/raw/dataset.parquet``) — see ``tree.txt``. This script only fetches the
-large inputs that are *not* committed:
+The two inputs the workflow needs are committed in this directory at the
+work-dir root (``params.yml`` + ``dataset.csv`` — the same files
+bfabric-app-runner provides). This script only fetches the large inputs that are
+*not* committed:
 
 * FASTA  — ProteoBench triple-proteome HYE database (~16.7 MB),
            https://proteobench.cubimed.rub.de/fasta/  (saved under the FGCZ name
@@ -19,8 +19,9 @@ large inputs that are *not* committed:
 Downloads are resumable and skip any file already present at full size, so this
 script is safe to re-run. Afterwards, launch the workflow with ``./run.sh``.
 
-(The root ``dataset.csv`` is *not* committed — snakemake's ``dataset_csv`` rule
-generates it from ``input/raw/dataset.parquet`` at run time.)
+(``order.fasta`` / ``inputs.yml`` / ``dataset.parquet`` from the production work
+dir are not committed: the workflow doesn't use them here — ``use_custom=false``,
+and ``dataset.csv`` is provided directly so the ``dataset_csv`` rule is dormant.)
 """
 
 from __future__ import annotations
