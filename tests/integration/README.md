@@ -16,17 +16,17 @@ for the full plan, rationale, and open questions.
 
 ## How a case works
 
-Only the inputs the workflow actually needs are committed — **`params.yml`** and
-**`dataset.csv`** (the same two files bfabric-app-runner provides) — plus the test
-scripts (`setup_integration_test.py`, `run.sh`) and `tree.txt`. Everything large
-is downloaded (FASTA + raws); everything snakemake generates is gitignored. Each
+Only the inputs the workflow needs are committed — **`params.yml`** and
+**`input/raw/dataset.parquet`** — plus the test scripts
+(`setup_integration_test.py`, `run.sh`) and `tree.txt`. Everything large is
+downloaded (FASTA + raws); everything snakemake generates is gitignored. Each
 case ships a local `.gitignore` that tracks only those sources.
 
-(`order.fasta` and `inputs.yml` appear in `tree.txt` but the workflow doesn't use
-them — `03_fasta_use_custom=false`, and `inputs.yml` is an app-runner artifact —
-so they aren't committed. `dataset.parquet` isn't needed either: app-runner
-provides `dataset.csv` directly, so the `dataset_csv` parquet→csv rule stays
-dormant.)
+The root `dataset.csv` is **not** committed: snakemake's `dataset_csv` rule
+generates it from the committed `dataset.parquet` at run time, so the test
+exercises that rule. (`order.fasta` and `inputs.yml` appear in `tree.txt` but the
+workflow doesn't use them — `03_fasta_use_custom=false`, and `inputs.yml` is an
+app-runner artifact — so they aren't committed.)
 
 ```bash
 cd tests/integration/WU346549
