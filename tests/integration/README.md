@@ -16,10 +16,17 @@ for the full plan, rationale, and open questions.
 
 ## How a case works
 
-Only the *sources* are committed (the setup script, `run.sh`, `tree.txt`, and the
-small `fixtures/` — `params.yml`, `dataset.csv`, `inputs.yml`, `order.fasta`).
-Everything large is downloaded; everything generated is gitignored (each case
-ships a local `.gitignore` that tracks only those sources).
+Only the inputs the workflow needs are committed — **`params.yml`** and
+**`input/raw/dataset.parquet`** — plus the test scripts
+(`setup_integration_test.py`, `run.sh`) and `tree.txt`. Everything large is
+downloaded (FASTA + raws); everything snakemake generates is gitignored. Each
+case ships a local `.gitignore` that tracks only those sources.
+
+The root `dataset.csv` is **not** committed: snakemake's `dataset_csv` rule
+generates it from the committed `dataset.parquet` at run time, so the test
+exercises that rule. (`order.fasta` and `inputs.yml` appear in `tree.txt` but the
+workflow doesn't use them — `03_fasta_use_custom=false`, and `inputs.yml` is an
+app-runner artifact — so they aren't committed.)
 
 ```bash
 cd tests/integration/WU346549

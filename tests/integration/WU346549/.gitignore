@@ -1,10 +1,18 @@
-# This directory IS the snakemake work dir. setup_integration_test.py + run.sh
-# generate / download everything else (input/, raws, FASTA, dataset.parquet,
-# out-DIANN_*, logs, Result_*.zip). Track only the sources below.
+# This directory IS the snakemake work dir. Committed inputs the workflow needs:
+#   params.yml + input/raw/dataset.parquet
+# The root dataset.csv is intentionally NOT committed — snakemake's dataset_csv
+# rule generates it from dataset.parquet at run time (so the test exercises that
+# rule). setup_integration_test.py downloads the FASTA + raw files; everything
+# else (dataset.csv, out-DIANN_*, temp-DIANN_*, logs/, qc_result/, step_*.sh,
+# Result_*.zip, outputs.yml) is generated and ignored.
 /*
 !/.gitignore
 !/setup_integration_test.py
 !/run.sh
 !/tree.txt
-!/fixtures/
-!/fixtures/**
+!/params.yml
+!/input/
+/input/*
+!/input/raw/
+/input/raw/*
+!/input/raw/dataset.parquet
