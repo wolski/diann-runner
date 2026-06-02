@@ -72,9 +72,17 @@ class TestContainerCommandBuilderApptainer(unittest.TestCase):
     def test_basic_apptainer_invocation_shape(self):
         cmd = ContainerCommandBuilder("/opt/sif/diann.sif", runtime="apptainer").build(["--help"])
         self.assertEqual(cmd[0], "apptainer")
-        self.assertEqual(cmd[1], "exec")
+        self.assertEqual(cmd[1], "run")
         self.assertEqual(cmd[-2], "/opt/sif/diann.sif")
         self.assertEqual(cmd[-1], "--help")
+
+    def test_apptainer_explicit_command_uses_exec(self):
+        cmd = (
+            ContainerCommandBuilder("/opt/sif/pwiz.sif", runtime="apptainer")
+            .with_explicit_command()
+            .build(["sh", "-c", "echo hi"])
+        )
+        self.assertEqual(cmd[1], "exec")
 
     def test_apptainer_mount_uses_bind(self):
         cmd = (
