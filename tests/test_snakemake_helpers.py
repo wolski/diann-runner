@@ -221,10 +221,15 @@ class TestSnakemakeHelpers(unittest.TestCase):
 
     def test_resolve_diann_docker_image_uses_version_map(self):
         deploy = {
-            'diann_images': {'2.3.2': 'diann:2.3.2', '2.5.0': 'diann:2.5.0-thermo'},
+            'diann_images': {
+                '2.3.2': 'diann:2.3.2',
+                '2.5.0': 'diann:2.5.0',
+                '2.5.1': 'diann:2.5.1',
+            },
             'diann_docker_image': 'diann:2.3.2',
         }
-        self.assertEqual(resolve_diann_docker_image('2.5.0', deploy), 'diann:2.5.0-thermo')
+        self.assertEqual(resolve_diann_docker_image('2.5.0', deploy), 'diann:2.5.0')
+        self.assertEqual(resolve_diann_docker_image('2.5.1', deploy), 'diann:2.5.1')
         self.assertEqual(resolve_diann_docker_image('2.3.2', deploy), 'diann:2.3.2')
 
     def test_resolve_diann_docker_image_falls_back_to_legacy(self):
@@ -266,42 +271,48 @@ class TestSnakemakeHelpers(unittest.TestCase):
         with self.assertRaises(ValueError):
             resolve_raw_converter_image('unknown', {})
 
+    def test_resolve_raw_converter_image_raises_for_no_conversion(self):
+        # 'NO' means native .raw (no conversion) — it must never resolve to a
+        # converter image; convert_raw never runs for it.
+        with self.assertRaises(ValueError):
+            resolve_raw_converter_image('NO', {})
+
     def test_get_diann_input_path_matrix(self):
         raw_dir = Path('input/raw')
         cases = [
-            # (version, converter, input_type, sample, expected_name)
-            ('2.3.2', 'thermoraw', 'raw', 's1', 's1.mzML'),
-            ('2.3.2', 'msconvert', 'raw', 's1', 's1.mzML'),
-            ('2.3.2', 'msconvert-demultiplex', 'raw', 's1', 's1.mzML'),
-            ('2.5.0', 'thermoraw', 'raw', 's1', 's1.raw'),  # native reader
-            ('2.5.0', 'msconvert', 'raw', 's1', 's1.mzML'),
-            ('2.5.0', 'msconvert-demultiplex', 'raw', 's1', 's1.mzML'),
-            # passthroughs
-            ('2.3.2', 'thermoraw', 'mzML', 's1', 's1.mzML'),
-            ('2.5.0', 'thermoraw', 'mzML', 's1', 's1.mzML'),
-            ('2.3.2', 'thermoraw', 'd.zip', 's1', 's1.d'),
-            ('2.5.0', 'thermoraw', 'd.zip', 's1', 's1.d'),
+            # (converter, input_type, sample, expected_name)
+            # NO = native .raw passthrough (version-agnostic, all images read .raw)
+            ('NO', 'raw', 's1', 's1.raw'),
+            # every converter converts .raw -> mzML first
+            ('thermoraw', 'raw', 's1', 's1.mzML'),
+            ('msconvert', 'raw', 's1', 's1.mzML'),
+            ('msconvert-demultiplex', 'raw', 's1', 's1.mzML'),
+            # passthroughs / non-raw inputs ignore the converter
+            ('NO', 'mzML', 's1', 's1.mzML'),
+            ('thermoraw', 'mzML', 's1', 's1.mzML'),
+            ('NO', 'd.zip', 's1', 's1.d'),
+            ('thermoraw', 'd.zip', 's1', 's1.d'),
         ]
-        for version, converter, input_type, sample, expected in cases:
-            with self.subTest(version=version, converter=converter, input_type=input_type):
-                result = get_diann_input_path(sample, input_type, version, converter, raw_dir)
+        for converter, input_type, sample, expected in cases:
+            with self.subTest(converter=converter, input_type=input_type):
+                result = get_diann_input_path(sample, input_type, converter, raw_dir)
                 self.assertEqual(result, raw_dir / expected)
 
     def test_get_diann_input_dependency_uses_marker_for_dzip(self):
         raw_dir = Path('input/raw')
-        result = get_diann_input_dependency('s1', 'd.zip', '2.3.2', 'thermoraw', raw_dir)
+        result = get_diann_input_dependency('s1', 'd.zip', 'thermoraw', raw_dir)
         self.assertEqual(result, raw_dir / 's1.done')
 
     def test_get_diann_input_dependency_uses_diann_input_path_for_other_types(self):
         raw_dir = Path('input/raw')
         cases = [
-            ('2.3.2', 'thermoraw', 'raw', 's1.mzML'),
-            ('2.5.0', 'thermoraw', 'raw', 's1.raw'),
-            ('2.3.2', 'thermoraw', 'mzML', 's1.mzML'),
+            ('thermoraw', 'raw', 's1.mzML'),
+            ('NO', 'raw', 's1.raw'),
+            ('thermoraw', 'mzML', 's1.mzML'),
         ]
-        for version, converter, input_type, expected in cases:
-            with self.subTest(version=version, converter=converter, input_type=input_type):
-                result = get_diann_input_dependency('s1', input_type, version, converter, raw_dir)
+        for converter, input_type, expected in cases:
+            with self.subTest(converter=converter, input_type=input_type):
+                result = get_diann_input_dependency('s1', input_type, converter, raw_dir)
                 self.assertEqual(result, raw_dir / expected)
 
     def test_parse_scan_window_default(self):

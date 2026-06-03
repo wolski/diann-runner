@@ -15,8 +15,8 @@ Usage:
     # Force rebuild of Docker images
     snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 
-    # Build specific image
-    snakemake -s deploy.smk build_diann_docker --cores 1
+    # Build a single image (target its flag), e.g. only DIA-NN 2.5.1:
+    snakemake -s deploy.smk .deploy_flags/diann_2.5.1_built.flag --cores 1
 
     # Check if images are already available
     snakemake -s deploy.smk check_images --cores 1
@@ -24,10 +24,16 @@ Usage:
 Configuration:
     Set via --config:
     - force_rebuild: Force rebuild of Docker images (default: false)
-    - diann_version: DIA-NN version to build (default: 2.3.2)
-    - diann_thermo_version: DIA-NN version for native Thermo image (default: 2.5.0)
+
+DIA-NN versions:
+    All DIA-NN images are built — one per entry in images.docker.diann_images
+    in src/diann_runner/config/defaults_server.yml, which mirrors the
+    01_diann_version dropdown in the bfabric XML executable. To add a version,
+    add the enumeration to the XML and the entry to the config map; deploy.smk
+    picks it up automatically.
 """
 
+import re
 from pathlib import Path
 
 from deploy import (
@@ -35,6 +41,7 @@ from deploy import (
     check_docker_images,
     check_prerequisites,
     generate_def_from_dockerfile,
+    load_diann_build_matrix,
     print_deployment_complete,
     print_sif_deployment_complete,
 )
@@ -45,15 +52,31 @@ BASE_DIR = Path(workflow.basedir).resolve() if "workflow" in globals() else Path
 # Ensure all paths are relative to the directory containing deploy.smk
 workdir: str(BASE_DIR)
 
+# Load the committed deploy_config.yaml (next to this Snakefile) so the
+# documented `snakemake -s deploy.smk` honors it without an explicit
+# --configfile. An absolute path keeps it cwd-independent; `--config key=value`
+# still overrides individual values.
+configfile: str(BASE_DIR / "deploy_config.yaml")
+
 # Configuration with defaults
 FORCE_REBUILD = config.get("force_rebuild", False)
-DIANN_VERSION = config.get("diann_version", "2.3.2")
-DIANN_THERMO_VERSION = config.get("diann_thermo_version", "2.5.0")
 THERMORAW_VERSION = config.get("thermoraw_version", "2.0.0")
 PROLFQUAPP_VERSION = config.get("prolfquapp_version", "2.0.10")
 MSCONVERT_IMAGE = config.get(
     "msconvert_image", "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
 )
+
+# DIA-NN build matrix — one entry per version in the diann_images config map
+# (the single source of truth, mirroring the bfabric XML dropdown). Each spec
+# carries version/tag/dockerfile/slug; see deploy.load_diann_build_matrix().
+DIANN_MATRIX = load_diann_build_matrix()
+DIANN_BY_SLUG = {m["slug"]: m for m in DIANN_MATRIX}
+DIANN_SLUGS = list(DIANN_BY_SLUG)
+
+# Constrain the {slug} wildcard to known DIA-NN slugs so the wildcarded
+# build/SIF rules never capture the thermorawfileparser/pwiz/prolfquapp flags.
+wildcard_constraints:
+    slug = "|".join(re.escape(s) for s in DIANN_SLUGS)
 
 # SIF output directory (used by all_sif). Defaults to ./sif relative to
 # this Snakefile. Override with --config sif_output_dir=/opt/sif when
@@ -115,46 +138,27 @@ rule check_prerequisites:
         check_prerequisites(output_flag=Path(output.flag))
 
 
-rule build_diann_docker:
-    """Build DIA-NN Docker image (~10 minutes, 766MB)."""
+rule build_diann_image:
+    """Build one DIA-NN Docker image.
+
+    Version and tag come from the build matrix (the diann_images config map);
+    all versions share the one .NET 8 Dockerfile, which gives native Thermo
+    .raw support across the board.
+    """
     input:
-        dockerfile = "docker/Dockerfile.diann",
+        dockerfile = lambda wc: DIANN_BY_SLUG[wc.slug]["dockerfile"],
         prereq_flag = FLAGS_DIR / "prerequisites_checked.flag"
     output:
-        flag = FLAGS_DIR / "diann_docker_built.flag"
+        flag = FLAGS_DIR / "{slug}_built.flag"
     log:
-        LOGS_DIR / "build_diann_docker.log"
+        LOGS_DIR / "build_{slug}.log"
     params:
         force_rebuild = FORCE_REBUILD,
-        version = DIANN_VERSION
+        tag = lambda wc: DIANN_BY_SLUG[wc.slug]["tag"],
+        version = lambda wc: DIANN_BY_SLUG[wc.slug]["version"]
     shell:
         """
-        if docker images | grep -q "^diann.*{params.version}" && [ "{params.force_rebuild}" != "True" ]; then
-            echo "diann:{params.version} already exists (use --config force_rebuild=true to rebuild)"
-        else
-            echo "Building diann:{params.version}..."
-            docker build --build-arg DIANN_VERSION={params.version} \
-                -f {input.dockerfile:q} -t diann:{params.version} . 2>&1 | tee {log:q}
-        fi
-        touch {output.flag:q}
-        """
-
-
-rule build_diann_thermo_docker:
-    """Build DIA-NN image with native Thermo .raw reader (.NET 8 + DIA-NN 2.5+)."""
-    input:
-        dockerfile = "docker/Dockerfile.diann_thermofilereader",
-        prereq_flag = FLAGS_DIR / "prerequisites_checked.flag"
-    output:
-        flag = FLAGS_DIR / "diann_thermo_docker_built.flag"
-    log:
-        LOGS_DIR / "build_diann_thermo_docker.log"
-    params:
-        force_rebuild = FORCE_REBUILD,
-        version = DIANN_THERMO_VERSION
-    shell:
-        """
-        TAG="diann:{params.version}-thermo"
+        TAG="{params.tag}"
         if docker images --format "{{{{.Repository}}}}:{{{{.Tag}}}}" | grep -q "^${{TAG}}$" && [ "{params.force_rebuild}" != "True" ]; then
             echo "${{TAG}} already exists (use --config force_rebuild=true to rebuild)"
         else
@@ -192,8 +196,7 @@ rule build_thermorawfileparser_docker:
 rule deployment_complete:
     """Final deployment marker with summary."""
     input:
-        FLAGS_DIR / "diann_docker_built.flag",
-        FLAGS_DIR / "diann_thermo_docker_built.flag",
+        expand(str(FLAGS_DIR / "{slug}_built.flag"), slug=DIANN_SLUGS),
         FLAGS_DIR / "thermorawfileparser_docker_built.flag"
     output:
         flag = FLAGS_DIR / "deployment_complete.flag"
@@ -219,33 +222,16 @@ rule check_apptainer_prerequisites:
 if SIF_BUILDER == "docker":
 
     rule build_diann_sif:
-        """Convert diann:<version> docker image to SIF via docker-daemon://."""
+        """Convert each diann:<version> docker image to SIF via docker-daemon://."""
         input:
             prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
-            docker_flag = FLAGS_DIR / "diann_docker_built.flag"
+            docker_flag = FLAGS_DIR / "{slug}_built.flag"
         output:
-            sif = SIF_DIR / f"diann_{DIANN_VERSION}.sif"
+            sif = SIF_DIR / "{slug}.sif"
         log:
-            LOGS_DIR / "build_diann_sif.log"
+            LOGS_DIR / "build_{slug}_sif.log"
         params:
-            tag = f"diann:{DIANN_VERSION}"
-        shell:
-            """
-            mkdir -p "$(dirname {output.sif:q})"
-            apptainer pull --force {output.sif:q} docker-daemon://{params.tag} 2>&1 | tee {log:q}
-            """
-
-    rule build_diann_thermo_sif:
-        """Convert diann:<version>-thermo docker image to SIF."""
-        input:
-            prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
-            docker_flag = FLAGS_DIR / "diann_thermo_docker_built.flag"
-        output:
-            sif = SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif"
-        log:
-            LOGS_DIR / "build_diann_thermo_sif.log"
-        params:
-            tag = f"diann:{DIANN_THERMO_VERSION}-thermo"
+            tag = lambda wc: DIANN_BY_SLUG[wc.slug]["tag"]
         shell:
             """
             mkdir -p "$(dirname {output.sif:q})"
@@ -312,8 +298,7 @@ rule pull_prolfquapp_sif:
 rule sif_deployment_complete:
     """Final SIF deployment marker with summary."""
     input:
-        SIF_DIR / f"diann_{DIANN_VERSION}.sif",
-        SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif",
+        expand(str(SIF_DIR / "{slug}.sif"), slug=DIANN_SLUGS),
         SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif",
         SIF_DIR / "pwiz.sif",
         SIF_DIR / f"prolfquapp_{PROLFQUAPP_VERSION}.sif"
@@ -352,28 +337,17 @@ rule check_apptainer_only_prerequisites:
 if SIF_BUILDER == "native":
 
     rule generate_diann_def:
-        """Convert Dockerfile.diann to a .def file with DIANN_VERSION pinned."""
-        input:
-            dockerfile = "docker/Dockerfile.diann"
-        output:
-            deffile = DEF_DIR / f"diann_{DIANN_VERSION}.def"
-        params:
-            version = DIANN_VERSION
-        run:
-            generate_def_from_dockerfile(
-                Path(input.dockerfile),
-                Path(output.deffile),
-                overrides={"DIANN_VERSION": params.version},
-            )
+        """Convert the DIA-NN Dockerfile to a .def file with DIANN_VERSION pinned.
 
-    rule generate_diann_thermo_def:
-        """Convert Dockerfile.diann_thermofilereader to a .def file."""
+        One per build-matrix entry; all versions share the single
+        Dockerfile.diann, with the version resolved from the {slug} wildcard.
+        """
         input:
-            dockerfile = "docker/Dockerfile.diann_thermofilereader"
+            dockerfile = lambda wc: DIANN_BY_SLUG[wc.slug]["dockerfile"]
         output:
-            deffile = DEF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.def"
+            deffile = DEF_DIR / "{slug}.def"
         params:
-            version = DIANN_THERMO_VERSION
+            version = lambda wc: DIANN_BY_SLUG[wc.slug]["version"]
         run:
             generate_def_from_dockerfile(
                 Path(input.dockerfile),
@@ -395,29 +369,14 @@ if SIF_BUILDER == "native":
             )
 
     rule build_diann_sif:
-        """Build diann SIF natively from generated .def file (no docker)."""
+        """Build each diann SIF natively from its generated .def file (no docker)."""
         input:
             prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
-            deffile = DEF_DIR / f"diann_{DIANN_VERSION}.def"
+            deffile = DEF_DIR / "{slug}.def"
         output:
-            sif = SIF_DIR / f"diann_{DIANN_VERSION}.sif"
+            sif = SIF_DIR / "{slug}.sif"
         log:
-            LOGS_DIR / "build_diann_sif.log"
-        shell:
-            """
-            mkdir -p "$(dirname {output.sif:q})"
-            apptainer build --force {output.sif:q} {input.deffile:q} 2>&1 | tee {log:q}
-            """
-
-    rule build_diann_thermo_sif:
-        """Build diann-thermo SIF natively from generated .def file."""
-        input:
-            prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
-            deffile = DEF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.def"
-        output:
-            sif = SIF_DIR / f"diann_{DIANN_THERMO_VERSION}-thermo.sif"
-        log:
-            LOGS_DIR / "build_diann_thermo_sif.log"
+            LOGS_DIR / "build_{slug}_sif.log"
         shell:
             """
             mkdir -p "$(dirname {output.sif:q})"
@@ -446,11 +405,8 @@ if SIF_BUILDER == "native":
 
 rule check_images:
     """Check if required Docker images are available."""
-    params:
-        version = DIANN_VERSION,
-        thermo_version = DIANN_THERMO_VERSION
     run:
-        check_docker_images(diann_version=params.version, diann_thermo_version=params.thermo_version)
+        check_docker_images()
 
 
 rule clean:
@@ -469,20 +425,20 @@ rule clean_all:
     """Remove deployment flags and Docker images."""
     params:
         flags_dir = FLAGS_DIR,
-        version = DIANN_VERSION,
-        thermo_version = DIANN_THERMO_VERSION
+        diann_tags = " ".join(m["tag"] for m in DIANN_MATRIX)
     shell:
         """
         echo "This will remove:"
         echo "  - Deployment flags (.deploy_flags/)"
-        echo "  - Docker images (diann:{params.version}, diann:{params.thermo_version}-thermo, thermorawfileparser:2.0.0)"
+        echo "  - Docker images ({params.diann_tags}, thermorawfileparser:2.0.0)"
         echo ""
         read -p "Continue? [y/N]: " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             rm -rf {params.flags_dir:q}
-            docker rmi diann:{params.version} 2>/dev/null || true
-            docker rmi diann:{params.thermo_version}-thermo 2>/dev/null || true
+            for tag in {params.diann_tags}; do
+                docker rmi "$tag" 2>/dev/null || true
+            done
             docker rmi thermorawfileparser:2.0.0 2>/dev/null || true
             echo "Done"
         else

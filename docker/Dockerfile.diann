@@ -1,33 +1,51 @@
-# DIA-NN in a tiny Ubuntu base (CPU)
-# Parameterized for multiple versions
-FROM ubuntu:24.04
+# DIA-NN on Debian with .NET 8 — single image for every supported version.
+#
+# Every DIA-NN Linux release (verified for 2.3.2 and 2.5.x) bundles the managed
+# Thermo .raw reader (RawWrapper.dll + ThermoFisher.CommonCore.*.dll), which
+# requires the .NET 8 runtime. Building on Debian 12 with .NET 8 therefore gives
+# native Thermo .raw support for ALL versions — there is no separate "-thermo"
+# image. Parameterized by DIANN_VERSION; see images.docker.diann_images in
+# src/diann_runner/config/defaults_server.yml for the versions we build.
+FROM debian:12
 
-# Version to install (used in image tagging and URL construction)
 ARG DIANN_VERSION=2.3.2
 
-# URL can be overridden for non-standard naming (e.g., 2.3.0 Preview)
+# URL can be overridden for non-standard naming (e.g., a Preview build).
 ARG DIANN_URL="https://github.com/vdemichev/DiaNN/releases/download/2.0/DIA-NN-${DIANN_VERSION}-Academia-Linux.zip"
 
-# Store version in image for inspection
 LABEL org.opencontainers.image.version="${DIANN_VERSION}"
-LABEL org.opencontainers.image.description="DIA-NN ${DIANN_VERSION} mass spectrometry analysis"
+LABEL org.opencontainers.image.description="DIA-NN ${DIANN_VERSION} with native Thermo .raw support (.NET 8)"
 LABEL org.opencontainers.image.source="https://github.com/vdemichev/DiaNN"
 
-# Minimal deps; add others if DIA-NN complains (e.g., libomp, libquadmath0)
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Locales (DIA-NN expects a UTF-8 locale)
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ca-certificates wget unzip libgomp1 libstdc++6 libgcc-s1 && \
+    apt-get install -y --no-install-recommends locales ca-certificates wget unzip libgomp1 && \
+    sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
     rm -rf /var/lib/apt/lists/*
 
-# Install DIA-NN binary to PATH
-RUN mkdir -p /usr/diann && \
-    wget -O /usr/diann/diann.zip "$DIANN_URL" && \
-    unzip /usr/diann/diann.zip -d /usr/diann && \
-    rm /usr/diann/diann.zip && \
-    sh -lc 'f=$(find /usr/diann -type f -name diann-linux -print -quit); \
-            chmod +x "$f"; ln -s "$f" /usr/local/bin/diann-linux'
+# .NET SDK 8.0 from Microsoft's Debian 12 repo (needed for Thermo RawFileReader)
+RUN wget -q https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O /tmp/ms.deb && \
+    dpkg -i /tmp/ms.deb && rm /tmp/ms.deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends dotnet-sdk-8.0 && \
+    rm -rf /var/lib/apt/lists/*
 
-ENV LC_ALL=C.UTF-8
+# Install DIA-NN. We keep the binary alongside its dlls and expose it via a
+# wrapper so that .NET assembly resolution (relative to the executable) works.
+RUN mkdir -p /opt && \
+    wget -O /tmp/diann.zip "$DIANN_URL" && \
+    unzip -q /tmp/diann.zip -d /opt && \
+    rm /tmp/diann.zip && \
+    DIANN_DIR=$(find /opt -maxdepth 1 -type d -name 'diann-*' -print -quit) && \
+    chmod -R 755 "$DIANN_DIR" && \
+    chmod +x "$DIANN_DIR/diann-linux" && \
+    printf '#!/bin/sh\nexec %s/diann-linux "$@"\n' "$DIANN_DIR" > /usr/local/bin/diann-linux && \
+    chmod +x /usr/local/bin/diann-linux
+
+ENV LC_ALL=C.UTF-8 LANG=en_US.UTF-8
 WORKDIR /work
 ENTRYPOINT ["diann-linux"]
 
@@ -40,10 +58,10 @@ ENTRYPOINT ["diann-linux"]
 #
 # Specific version:
 #   docker build --platform linux/amd64 \
-#     --build-arg DIANN_VERSION=2.3.1 \
-#     -f docker/Dockerfile.diann -t diann:2.3.1 .
+#     --build-arg DIANN_VERSION=2.5.1 \
+#     -f docker/Dockerfile.diann -t diann:2.5.1 .
 #
-# Version with non-standard URL (e.g., 2.3.0 Preview):
+# Version with non-standard URL (e.g., a Preview build):
 #   docker build --platform linux/amd64 \
 #     --build-arg DIANN_VERSION=2.3.0 \
 #     --build-arg DIANN_URL="https://github.com/vdemichev/DiaNN/releases/download/2.0/DIA-NN-2.3.0-Academia-Linux-Preview.zip" \
@@ -53,8 +71,9 @@ ENTRYPOINT ["diann-linux"]
 # Run examples:
 # =============================================================================
 #
-#   docker run --rm --platform linux/amd64 -v $(pwd):/work diann:2.3.2
-#   docker run --rm -v $(pwd):/work diann:2.3.2 --f data.mzML --fasta proteins.fasta --out report.tsv
+#   docker run --rm --platform linux/amd64 -v $(pwd):/work diann:2.3.2 --help
+#   docker run --rm -v $(pwd):/work diann:2.3.2 \
+#     --f data.raw --fasta proteins.fasta --out report.parquet
 #
 # Check installed version:
 #   docker inspect diann:2.3.2 --format '{{index .Config.Labels "org.opencontainers.image.version"}}'

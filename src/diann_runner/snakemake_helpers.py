@@ -307,7 +307,9 @@ def parse_flat_params(flat_params):
     workflow_mode = flat_params.get('02_workflow_mode', 'two_step')
 
     # Parse conversion/runtime parameters
-    # raw_converter: thermoraw (default), msconvert, msconvert-demultiplex
+    # raw_converter: NO (native .raw, default), thermoraw, msconvert,
+    # msconvert-demultiplex. Fallback stays 'thermoraw' so old params.yml that
+    # predate this key keep their always-convert behavior.
     raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
 
     # DIA-NN version dropdown. Default '2.3.2' for back-compat with old
@@ -360,20 +362,19 @@ def resolve_raw_converter_image(raw_converter: str, deploy_params: dict) -> str:
 def get_diann_input_path(
     sample: str,
     input_type: str,
-    diann_version: str,
     raw_converter: str,
     raw_dir: Path,
 ) -> Path:
     """Return the file/dir to feed into DIA-NN for one sample.
 
-    DIA-NN 2.5.0 ships a native Thermo .raw reader: when version is 2.5.0,
-    converter is 'thermoraw', and inputs are .raw, we skip mzML conversion
-    and pass the .raw straight through. Every other combination keeps the
-    existing behavior.
+    Every DIA-NN image we ship reads Thermo .raw natively (.NET 8), so when the
+    converter is 'NO' and inputs are .raw, we skip mzML conversion and pass the
+    .raw straight through. The thermoraw/msconvert/msconvert-demultiplex options
+    convert to mzML first.
     """
     if input_type == "d.zip":
         return raw_dir / f"{sample}.d"
-    if input_type == "raw" and diann_version == "2.5.0" and raw_converter == "thermoraw":
+    if input_type == "raw" and raw_converter == "NO":
         return raw_dir / f"{sample}.raw"
     return raw_dir / f"{sample}.mzML"
 
@@ -381,7 +382,6 @@ def get_diann_input_path(
 def get_diann_input_dependency(
     sample: str,
     input_type: str,
-    diann_version: str,
     raw_converter: str,
     raw_dir: Path,
 ) -> Path:
@@ -394,7 +394,7 @@ def get_diann_input_dependency(
     """
     if input_type == "d.zip":
         return raw_dir / f"{sample}.done"
-    return get_diann_input_path(sample, input_type, diann_version, raw_converter, raw_dir)
+    return get_diann_input_path(sample, input_type, raw_converter, raw_dir)
 
 
 def create_diann_workflow(

@@ -19,10 +19,11 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>DIA-NN version. 2.3.2: production default. 2.5.0: supports native Thermo RAW input when raw converter is thermoraw; msconvert modes still convert first.</description>
+        <description>DIA-NN version to use. 2.3.2 is the current production default; 2.5.1 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.</description>
         <context>APPLICATION</context>
         <enumeration>2.3.2</enumeration>
         <enumeration>2.5.0</enumeration>
+        <enumeration>2.5.1</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>01_diann_version</key>
@@ -38,8 +39,9 @@
     <parameter classname="parameter" id="171595">
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Converter for Thermo RAW files. thermoraw: ThermoRawFileParser (fastest, recommended). msconvert: standard conversion. msconvert-demultiplex: for overlapping DIA windows (multiplexed acquisition).</description>
+        <description>Thermo RAW handling. NO: no conversion — DIA-NN reads .raw natively (default, fastest). thermoraw: convert to mzML via ThermoRawFileParser. msconvert: standard mzML conversion. msconvert-demultiplex: mzML conversion with demultiplexing for overlapping DIA windows (multiplexed acquisition).</description>
         <context>APPLICATION</context>
+        <enumeration>NO</enumeration>
         <enumeration>thermoraw</enumeration>
         <enumeration>msconvert</enumeration>
         <enumeration>msconvert-demultiplex</enumeration>
@@ -51,7 +53,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>thermoraw</value>
+        <value>NO</value>
     </parameter>
 
     <!-- 02: Workflow Control -->

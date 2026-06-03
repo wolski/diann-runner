@@ -30,7 +30,7 @@ params:
   12b_diann_quantification_no_norm: 'false'
   13_diann_freestyle: None
   14_include_libs: 'false'
-  97_raw_converter: thermoraw
+  97_raw_converter: NO
   99_other_verbose: '1'
   application_version: '2.3'
 registration:

@@ -7,6 +7,51 @@ import sys
 from pathlib import Path
 
 
+DIANN_DOCKERFILE = "docker/Dockerfile.diann"
+
+
+def load_diann_build_matrix() -> list[dict]:
+    """Build specs for every DIA-NN version offered in the bfabric dropdown.
+
+    Single source of truth: ``images.docker.diann_images`` in
+    ``defaults_server.yml`` (mirrors the ``01_diann_version`` enumerations in
+    the XML executable). The docker block is host-independent, so this works
+    for both the docker and native SIF build paths.
+
+    The config is read straight from the filesystem (``deploy.py`` sits at the
+    repo root next to ``src/``) rather than via ``importlib.resources``, so
+    ``deploy.smk`` runs under plain ``snakemake -s deploy.smk`` without
+    ``diann_runner`` needing to be importable in that environment.
+
+    All versions build from the one ``Dockerfile.diann`` (Debian + .NET 8):
+    every DIA-NN Linux release bundles the managed Thermo .raw reader, so a
+    single .NET 8 image reads .raw natively for all of them.
+
+    Each spec dict carries everything the build/SIF/clean rules need:
+
+    - ``version``: map key, passed as ``--build-arg DIANN_VERSION`` (e.g. ``2.5.1``)
+    - ``tag``: docker image tag (e.g. ``diann:2.5.1``)
+    - ``dockerfile``: the shared DIA-NN Dockerfile
+    - ``slug``: filesystem-safe token used for SIF/.def/flag/log names
+    """
+    import yaml
+
+    config_path = Path(__file__).parent / "src" / "diann_runner" / "config" / "defaults_server.yml"
+    with config_path.open() as f:
+        raw = yaml.safe_load(f)
+
+    images = raw["images"]["docker"]["diann_images"]
+    return [
+        {
+            "version": version,
+            "tag": tag,
+            "dockerfile": DIANN_DOCKERFILE,
+            "slug": tag.replace(":", "_"),
+        }
+        for version, tag in images.items()
+    ]
+
+
 def check_command(cmd: str) -> bool:
     """Check if a command is available in PATH."""
     return shutil.which(cmd) is not None
@@ -50,27 +95,19 @@ def check_prerequisites(output_flag: Path) -> None:
     output_flag.touch()
 
 
-def check_docker_images(
-    diann_version: str = "2.3.2",
-    diann_thermo_version: str = "2.5.0",
-) -> None:
-    """
-    Check if required Docker images are available.
+def check_docker_images() -> None:
+    """Check that every DIA-NN image in the build matrix (plus the
+    thermorawfileparser converter) is present locally.
 
-    Args:
-        diann_version: DIA-NN version to check for
-        diann_thermo_version: DIA-NN version for the native Thermo image
+    The DIA-NN tags are sourced from :func:`load_diann_build_matrix`, so this
+    automatically covers all versions offered in the bfabric dropdown.
     """
     print("=" * 60)
     print("Checking Docker Images")
     print("=" * 60)
 
-    thermo_tag = f"diann:{diann_thermo_version}-thermo"
-    images_to_check = [
-        (f"diann:{diann_version}", f"diann:{diann_version}"),
-        (thermo_tag, thermo_tag),
-        ("thermorawfileparser:2.0.0", "thermorawfileparser:2.0.0"),
-    ]
+    images_to_check = [m["tag"] for m in load_diann_build_matrix()]
+    images_to_check.append("thermorawfileparser:2.0.0")
 
     result = subprocess.run(
         ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
@@ -80,7 +117,8 @@ def check_docker_images(
     available_images = set(result.stdout.strip().split("\n"))
 
     all_present = True
-    for image_name, display_name in images_to_check:
+    for image_name in images_to_check:
+        display_name = image_name
         if image_name in available_images:
             # Get image details
             detail = subprocess.run(

@@ -16,12 +16,12 @@ The shipped `src/diann_runner/config/defaults_server.yml` carries both runtime b
 ```yaml
 images:
   docker:
-    diann_images: { "2.3.2": "diann:2.3.2", "2.5.0": "diann:2.5.0-thermo" }
+    diann_images: { "2.3.2": "diann:2.3.2", "2.5.0": "diann:2.5.0", "2.5.1": "diann:2.5.1" }
     thermoraw_image: "thermorawfileparser:2.0.0"
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
     prolfquapp_image: "prolfqua/prolfquapp:2.0.10"
   apptainer:
-    diann_images: { "2.3.2": "/opt/sif/diann_2.3.2.sif", "2.5.0": "/opt/sif/diann_2.5.0-thermo.sif" }
+    diann_images: { "2.3.2": "/opt/sif/diann_2.3.2.sif", "2.5.0": "/opt/sif/diann_2.5.0.sif", "2.5.1": "/opt/sif/diann_2.5.1.sif" }
     thermoraw_image: "/opt/sif/thermorawfileparser_2.0.0.sif"
     msconvert_docker: "/opt/sif/pwiz.sif"
     prolfquapp_image: "/opt/sif/prolfquapp_2.0.10.sif"
@@ -80,10 +80,10 @@ Useful when several apptainer hosts share the same registry.
 
 `deploy.smk` registers these rules for the SIF path:
 
-- `build_diann_sif`, `build_diann_thermo_sif`, `build_thermorawfileparser_sif` — body depends on `sif_builder`:
+- `build_diann_sif` (one per DIA-NN version in `diann_images`), `build_thermorawfileparser_sif` — body depends on `sif_builder`:
   - `docker`: `apptainer pull docker-daemon://<tag>`
   - `native`: `apptainer build <sif> <generated.def>`
-- `generate_diann_def`, `generate_diann_thermo_def`, `generate_thermorawfileparser_def` — only when `sif_builder=native`; spython conversion
+- `generate_diann_def` (one per version), `generate_thermorawfileparser_def` — only when `sif_builder=native`; spython conversion
 - `pull_msconvert_sif`, `pull_prolfquapp_sif` — same in both modes (`apptainer pull docker://<ref>`, no docker needed)
 - `sif_deployment_complete` — combined marker
 
@@ -168,10 +168,10 @@ Force Docker image rebuilds:
 snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 ```
 
-Build or verify a specific image:
+Build or verify a specific image (target its flag; one per `diann_images` version):
 
 ```bash
-snakemake -s deploy.smk build_diann_docker --cores 1
+snakemake -s deploy.smk .deploy_flags/diann_2.5.1_built.flag --cores 1
 snakemake -s deploy.smk check_images --cores 1
 ```
 
@@ -250,6 +250,34 @@ Remove flags and Docker images:
 snakemake -s deploy.smk clean_all --cores 1
 ```
 
+`clean_all` removes only the tags currently listed in `diann_images` (e.g. `diann:2.3.2`, `diann:2.5.0`, `diann:2.5.1`) plus `thermorawfileparser`.
+
+### Removing old images after the .NET 8 unification
+
+DIA-NN images were unified onto a single Debian + .NET 8 `Dockerfile.diann`, and the per-version `-thermo` tag suffix was dropped — tags are now `diann:2.5.0` / `diann:2.5.1` (all read Thermo `.raw` natively). Two kinds of stale artifacts can linger:
+
+**1. Orphaned `-thermo` images.** `clean_all` does not touch these (they are no longer in `diann_images`), so remove them by hand:
+
+```bash
+# Docker host
+docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^diann:.*-thermo$' | xargs -r docker rmi
+docker image prune -f      # drop now-dangling layers (old Ubuntu base, etc.)
+```
+
+```bash
+# Apptainer host
+rm -f /opt/sif/diann_*-thermo.sif
+```
+
+**2. Reused tags built on the old base.** `diann:2.3.2` keeps its name, but its base changed (Ubuntu → Debian + .NET 8). Force a rebuild so it gains native `.raw` support, then refresh the SIFs:
+
+```bash
+snakemake -s deploy.smk --cores 1 --config force_rebuild=true
+# Apptainer: re-pull/rebuild SIFs (delete stale ones first if names are unchanged)
+rm -f /opt/sif/diann_2.3.2.sif /opt/sif/diann_2.5.0.sif /opt/sif/diann_2.5.1.sif
+snakemake -s deploy.smk all_sif --cores 1 --config sif_output_dir=/opt/sif
+```
+
 ## Troubleshooting
 
 Docker daemon:
@@ -268,7 +296,7 @@ Deployment logs:
 
 ```bash
 ls logs/
-cat logs/build_diann_docker.log
+cat logs/build_diann_2.3.2.log
 ```
 
 Snakemake dry run:

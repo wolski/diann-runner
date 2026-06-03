@@ -116,7 +116,10 @@ rule convert_d_zip:
 rule convert_raw:
     """Convert *.raw -> *.mzML using thermoraw CLI.
 
-    Converter options: thermoraw (default), msconvert, msconvert-demultiplex
+    Converter options: thermoraw, msconvert, msconvert-demultiplex. Not used
+    when raw_converter is 'NO' (DIA-NN reads the .raw natively), so the image
+    is resolved lazily — resolve_raw_converter_image() rejects 'NO' and must
+    not run at parse time.
     """
     input:
         file = RAW_DIR / "{sample}.raw"
@@ -126,7 +129,7 @@ rule convert_raw:
         logfile = "logs/convert_raw_{sample}.log"
     params:
         converter = WORKFLOW_PARAMS["raw_converter"],
-        image = resolve_raw_converter_image(WORKFLOW_PARAMS["raw_converter"], deploy_dict),
+        image = lambda wildcards: resolve_raw_converter_image(WORKFLOW_PARAMS["raw_converter"], deploy_dict),
         runtime = deploy_dict["container_runtime"]
     retries: 3
     shell:
@@ -136,11 +139,11 @@ rule convert_raw:
 
 def get_converted_file(sample: str):
     """Returns the input path for DIA-NN for a given sample."""
-    return get_diann_input_path(sample, INPUT_TYPE, DIANN_VERSION, RAW_CONVERTER, RAW_DIR)
+    return get_diann_input_path(sample, INPUT_TYPE, RAW_CONVERTER, RAW_DIR)
 
 def get_conversion_dependency(sample: str):
     """Returns the Snakemake dependency that prepares a DIA-NN input."""
-    return get_diann_input_dependency(sample, INPUT_TYPE, DIANN_VERSION, RAW_CONVERTER, RAW_DIR)
+    return get_diann_input_dependency(sample, INPUT_TYPE, RAW_CONVERTER, RAW_DIR)
 
 # ============================================================================
 # DIA-NN workflow rules (conditional on WORKFLOW_MODE)
