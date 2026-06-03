@@ -219,6 +219,14 @@ class TestSnakemakeHelpers(unittest.TestCase):
         params = parse_flat_params(flat)
         self.assertEqual(params['diann']['diann_version'], '2.5.0')
 
+    def test_parse_raw_converter_native(self):
+        # 'native' = no conversion, DIA-NN reads .raw directly. Renamed from
+        # 'NO' so PyYAML doesn't booleanize the XML enum on unquoted load.
+        flat = dict(BASE_FLAT_PARAMS)
+        flat['97_raw_converter'] = 'native'
+        params = parse_flat_params(flat)
+        self.assertEqual(params['raw_converter'], 'native')
+
     def test_resolve_diann_docker_image_uses_version_map(self):
         deploy = {
             'diann_images': {
@@ -271,26 +279,26 @@ class TestSnakemakeHelpers(unittest.TestCase):
         with self.assertRaises(ValueError):
             resolve_raw_converter_image('unknown', {})
 
-    def test_resolve_raw_converter_image_raises_for_no_conversion(self):
-        # 'NO' means native .raw (no conversion) — it must never resolve to a
-        # converter image; convert_raw never runs for it.
+    def test_resolve_raw_converter_image_raises_for_native(self):
+        # 'native' means DIA-NN reads .raw directly (no conversion) — it must
+        # never resolve to a converter image; convert_raw never runs for it.
         with self.assertRaises(ValueError):
-            resolve_raw_converter_image('NO', {})
+            resolve_raw_converter_image('native', {})
 
     def test_get_diann_input_path_matrix(self):
         raw_dir = Path('input/raw')
         cases = [
             # (converter, input_type, sample, expected_name)
-            # NO = native .raw passthrough (version-agnostic, all images read .raw)
-            ('NO', 'raw', 's1', 's1.raw'),
+            # 'native' = .raw passthrough (every image we ship reads .raw)
+            ('native', 'raw', 's1', 's1.raw'),
             # every converter converts .raw -> mzML first
             ('thermoraw', 'raw', 's1', 's1.mzML'),
             ('msconvert', 'raw', 's1', 's1.mzML'),
             ('msconvert-demultiplex', 'raw', 's1', 's1.mzML'),
             # passthroughs / non-raw inputs ignore the converter
-            ('NO', 'mzML', 's1', 's1.mzML'),
+            ('native', 'mzML', 's1', 's1.mzML'),
             ('thermoraw', 'mzML', 's1', 's1.mzML'),
-            ('NO', 'd.zip', 's1', 's1.d'),
+            ('native', 'd.zip', 's1', 's1.d'),
             ('thermoraw', 'd.zip', 's1', 's1.d'),
         ]
         for converter, input_type, sample, expected in cases:
@@ -307,7 +315,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
         raw_dir = Path('input/raw')
         cases = [
             ('thermoraw', 'raw', 's1.mzML'),
-            ('NO', 'raw', 's1.raw'),
+            ('native', 'raw', 's1.raw'),
             ('thermoraw', 'mzML', 's1.mzML'),
         ]
         for converter, input_type, expected in cases:

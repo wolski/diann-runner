@@ -117,9 +117,9 @@ rule convert_raw:
     """Convert *.raw -> *.mzML using thermoraw CLI.
 
     Converter options: thermoraw, msconvert, msconvert-demultiplex. Not used
-    when raw_converter is 'NO' (DIA-NN reads the .raw natively), so the image
-    is resolved lazily — resolve_raw_converter_image() rejects 'NO' and must
-    not run at parse time.
+    when raw_converter is 'native' (DIA-NN reads the .raw directly), so the
+    image is resolved lazily — resolve_raw_converter_image() rejects 'native'
+    and must not run at parse time.
     """
     input:
         file = RAW_DIR / "{sample}.raw"

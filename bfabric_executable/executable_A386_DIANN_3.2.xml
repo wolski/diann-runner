@@ -39,9 +39,9 @@
     <parameter classname="parameter" id="171595">
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Thermo RAW handling. NO: no conversion — DIA-NN reads .raw natively (default, fastest). thermoraw: convert to mzML via ThermoRawFileParser. msconvert: standard mzML conversion. msconvert-demultiplex: mzML conversion with demultiplexing for overlapping DIA windows (multiplexed acquisition).</description>
+        <description>Thermo RAW handling. native: no conversion — DIA-NN reads .raw natively (default, fastest). thermoraw: convert to mzML via ThermoRawFileParser. msconvert: standard mzML conversion. msconvert-demultiplex: mzML conversion with demultiplexing for overlapping DIA windows (multiplexed acquisition).</description>
         <context>APPLICATION</context>
-        <enumeration>NO</enumeration>
+        <enumeration>native</enumeration>
         <enumeration>thermoraw</enumeration>
         <enumeration>msconvert</enumeration>
         <enumeration>msconvert-demultiplex</enumeration>
@@ -53,7 +53,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>NO</value>
+        <value>native</value>
     </parameter>
 
     <!-- 02: Workflow Control -->

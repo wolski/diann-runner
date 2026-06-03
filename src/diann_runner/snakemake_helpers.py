@@ -307,9 +307,10 @@ def parse_flat_params(flat_params):
     workflow_mode = flat_params.get('02_workflow_mode', 'two_step')
 
     # Parse conversion/runtime parameters
-    # raw_converter: NO (native .raw, default), thermoraw, msconvert,
-    # msconvert-demultiplex. Fallback stays 'thermoraw' so old params.yml that
-    # predate this key keep their always-convert behavior.
+    # raw_converter: native (no conversion, DIA-NN reads .raw natively),
+    # thermoraw, msconvert, msconvert-demultiplex. Fallback stays
+    # 'thermoraw' so old params.yml that predate this key keep their
+    # always-convert behavior.
     raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
 
     # DIA-NN version dropdown. Default '2.3.2' for back-compat with old
@@ -368,13 +369,13 @@ def get_diann_input_path(
     """Return the file/dir to feed into DIA-NN for one sample.
 
     Every DIA-NN image we ship reads Thermo .raw natively (.NET 8), so when the
-    converter is 'NO' and inputs are .raw, we skip mzML conversion and pass the
-    .raw straight through. The thermoraw/msconvert/msconvert-demultiplex options
-    convert to mzML first.
+    converter is 'native' and inputs are .raw, we skip mzML conversion and pass
+    the .raw straight through. The thermoraw/msconvert/msconvert-demultiplex
+    options convert to mzML first.
     """
     if input_type == "d.zip":
         return raw_dir / f"{sample}.d"
-    if input_type == "raw" and raw_converter == "NO":
+    if input_type == "raw" and raw_converter == "native":
         return raw_dir / f"{sample}.raw"
     return raw_dir / f"{sample}.mzML"
 
