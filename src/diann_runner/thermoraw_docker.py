@@ -128,6 +128,7 @@ def _run_msconvert_container(
         .with_mount(cwd, "/data")
         .with_workdir("/data")
         .with_wine_compat()
+        .with_explicit_command()
         .build(["sh", "-c", msconvert_cmd])
     )
 

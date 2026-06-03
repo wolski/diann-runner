@@ -84,6 +84,7 @@ class ContainerCommandBuilder:
         self.runtime = runtime
         self._docker_args: list[str] = []
         self._apptainer_args: list[str] = []
+        self._apptainer_use_exec: bool = False
         if runtime == "docker":
             self._executable = find_docker_runtime()
         else:
@@ -186,7 +187,27 @@ class ContainerCommandBuilder:
         self._apptainer_args.extend(["--env", f"WINEPREFIX={wineprefix}"])
         return self
 
+    def with_explicit_command(self) -> "ContainerCommandBuilder":
+        """Use `apptainer exec` (caller supplies the binary as the first arg)
+        instead of the default `apptainer run` (image runscript decides).
+
+        Needed when the caller wants to override the image's runscript —
+        e.g. msconvert is invoked via `sh -c "wine msconvert ..."` to set
+        Wine env vars, which would conflict with the pwiz runscript that
+        unconditionally executes `wine64_anyuser msconvert`.
+
+        No-op under Docker (docker run already overrides CMD with args).
+        """
+        if self.runtime == "apptainer":
+            self._apptainer_use_exec = True
+        return self
+
     def build(self, container_args: list[str]) -> list[str]:
         if self.runtime == "apptainer":
-            return [self._executable, "exec", *self._apptainer_args, self.image, *container_args]
+            # Default: `apptainer run` so the image's runscript is invoked
+            # (mirrors docker's ENTRYPOINT semantics). Opt into `exec` via
+            # with_explicit_command() when the caller passes its own binary
+            # as container_args[0].
+            verb = "exec" if self._apptainer_use_exec else "run"
+            return [self._executable, verb, *self._apptainer_args, self.image, *container_args]
         return [self._executable, "run", *self._docker_args, self.image, *container_args]
