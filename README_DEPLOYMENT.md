@@ -33,15 +33,29 @@ Migrating a host from Docker to Apptainer is purely an ops action: install `appt
 
 Tested with `apptainer version 1.4.2`. The SIF paths in `defaults_server.yml` assume the `/opt/sif/` layout. Two ways to populate it:
 
-`deploy.smk all_sif` offers two builders, selected via `--config sif_builder={docker,native}`:
+`deploy.smk all_sif` offers two builders, selected via `--config sif_builder={native,docker}`:
 
-#### Option A — Docker builder (default; requires docker + apptainer)
+#### Option A — Native builder (default; apptainer-only host, no docker needed)
+
+Run on a host that has apptainer but no docker. `deploy.smk` calls [spython](https://github.com/singularityhub/singularity-cli) to translate each Dockerfile into an apptainer `.def` file under `build/`, then runs `apptainer build` directly. `spython` is a runtime dependency of `diann_runner`, so it's already installed.
+
+```bash
+# On the apptainer host, e.g. fgcz-c-043
+cd /scratch/diann-runner   # or wherever the repo is checked out
+snakemake -s deploy.smk all_sif --cores 1 --config sif_output_dir=/misc/fgcz01/nextflow_apptainer_cache
+```
+
+The `.def` files are regenerated from the Dockerfiles every time the Dockerfile changes — there's no parallel apptainer recipe to drift out of sync. Build versions are pinned via `--build-arg`–style overrides applied to the generated `.def`.
+
+Native builder requires apptainer's user-namespace to be configured on the host (no `--fakeroot` flag needed if `apptainer build /tmp/test.sif docker://hello-world` works without sudo on that host).
+
+#### Option B — Docker builder (requires docker + apptainer)
 
 Run on a host with **both** docker (daemon running) and apptainer. Locally-built images come from the docker daemon via `docker-daemon://`; upstream images (msconvert, prolfquapp) come from Docker Hub via `docker://`.
 
 ```bash
-snakemake -s deploy.smk all_sif --cores 1                              # ./sif/
-snakemake -s deploy.smk all_sif --cores 1 --config sif_output_dir=/opt/sif
+snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=docker                             # ./sif/
+snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=docker sif_output_dir=/opt/sif
 ```
 
 Then copy to the apptainer host:
@@ -49,20 +63,6 @@ Then copy to the apptainer host:
 ```bash
 rsync -av sif/ <apptainer-host>:/opt/sif/
 ```
-
-#### Option B — Native builder (apptainer-only host, no docker needed)
-
-Run on a host that has apptainer but no docker. `deploy.smk` calls [spython](https://github.com/singularityhub/singularity-cli) to translate each Dockerfile into an apptainer `.def` file under `build/`, then runs `apptainer build` directly. `spython` is a runtime dependency of `diann_runner`, so it's already installed.
-
-```bash
-# On the apptainer host, e.g. fgcz-c-043
-cd /scratch/diann-runner   # or wherever the repo is checked out
-snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=native --config sif_output_dir=/opt/sif
-```
-
-The `.def` files are regenerated from the Dockerfiles every time the Dockerfile changes — there's no parallel apptainer recipe to drift out of sync. Build versions are pinned via `--build-arg`–style overrides applied to the generated `.def`.
-
-Native builder requires apptainer's user-namespace to be configured on the host (no `--fakeroot` flag needed if `apptainer build /tmp/test.sif docker://hello-world` works without sudo on that host).
 
 #### Option C — Pull from a registry on the apptainer host
 

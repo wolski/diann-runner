@@ -83,9 +83,10 @@ wildcard_constraints:
 # running on the target apptainer host directly.
 SIF_DIR = Path(config.get("sif_output_dir", BASE_DIR / "sif"))
 
-# SIF builder: "docker" (default; converts via docker-daemon://) or
-# "native" (apptainer build from spython-generated .def, no docker).
-SIF_BUILDER = config.get("sif_builder", "docker")
+# SIF builder: "native" (default; apptainer build from spython-generated
+# .def, no docker needed) or "docker" (converts locally-built docker
+# images via docker-daemon://, requires docker daemon + apptainer).
+SIF_BUILDER = config.get("sif_builder", "native")
 if SIF_BUILDER not in ("docker", "native"):
     raise ValueError(
         f"sif_builder must be 'docker' or 'native', got {SIF_BUILDER!r}"
@@ -113,13 +114,13 @@ rule all_sif:
 
     Two builders are available, selected by ``--config sif_builder=...``:
 
-    - ``docker`` (default): convert locally-built docker images to SIF
-      via ``docker-daemon://``. Requires both docker (daemon running)
-      and apptainer on the host running this rule.
+    - ``native`` (default): build directly with ``apptainer build`` from
+      .def files generated from the Dockerfiles via spython. No docker
+      needed. Works on hosts that have apptainer only.
 
-    - ``native``: build directly with ``apptainer build`` from .def
-      files generated from the Dockerfiles via spython. No docker
-      needed. Intended for hosts that have apptainer only.
+    - ``docker``: convert locally-built docker images to SIF via
+      ``docker-daemon://``. Requires both docker (daemon running) and
+      apptainer on the host running this rule.
 
     Upstream images (msconvert, prolfquapp) are always pulled via
     ``docker://`` — same in both modes.
