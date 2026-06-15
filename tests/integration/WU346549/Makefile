@@ -4,17 +4,19 @@
 ## individual commands. Run from this directory (`tests/integration/WU346549/`).
 ##
 ## Common flow:
-##     make setup        # idempotent download of FASTA + 6 raws (~9 GB, skips if present)
-##     make dry          # dry-run the workflow (DAG only, no execution)
-##     make test         # setup (if needed) + execute the full workflow (~2 h on 32 cores)
-##     make clean        # remove generated outputs; keep raws/FASTA/fixtures
-##     make distclean    # nuke everything generated AND downloaded
+##     make setup            # idempotent download of FASTA + 6 raws (~9 GB, skips if present)
+##     make dry              # dry-run via diann-snakemake (DAG only, no execution)
+##     make dry-apprunner    # dry-run via `run-diann apprunner` (exercises params/dataset parsing)
+##     make test             # setup (if needed) + execute the full workflow (~2 h on 32 cores)
+##     make test-apprunner   # setup (if needed) + execute via `run-diann apprunner`
+##     make clean            # remove generated outputs; keep raws/FASTA/fixtures
+##     make distclean        # nuke everything generated AND downloaded
 ##
 ## Override core count:  make test CORES=64
 
 CORES ?= 32
 
-.PHONY: help setup dry test run clean distclean
+.PHONY: help setup dry dry-apprunner test test-apprunner run clean distclean
 
 help:
 	@sed -n 's/^## //p' Makefile
@@ -25,8 +27,16 @@ setup:
 dry:
 	CORES=$(CORES) ./run.sh
 
+## Dry-run the AppRunner entry point (run-diann apprunner) on the same inputs.
+dry-apprunner:
+	CORES=$(CORES) ./run.sh apprunner
+
 test: setup
 	CORES=$(CORES) ./run.sh run
+
+## Execute the full workflow via the AppRunner entry point.
+test-apprunner: setup
+	CORES=$(CORES) ./run.sh apprunner run
 
 # Back-compat alias.
 run: test
@@ -44,7 +54,7 @@ clean:
 	       out-DIANN_libA out-DIANN_quantB out-DIANN_quantC \
 	       temp-DIANN_libA temp-DIANN_quantB temp-DIANN_quantC \
 	       step_A_library_search.sh step_B_quantification_refinement.sh step_C_final_quantification.sh \
-	       Result_WU346549.zip outputs.yml Rqc.1.log dataset.csv
+	       Result_WU346549.zip outputs.yml Rqc.1.log dataset.csv diann_runner_params.toml
 
 ## Also remove downloaded raws + FASTA (forces full re-download on next `make setup`).
 distclean: clean
