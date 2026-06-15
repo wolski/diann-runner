@@ -1,0 +1,46 @@
+# Committed SUSHI params for the `run-diann sushi` dry-run integration test.
+#
+# This is the flat readable-key mapping a real SUSHI job emits — i.e. exactly
+# what EzAppDiann dumps to sushi_params.yml. The values are taken from a real
+# SUSHI invocation (tests/.../Proteomics_DIANN_input_685.sh), NOT reverse-
+# engineered from an AppRunner params.yml.
+#
+# Two deviations for a self-contained local/CI run:
+#   - fasta_databases points at the committed stub DB (the real run had it empty)
+#   - dataRoot stays the production value, but run.sh overrides it with
+#     --data-root <this dir> so the relative paths resolve against the fixture.
+cores: '8'
+process_mode: DATASET
+name: DIANN_v23
+paramsTemplate: default-DIA
+customParamsYml: ''
+order_fasta: 'false'
+fasta_databases: input/db.fasta
+workflow_mode: two_step
+is_dda: 'false'
+scan_window: AUTO
+mods_variable: --var-mods 1 --var-mod UniMod:35,15.994915,M
+mods_no_peptidoforms: 'false'
+mods_unimod4: 'true'
+mods_met_excision: 'true'
+peptide_min_length: '6'
+peptide_max_length: '30'
+peptide_precursor_charge_min: '1'
+peptide_precursor_charge_max: '3'
+peptide_precursor_mz_min: '350'
+peptide_precursor_mz_max: '1500'
+peptide_fragment_mz_min: '200'
+peptide_fragment_mz_max: '1800'
+digestion_cut: K*,R*
+digestion_missed_cleavages: '1'
+mass_acc_ms1: AUTO
+mass_acc_ms2: AUTO
+scoring_qvalue: '0.01'
+protein_pg_level: protein_names_1
+protein_relaxed_prot_inf: 'false'
+quantification_reanalyse: 'true'
+quantification_no_norm: 'false'
+freestyle: 'None'
+raw_converter: thermoraw
+verbose: '1'
+dataRoot: /srv/gstore/projects

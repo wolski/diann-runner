@@ -1,0 +1,8 @@
+# The repo-root .gitignore ignores *.tsv and *.fasta, but these ARE the
+# committed SUSHI test inputs — un-ignore them.
+!input_dataset.tsv
+!input/db.fasta
+
+# Stub raw files are recreated by run.sh on every run (dry-run only needs them
+# to exist) — never commit them.
+input/raw/
