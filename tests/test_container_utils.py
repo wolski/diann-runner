@@ -42,6 +42,18 @@ class TestContainerCommandBuilderDocker(unittest.TestCase):
         self.assertIn("-w", cmd)
 
     @patch("diann_runner.container_utils.find_docker_runtime", return_value="docker")
+    def test_docker_two_mounts_with_read_only_raw(self, _):
+        # work dir read-write + external raw dir read-only (the run-diann case).
+        cmd = (
+            ContainerCommandBuilder("diann:2.3.2", runtime="docker")
+            .with_mount("/host/work", "/work")
+            .with_mount("/srv/gstore/raw", "/raw", read_only=True)
+            .build(["x"])
+        )
+        self.assertIn("/host/work:/work", cmd)
+        self.assertIn("/srv/gstore/raw:/raw:ro", cmd)
+
+    @patch("diann_runner.container_utils.find_docker_runtime", return_value="docker")
     def test_docker_resource_limits_emitted(self, _):
         cmd = (
             ContainerCommandBuilder("diann:2.3.2", runtime="docker")
@@ -95,6 +107,16 @@ class TestContainerCommandBuilderApptainer(unittest.TestCase):
         self.assertIn("/host:/work", cmd)
         self.assertIn("--pwd", cmd)
         self.assertIn("/work", cmd)
+
+    def test_apptainer_read_only_bind_uses_ro_suffix(self):
+        cmd = (
+            ContainerCommandBuilder("/opt/sif/diann.sif", runtime="apptainer")
+            .with_mount("/host/work", "/work")
+            .with_mount("/srv/gstore/raw", "/raw", read_only=True)
+            .build(["x"])
+        )
+        self.assertIn("/host/work:/work", cmd)
+        self.assertIn("/srv/gstore/raw:/raw:ro", cmd)
 
     def test_apptainer_omits_docker_only_flags(self):
         cmd = (

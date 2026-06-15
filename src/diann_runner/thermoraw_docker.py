@@ -78,6 +78,41 @@ def _run_thermoraw_native(input_file: Path, output_dir: Path) -> int:
     return result.returncode
 
 
+def _mount_io(
+    builder: ContainerCommandBuilder, input_file: Path, output_dir: Path
+) -> tuple[str, str]:
+    """Set up container mounts for a conversion and return container paths.
+
+    Always mounts the working dir read-write at ``/data`` (output goes there).
+    When the input file lives OUTSIDE the working dir — an external, possibly
+    read-only ``raw_file_dir`` — its parent is bind-mounted read-only at
+    ``/raw`` and the input is referenced there. This is what lets conversion
+    read raw files in place without copying them into the work dir, while
+    conversion outputs are always written under the work dir.
+
+    Returns ``(container_input, container_output)``.
+    """
+    cwd = Path(os.getcwd()).resolve()
+    builder.with_mount(str(cwd), "/data")
+
+    out_res = output_dir.resolve()
+    try:
+        container_output = f"/data/{out_res.relative_to(cwd)}"
+    except ValueError as exc:
+        raise ValueError(
+            f"Conversion output dir must be under the working dir {cwd}: {out_res}"
+        ) from exc
+
+    in_res = input_file.resolve()
+    try:
+        container_input = f"/data/{in_res.relative_to(cwd)}"
+    except ValueError:
+        builder.with_mount(str(in_res.parent), "/raw", read_only=True)
+        container_input = f"/raw/{in_res.name}"
+
+    return container_input, container_output
+
+
 def _run_thermoraw_container(
     input_file: Path,
     output_dir: Path,
@@ -85,19 +120,16 @@ def _run_thermoraw_container(
     runtime: Runtime,
 ) -> int:
     """Run ThermoRawFileParser inside a container."""
-    cwd = os.getcwd()
-    container_input = f"/data/{input_file.resolve().relative_to(cwd)}"
-    container_output = f"/data/{output_dir.resolve().relative_to(cwd)}"
-
-    cmd = (
+    builder = (
         ContainerCommandBuilder(image, runtime=runtime)
         .with_cleanup()
         .with_init()
         .with_platform(force_amd64_on_arm=True)
         .with_uid_gid()
-        .with_mount(cwd, "/data")
-        .with_workdir("/data")
-        .build(["-i", container_input, "-o", container_output, "-f", "2"])
+    )
+    container_input, container_output = _mount_io(builder, input_file, output_dir)
+    cmd = builder.with_workdir("/data").build(
+        ["-i", container_input, "-o", container_output, "-f", "2"]
     )
 
     return run_container(cmd, label=f"Running (ThermoRawFileParser {runtime})")
@@ -111,9 +143,12 @@ def _run_msconvert_container(
     demultiplex: bool = False,
 ) -> int:
     """Run msconvert inside a container (requires Wine, x86 only)."""
-    cwd = os.getcwd()
-    container_input = f"/data/{input_file.resolve().relative_to(cwd)}"
-    container_output = f"/data/{output_dir.resolve().relative_to(cwd)}"
+    builder = (
+        ContainerCommandBuilder(image, runtime=runtime)
+        .with_cleanup()
+        .with_init()
+    )
+    container_input, container_output = _mount_io(builder, input_file, output_dir)
 
     options = MSCONVERT_BASE_OPTIONS
     if demultiplex:
@@ -122,10 +157,7 @@ def _run_msconvert_container(
     msconvert_cmd = f"wine msconvert {container_input} {options} -o {container_output}"
 
     cmd = (
-        ContainerCommandBuilder(image, runtime=runtime)
-        .with_cleanup()
-        .with_init()
-        .with_mount(cwd, "/data")
+        builder
         .with_workdir("/data")
         .with_wine_compat()
         .with_explicit_command()

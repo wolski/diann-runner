@@ -18,7 +18,8 @@ All commands defined in `pyproject.toml`:
 | Command | Module | Purpose |
 |---------|--------|---------|
 | `diann-docker` | `diann_docker.py` | Run DIA-NN in Docker container |
-| `diann-snakemake` | `snakemake_cli.py` | Run Snakemake workflow |
+| `run-diann` | `run_diann_cli.py` | Normalize AppRunner/SUSHI inputs → run the workflow (`apprunner`/`sushi` subcommands) |
+| `diann-snakemake` | `snakemake_cli.py` | Run Snakemake workflow (low-level passthrough) |
 | `diann-cleanup` | `cleanup.py` | Alias for `snakemake --delete-all-output` |
 | `diann-qc` | `plotter.py` | Generate QC plots from DIA-NN results |
 | `diann-qc-report` | `qc_report.py` | Generate Markdown QC report |

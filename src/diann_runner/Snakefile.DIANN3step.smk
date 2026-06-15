@@ -18,13 +18,13 @@ from diann_runner.snakemake_helpers import (
     get_final_quantification_outputs,
     get_msconvert_options,
     parse_flat_params,
+    load_workflow_params,
     resolve_raw_converter_image,
     create_diann_workflow,
     detect_input_files,
     convert_parquet_to_tsv,
     zip_diann_results,
     zip_library_files,
-    load_config,
     load_deploy_config,
     write_outputs_yml,
     resolve_fasta_path,
@@ -34,27 +34,44 @@ from diann_runner.snakemake_helpers import (
 # Local rules that don't need cluster execution
 localrules: all, print_config_dict, outputsyml, run_prozor_inference
 
-# Detect input files using helper function
-RAW_DIR = Path("input/raw")
-SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_DIR)
+# Raw-file source directory (may be external / read-only). Conversion OUTPUTS go
+# to CONVERTED_DIR under the work dir, never back into an external source dir.
+# Defaults reproduce the historical AppRunner layout (everything in input/raw).
+RAW_SOURCE_DIR = Path(config.get("raw_file_dir", "input/raw"))
+CONVERTED_DIR = Path(config.get("converted_dir", str(RAW_SOURCE_DIR)))
+# In-container mount target when RAW_SOURCE_DIR is external (set by run-diann);
+# None means the source dir is under the work dir and needs no extra mount.
+RAW_MOUNT_TARGET = config.get("raw_mount_target")
+RAW_MOUNT = (
+    (str(RAW_SOURCE_DIR.resolve()), RAW_MOUNT_TARGET) if RAW_MOUNT_TARGET else None
+)
 
-# Load configs separately for clarity
-config_dict = load_config(".")  # params.yml (bfabric parameters)
-deploy_dict = load_deploy_config(".")  # defaults_server.yml or defaults_local.yml (docker images, etc.)
+# Detect input files in the source directory
+SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_SOURCE_DIR)
 
-# Store variables from config
-WORKUNITID = config_dict["registration"]["workunit_id"]
-CONTAINERID = config_dict["registration"]["container_id"]
+# Deploy config (docker images, threads, etc.)
+deploy_dict = load_deploy_config(".")  # defaults_server.yml or defaults_local.yml
+
+# Dual-mode params + registration: normalized diann_runner_params.toml if present,
+# else legacy params.yml + parse_flat_params (keeps diann-snakemake / AppRunner working).
+WORKFLOW_PARAMS, REGISTRATION = load_workflow_params(".", config)
+WORKUNITID = REGISTRATION["workunit_id"]
+CONTAINERID = REGISTRATION["container_id"]
+
+# Normalized dataset paths + whether to register outputs (AppRunner-only).
+DATASET_CSV = config.get("dataset_csv", "dataset.csv")
+DATASET_PARQUET = config.get("dataset_parquet", "input/raw/dataset.parquet")
+# Robust to bool (eval'd --config) or string ("false") values.
+REGISTER_OUTPUTS = str(config.get("register_outputs", True)).lower() != "false"
 
 # Output directories - keep "out-DIANN" as prefix, but use separate dirs per step
 # out-DIANN_libA, out-DIANN_quantB, out-DIANN_quantC
 DIANNTEMP = "temp-DIANN"
 OUTPUT_PREFIX = "out-DIANN"
 
-# Parse all workflow parameters in one place
-# Note: Use WORKFLOW_PARAMS instead of "params" to avoid conflict with Snakemake's
-# built-in params object inside rule `run:` blocks
-WORKFLOW_PARAMS = parse_flat_params(config_dict["params"])
+# WORKFLOW_PARAMS / REGISTRATION are loaded above via load_workflow_params()
+# (dual-mode TOML or legacy params.yml). Use WORKFLOW_PARAMS (not "params") to
+# avoid clashing with Snakemake's built-in params object inside rule run-blocks.
 
 # Only create globals needed for Snakemake wildcards and conditionals
 ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
@@ -81,10 +98,15 @@ def final_quant_outputs(wildcards):
 # Default target rule (must be first rule to be default)
 # ============================================================================
 
+# Final targets. outputs.yml (and B-Fabric registration) is AppRunner-only;
+# the SUSHI path sets register_outputs=false so the DIA-NN run does not register.
+FINAL_TARGETS = [f"Result_WU{WORKUNITID}.zip"]
+if REGISTER_OUTPUTS:
+    FINAL_TARGETS.append("outputs.yml")
+
 rule all:
     input:
-        result_zip = f"Result_WU{WORKUNITID}.zip",
-        outputs_yml = "outputs.yml"
+        FINAL_TARGETS
 
 # ============================================================================
 # File conversion rules
@@ -96,14 +118,14 @@ rule convert_d_zip:
     DIA-NN natively supports Bruker .d input — no mzML conversion needed.
     """
     input:
-        file = RAW_DIR / "{sample}.d.zip"
+        file = RAW_SOURCE_DIR / "{sample}.d.zip"
     output:
-        marker = RAW_DIR / "{sample}.done"
+        marker = CONVERTED_DIR / "{sample}.done"
     log:
         logfile = "logs/convert_d_zip_{sample}.log"
     params:
-        extract_dir = RAW_DIR,
-        folder = lambda wildcards: RAW_DIR / f"{wildcards.sample}.d"
+        extract_dir = CONVERTED_DIR,
+        folder = lambda wildcards: CONVERTED_DIR / f"{wildcards.sample}.d"
     retries: 3
     shell:
         """
@@ -122,9 +144,9 @@ rule convert_raw:
     and must not run at parse time.
     """
     input:
-        file = RAW_DIR / "{sample}.raw"
+        file = RAW_SOURCE_DIR / "{sample}.raw"
     output:
-        file = RAW_DIR / "{sample}.mzML"
+        file = CONVERTED_DIR / "{sample}.mzML"
     log:
         logfile = "logs/convert_raw_{sample}.log"
     params:
@@ -138,12 +160,16 @@ rule convert_raw:
         """
 
 def get_converted_file(sample: str):
-    """Returns the input path for DIA-NN for a given sample."""
-    return get_diann_input_path(sample, INPUT_TYPE, RAW_CONVERTER, RAW_DIR)
+    """Returns the container-visible input path for DIA-NN for a given sample."""
+    return get_diann_input_path(
+        sample, INPUT_TYPE, RAW_CONVERTER, RAW_SOURCE_DIR, CONVERTED_DIR, RAW_MOUNT_TARGET
+    )
 
 def get_conversion_dependency(sample: str):
-    """Returns the Snakemake dependency that prepares a DIA-NN input."""
-    return get_diann_input_dependency(sample, INPUT_TYPE, RAW_CONVERTER, RAW_DIR)
+    """Returns the Snakemake dependency (host path) that prepares a DIA-NN input."""
+    return get_diann_input_dependency(
+        sample, INPUT_TYPE, RAW_CONVERTER, RAW_SOURCE_DIR, CONVERTED_DIR
+    )
 
 # ============================================================================
 # DIA-NN workflow rules (conditional on WORKFLOW_MODE)
@@ -167,7 +193,7 @@ if WORKFLOW_MODE == "single_step":
             workflow = create_diann_workflow(
                 WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
                 fasta_paths, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
-                deploy_dict
+                deploy_dict, raw_mount=RAW_MOUNT
             )
 
             raw_files = [str(get_converted_file(sample)) for sample in SAMPLES]
@@ -224,7 +250,7 @@ else:
             workflow = create_diann_workflow(
                 WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
                 fasta_paths, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
-                deploy_dict
+                deploy_dict, raw_mount=RAW_MOUNT
             )
 
             # Convert input files to DIA-NN input paths.
@@ -375,7 +401,7 @@ rule zip_diann_result:
     input:
         pdf = rules.diannqc.output.pdf,
         prozor = rules.run_prozor_inference.output.prozor_parquet,
-        dataset = "dataset.csv",
+        dataset = DATASET_CSV,
         qc_dir = "qc_result"
     output:
         zip = f"Result_WU{WORKUNITID}.zip"
@@ -403,19 +429,23 @@ if INCLUDE_LIBS:
         run:
             zip_library_files(OUTPUT_PREFIX, output.zip)
 
-rule dataset_csv:
-    input:
-        parquet="input/raw/dataset.parquet",
-    output:
-        csv="dataset.csv",
-    run:
-        pd.read_parquet(input.parquet).to_csv(output.csv, index=False)
+# Build dataset.csv from the AppRunner parquet only when needed. In the
+# normalized (run-diann) path, prepare_work_dir() has already written
+# DATASET_CSV, so this rule is not defined and DATASET_CSV is used as a source.
+if not Path(DATASET_CSV).exists() and Path(DATASET_PARQUET).exists():
+    rule dataset_csv:
+        input:
+            parquet=DATASET_PARQUET,
+        output:
+            csv=DATASET_CSV,
+        run:
+            pd.read_parquet(input.parquet).to_csv(output.csv, index=False)
 
 
 rule prolfqua_qc:
     input:
         unpack(final_quant_outputs),
-        dataset = rules.dataset_csv.output.csv,
+        dataset = DATASET_CSV,
     output:
         qc_dir = directory("qc_result"),
         runlog = "Rqc.1.log"
@@ -433,7 +463,7 @@ rule prolfqua_qc:
             --indir {params.indir:q} -s DIANN \
             --dataset {input.dataset:q} \
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \
-            --outdir qc_result | tee {output.runlog:q}
+            --outdir qc_result --flat_outdir | tee {output.runlog:q}
         cp {input.dataset:q} qc_result/dataset.csv
         """
 
@@ -467,10 +497,10 @@ rule stageoutput:
 
 
 rule print_config_dict:
-    """Print all keys and values from config_dict['params']."""
+    """Print the normalized DIA-NN workflow parameters."""
     log:
         logfile = "logs/print_config_dict.log"
     run:
-        print("Printing configuration parameters from config_dict['params']:")
-        for key, value in sorted(config_dict["params"].items()):
+        print("Normalized DIA-NN workflow parameters:")
+        for key, value in sorted(WORKFLOW_PARAMS["diann"].items()):
             print(f"{key}: {value}")

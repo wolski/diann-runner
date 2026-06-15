@@ -121,6 +121,34 @@ def load_deploy_config(raw_dir: Path) -> dict:
     return deploy_dict
 
 
+def load_workflow_params(workdir: str | Path, config: dict) -> tuple[dict, dict]:
+    """Load normalized workflow params + registration (dual-mode).
+
+    Prefers the normalized ``diann_runner_params.toml`` written by ``run-diann``;
+    falls back to the legacy ``params.yml`` + :func:`parse_flat_params` path so
+    existing AppRunner workdirs and direct ``diann-snakemake`` runs keep working.
+
+    Returns ``(workflow_params, registration)`` where ``workflow_params`` has the
+    same shape as :func:`parse_flat_params` output and ``registration`` carries at
+    least ``workunit_id`` and ``container_id``. In TOML mode the registration
+    values come from the Snakemake ``config`` (passed by ``run-diann``).
+    """
+    workdir = Path(workdir)
+    toml_path = workdir / config.get("params_toml", "diann_runner_params.toml")
+    if toml_path.is_file():
+        from diann_runner.request import DIANNRunnerParams
+
+        workflow_params = DIANNRunnerParams.from_toml(toml_path).to_parsed()
+        registration = {
+            "workunit_id": str(config.get("workunit_id", "0")),
+            "container_id": str(config.get("container_id", "0")),
+        }
+        return workflow_params, registration
+
+    config_dict = load_config(workdir)
+    return parse_flat_params(config_dict["params"]), config_dict["registration"]
+
+
 def detect_input_files(raw_dir: Path) -> tuple[list[str], str, dict[str, list[Path]]]:
     """
     Detect and validate input mass spectrometry files in a directory.
@@ -365,19 +393,33 @@ def get_diann_input_path(
     input_type: str,
     raw_converter: str,
     raw_dir: Path,
+    converted_dir: Path | None = None,
+    mount_target: str | None = None,
 ) -> Path:
-    """Return the file/dir to feed into DIA-NN for one sample.
+    """Return the container-visible path to feed into DIA-NN as --f for one sample.
 
     Every DIA-NN image we ship reads Thermo .raw natively (.NET 8), so when the
     converter is 'native' and inputs are .raw, we skip mzML conversion and pass
     the .raw straight through. The thermoraw/msconvert/msconvert-demultiplex
     options convert to mzML first.
+
+    ``raw_dir`` is where source files live (read directly for native .raw /
+    .mzML). ``converted_dir`` (defaults to ``raw_dir``) is where conversion
+    outputs are written — the .mzML from thermoraw and the extracted .d from a
+    .d.zip — and must be under the work dir. ``mount_target``, when set, is the
+    in-container path of an external ``raw_dir`` bind-mounted read-only (e.g.
+    ``/raw``); source files read directly are then referenced there rather than
+    at their host path. Defaults reproduce the historical single-dir behavior.
     """
+    converted_dir = raw_dir if converted_dir is None else converted_dir
     if input_type == "d.zip":
-        return raw_dir / f"{sample}.d"
-    if input_type == "raw" and raw_converter == "native":
-        return raw_dir / f"{sample}.raw"
-    return raw_dir / f"{sample}.mzML"
+        return Path(converted_dir) / f"{sample}.d"
+    if input_type == "raw" and raw_converter != "native":
+        return Path(converted_dir) / f"{sample}.mzML"
+    # Read source directly: native .raw or .mzML input.
+    ext = "raw" if input_type == "raw" else "mzML"
+    base = Path(mount_target) if mount_target else Path(raw_dir)
+    return base / f"{sample}.{ext}"
 
 
 def get_diann_input_dependency(
@@ -385,17 +427,26 @@ def get_diann_input_dependency(
     input_type: str,
     raw_converter: str,
     raw_dir: Path,
+    converted_dir: Path | None = None,
 ) -> Path:
-    """Return the workflow dependency that prepares a DIA-NN input.
+    """Return the workflow dependency (host path) that prepares a DIA-NN input.
 
     Bruker .d directories are vendor data folders. Do not make Snakemake own
     them as directory() outputs because Snakemake writes metadata inside managed
     output directories. Use a sibling marker file for the extraction step while
     passing the real .d path to DIA-NN via get_diann_input_path().
+
+    Unlike :func:`get_diann_input_path`, this returns the on-disk *host* path
+    Snakemake must verify/build: source files read directly live in ``raw_dir``,
+    conversion outputs in ``converted_dir`` (defaults to ``raw_dir``).
     """
+    converted_dir = raw_dir if converted_dir is None else converted_dir
     if input_type == "d.zip":
-        return raw_dir / f"{sample}.done"
-    return get_diann_input_path(sample, input_type, raw_converter, raw_dir)
+        return Path(converted_dir) / f"{sample}.done"
+    if input_type == "raw" and raw_converter != "native":
+        return Path(converted_dir) / f"{sample}.mzML"
+    ext = "raw" if input_type == "raw" else "mzML"
+    return Path(raw_dir) / f"{sample}.{ext}"
 
 
 def create_diann_workflow(
@@ -405,7 +456,8 @@ def create_diann_workflow(
     fasta_path: str | list[str],
     var_mods: list,
     diann_params: dict,
-    deploy_params: dict
+    deploy_params: dict,
+    raw_mount: tuple[str, str] | None = None,
 ):
     """
     Create DiannWorkflow instance from parsed parameters.
@@ -461,6 +513,7 @@ def create_diann_workflow(
         reanalyse=diann_params["reanalyse"],
         no_norm=diann_params["no_norm"],
         ids_to_names=diann_params["ids_to_names"],
+        raw_mount=raw_mount,
     )
 
 

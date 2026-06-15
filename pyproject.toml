@@ -17,6 +17,8 @@ dependencies = [
     "loguru>=0.7.0",
     "ahocorapy>=1.6.0",
     "spython>=0.3.0",
+    "tomli-w>=1.0",
+    "pydantic>=2",
 ]
 
 [project.scripts]
@@ -26,6 +28,7 @@ diann-qc = "diann_runner.plotter:main"
 diann-qc-report = "diann_runner.qc_report:app"
 prolfquapp-docker = "diann_runner.prolfquapp_docker:main"
 diann-snakemake = "diann_runner.snakemake_cli:main"
+run-diann = "diann_runner.run_diann_cli:app"
 thermoraw = "diann_runner.thermoraw_docker:main"
 prozor-diann = "diann_runner.prozor_diann:app"
 # Oktoberfest tools moved to contrib/oktoberfest/
@@ -37,7 +40,7 @@ test = ["pytest>=7.0.0"]
 fast = ["ahocorasick_rs>=1.0.0"]
 
 [tool.setuptools.package-data]
-diann_runner = ["Snakefile.DIANN3step.smk", "config/*.yml"]
+diann_runner = ["Snakefile.DIANN3step.smk", "config/*.yml", "templates/*.yml"]
 
 [build-system]
 requires = ["uv_build>=0.9.26,<0.10.0"]

@@ -58,8 +58,8 @@ class TestSnakemakeHelpers(unittest.TestCase):
         )
         content = snakefile.read_text(encoding="utf-8")
 
-        self.assertIn('folder = lambda wildcards: RAW_DIR / f"{wildcards.sample}.d"', content)
-        self.assertNotIn('folder = RAW_DIR / "{sample}.d"', content)
+        self.assertIn('folder = lambda wildcards: CONVERTED_DIR / f"{wildcards.sample}.d"', content)
+        self.assertNotIn('folder = CONVERTED_DIR / "{sample}.d"', content)
 
     def test_zip_diann_results_includes_extra_files_at_archive_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:

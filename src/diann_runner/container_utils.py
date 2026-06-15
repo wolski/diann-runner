@@ -134,14 +134,27 @@ class ContainerCommandBuilder:
         source: str,
         target: str,
         style: str = "volume",
+        read_only: bool = False,
     ) -> "ContainerCommandBuilder":
+        """Bind-mount a host path into the container.
+
+        Call multiple times to add multiple mounts (e.g. a writable work dir
+        plus a read-only raw-file dir). ``read_only=True`` mounts the path
+        read-only, which is appropriate for shared input directories the
+        container must not modify (e.g. an external raw-file dir).
+        """
         if self.runtime == "apptainer":
-            self._apptainer_args.extend(["--bind", f"{source}:{target}"])
+            bind = f"{source}:{target}:ro" if read_only else f"{source}:{target}"
+            self._apptainer_args.extend(["--bind", bind])
             return self
         if style == "bind":
-            self._docker_args.extend(["--mount", f"type=bind,source={source},target={target}"])
+            spec = f"type=bind,source={source},target={target}"
+            if read_only:
+                spec += ",readonly"
+            self._docker_args.extend(["--mount", spec])
         else:
-            self._docker_args.extend(["-v", f"{source}:{target}"])
+            spec = f"{source}:{target}:ro" if read_only else f"{source}:{target}"
+            self._docker_args.extend(["-v", spec])
         return self
 
     def with_workdir(self, path: str) -> "ContainerCommandBuilder":

@@ -97,7 +97,8 @@ class DiannWorkflow:
         relaxed_prot_inf: bool = False,
         reanalyse: bool = True,
         no_norm: bool = False,
-        ids_to_names: bool = False
+        ids_to_names: bool = False,
+        raw_mount: tuple[str, str] | None = None
     ):
         """
         Initialize DIA-NN workflow with shared parameters across all steps.
@@ -136,6 +137,12 @@ class DiannWorkflow:
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
             no_norm: Disable cross-run normalization
             ids_to_names: Use protein IDs as gene names (for FASTA without GN= annotations)
+            raw_mount: Optional (host_dir, container_target) for an external raw-file
+                directory bind-mounted read-only into the DIA-NN container. When set,
+                the generated diann-docker invocation adds --mount <host>:<container>:ro
+                so DIA-NN can read raw files in place (native converter). Raw-file --f
+                paths must then reference <container_target>/<basename>; the Snakefile
+                supplies those. None = single /work mount (the AppRunner default).
         """
         # Core identifiers
         self.workunit_id = workunit_id
@@ -145,6 +152,7 @@ class DiannWorkflow:
         self.container_runtime = container_runtime
         self.temp_dir_base = temp_dir_base
         self.fasta_file = fasta_file
+        self.raw_mount = tuple(raw_mount) if raw_mount else None
 
         # Variable modifications
         self.var_mods = var_mods
@@ -197,6 +205,9 @@ class DiannWorkflow:
         cmd = [f'"{self.diann_bin}"', f"--runtime {self.container_runtime}"]
         if self.docker_image:
             cmd.append(f'--image {self.docker_image}')
+        if self.raw_mount:
+            host, container = self.raw_mount
+            cmd.append(f'--mount {host}:{container}:ro')
         cmd.append('--')
         return cmd
     
@@ -241,6 +252,7 @@ class DiannWorkflow:
             'reanalyse': self.reanalyse,
             'no_norm': self.no_norm,
             'ids_to_names': self.ids_to_names,
+            'raw_mount': list(self.raw_mount) if self.raw_mount else None,
         }
     
     def save_config(self, output_path: str) -> str:

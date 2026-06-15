@@ -2,6 +2,40 @@
 
 This guide explains how to use the `DiannWorkflow` python class to generate DIA-NN scripts. This is primarily used internally by the Snakemake workflow, but can also be used for custom scripting.
 
+## `run-diann` — the caller-facing entry point
+
+`run-diann` is the recommended way to run the workflow from a caller's native
+inputs. It normalizes AppRunner or SUSHI inputs into one `DiannRunRequest`,
+validates them (every raw basename in the dataset must exist in `--raw-dir`,
+every FASTA must exist), writes a normalized work dir (`diann_runner_params.toml`,
+`dataset.csv`, FASTA copied into `input/`), and invokes the bundled Snakefile.
+It does **not** stage/copy raw files — they are read in place from `--raw-dir`
+(bind-mounted read-only into the containers at `/raw` when external).
+
+```bash
+# AppRunner: params.yml + dataset.parquet, raw files already staged under input/raw
+run-diann apprunner \
+  --raw-dir input/raw \
+  --dataset input/raw/dataset.parquet \
+  --params params.yml \
+  --fasta input/database.fasta \
+  --work-dir . --output-dir .          # writes outputs.yml + registers in B-Fabric
+
+# SUSHI: input_dataset.tsv + a flat-key params YAML, raw files in an external dir
+run-diann sushi \
+  --raw-dir /scratch/staged_raw \
+  --dataset input_dataset.tsv \
+  --params sushi_params.yml \
+  --fasta /srv/.../database.fasta --fasta /srv/.../order.fasta \
+  --work-dir /scratch/work --output-dir /scratch/work \
+  --workunit-id 112148 --container-id 34486 --cores 64   # no B-Fabric registration
+```
+
+Use `-n` / `--dry-run` to print the Snakemake plan without executing DIA-NN.
+`diann-snakemake` remains the low-level passthrough for developers and the
+dual-mode `params.yml` fallback (the Snakefile reads `diann_runner_params.toml`
+when present, else legacy `params.yml`).
+
 ## Quick Reference
 
 ### Basic Setup
