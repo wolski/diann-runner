@@ -227,6 +227,49 @@ class TestSnakemakeHelpers(unittest.TestCase):
         params = parse_flat_params(flat)
         self.assertEqual(params['raw_converter'], 'native')
 
+    def test_parse_flat_params_full_contract(self):
+        # Frozen expected output — locks the BFABRIC_TO_DRUNNER + param_core
+        # refactor against any future drift in the shared transform core.
+        expected = {
+            'diann': {
+                'diann_bin': 'diann-docker',
+                'no_peptidoforms': False,
+                'unimod4': True,
+                'met_excision': True,
+                'min_pep_len': 7,
+                'max_pep_len': 30,
+                'min_pr_charge': 2,
+                'max_pr_charge': 3,
+                'min_pr_mz': 400,
+                'max_pr_mz': 1500,
+                'min_fr_mz': 200,
+                'max_fr_mz': 1800,
+                'cut': 'K*,R*',
+                'missed_cleavages': 1,
+                'mass_acc': 'AUTO',
+                'mass_acc_ms1': 'AUTO',
+                'scan_window': 'AUTO',
+                'qvalue': 0.01,
+                'pg_level': 1,
+                'relaxed_prot_inf': True,
+                'ids_to_names': False,
+                'reanalyse': True,
+                'no_norm': False,
+                'verbose': 1,
+                'is_dda': False,
+                'diann_version': '2.3.2',
+                'var_mods': [],
+            },
+            'fasta': {'database_path': '/path/to/fasta', 'use_custom_fasta': False},
+            'var_mods': [],
+            'library_predictor': 'diann',
+            'enable_step_c': False,
+            'workflow_mode': 'two_step',
+            'raw_converter': 'thermoraw',
+            'include_libs': False,
+        }
+        self.assertEqual(parse_flat_params(dict(BASE_FLAT_PARAMS)), expected)
+
     def test_resolve_diann_docker_image_uses_version_map(self):
         deploy = {
             'diann_images': {

@@ -40,7 +40,7 @@ test = ["pytest>=7.0.0"]
 fast = ["ahocorasick_rs>=1.0.0"]
 
 [tool.setuptools.package-data]
-diann_runner = ["Snakefile.DIANN3step.smk", "config/*.yml", "templates/*.yml"]
+diann_runner = ["Snakefile.DIANN3step.smk", "config/*.yml"]
 
 [build-system]
 requires = ["uv_build>=0.9.26,<0.10.0"]

@@ -6,13 +6,12 @@ SUSHI's ``DIANNApp.rb`` emits **readable** param names (``mods_variable``,
 AppRunner side (B-Fabric XML keys ``06a_diann_*`` and ``dataset.parquet``), so
 the SUSHI path needs its **own** adapters.
 
-To stay consistent with AppRunner — same effective ``DIANNRunnerParams`` — these
-adapters do *not* reimplement the parameter transformation. They:
-
-1. alias the SUSHI readable keys onto the B-Fabric keys (:data:`SUSHI_TO_BFABRIC`),
-2. merge them over a bundled template (which supplies the keys SUSHI doesn't
-   carry, e.g. ``03_fasta_database_path``) via :func:`assemble_params`, and
-3. run the shared :func:`parse_flat_params`.
+This is the ``SUSHI_TO_DRUNNER`` adapter: it maps the SUSHI readable keys
+**directly** onto diann_runner's canonical internal field names (never via the
+sibling B-Fabric vocabulary) and hands them to the shared transform core
+:func:`diann_runner.param_core.build_internal_params`. So the SUSHI and AppRunner
+(``BFABRIC_TO_DRUNNER`` = :func:`parse_flat_params`) paths converge on identical
+``DIANNRunnerParams`` while sharing no key vocabulary.
 
 FASTA is handled separately (SUSHI carries ``fasta_databases`` — a comma-joined
 path list — not the B-Fabric ``03_*`` keys); the dataset adapter normalizes the
@@ -27,42 +26,47 @@ from typing import Any
 import pandas as pd
 import yaml
 
+from diann_runner.param_core import build_internal_params
 from diann_runner.request import COL_GROUPING, COL_NAME, COL_RELATIVE_PATH
-from diann_runner.snakemake_helpers import parse_flat_params
-from diann_runner.sushi_params import assemble_params
 
-# SUSHI readable param name -> B-Fabric flat key consumed by parse_flat_params.
-# Only the keys parse_flat_params reads are listed; SUSHI-framework params
-# (cores, mail, …) and the FASTA keys are handled elsewhere / ignored.
-SUSHI_TO_BFABRIC: dict[str, str] = {
-    "workflow_mode": "02_workflow_mode",
-    "is_dda": "05_diann_is_dda",
-    "scan_window": "05b_diann_scan_window",
-    "mods_variable": "06a_diann_mods_variable",
-    "mods_no_peptidoforms": "06b_diann_mods_no_peptidoforms",
-    "mods_unimod4": "06c_diann_mods_unimod4",
-    "mods_met_excision": "06d_diann_mods_met_excision",
-    "peptide_min_length": "07_diann_peptide_min_length",
-    "peptide_max_length": "07_diann_peptide_max_length",
-    "peptide_precursor_charge_min": "07_diann_peptide_precursor_charge_min",
-    "peptide_precursor_charge_max": "07_diann_peptide_precursor_charge_max",
-    "peptide_precursor_mz_min": "07_diann_peptide_precursor_mz_min",
-    "peptide_precursor_mz_max": "07_diann_peptide_precursor_mz_max",
-    "peptide_fragment_mz_min": "07_diann_peptide_fragment_mz_min",
-    "peptide_fragment_mz_max": "07_diann_peptide_fragment_mz_max",
-    "digestion_cut": "08_diann_digestion_cut",
-    "digestion_missed_cleavages": "08_diann_digestion_missed_cleavages",
-    "mass_acc_ms1": "09_diann_mass_acc_ms1",
-    "mass_acc_ms2": "09_diann_mass_acc_ms2",
-    "scoring_qvalue": "10_diann_scoring_qvalue",
-    "protein_pg_level": "11a_diann_protein_pg_level",
-    "protein_relaxed_prot_inf": "11b_diann_protein_relaxed_prot_inf",
-    "quantification_reanalyse": "12a_diann_quantification_reanalyse",
-    "quantification_no_norm": "12b_diann_quantification_no_norm",
-    "freestyle": "13_diann_freestyle",
-    "raw_converter": "97_raw_converter",
-    "verbose": "99_other_verbose",
+# SUSHI readable param name -> diann_runner canonical internal field name. Only
+# the fields build_internal_params consumes are listed; SUSHI-framework params
+# (cores, mail, name, …), the FASTA keys, and `freestyle` (unwired downstream)
+# are ignored.
+SUSHI_TO_DRUNNER: dict[str, str] = {
+    "diann_version": "diann_version",
+    "workflow_mode": "workflow_mode",
+    "is_dda": "is_dda",
+    "scan_window": "scan_window",
+    "mods_variable": "var_mods",
+    "mods_no_peptidoforms": "no_peptidoforms",
+    "mods_unimod4": "unimod4",
+    "mods_met_excision": "met_excision",
+    "peptide_min_length": "min_pep_len",
+    "peptide_max_length": "max_pep_len",
+    "peptide_precursor_charge_min": "min_pr_charge",
+    "peptide_precursor_charge_max": "max_pr_charge",
+    "peptide_precursor_mz_min": "min_pr_mz",
+    "peptide_precursor_mz_max": "max_pr_mz",
+    "peptide_fragment_mz_min": "min_fr_mz",
+    "peptide_fragment_mz_max": "max_fr_mz",
+    "digestion_cut": "cut",
+    "digestion_missed_cleavages": "missed_cleavages",
+    "mass_acc_ms1": "mass_acc_ms1",
+    "mass_acc_ms2": "mass_acc",
+    "scoring_qvalue": "qvalue",
+    "protein_pg_level": "pg_level",
+    "protein_relaxed_prot_inf": "relaxed_prot_inf",
+    "quantification_reanalyse": "reanalyse",
+    "quantification_no_norm": "no_norm",
+    "raw_converter": "raw_converter",
+    "verbose": "verbose",
 }
+
+# SUSHI selects FASTA out-of-band via `fasta_databases` (-> fasta_paths_from_sushi,
+# the request's fasta list), so the nested `fasta` sub-dict is a placeholder that
+# run_diann_cli._apply_fasta overwrites with the real path before validation.
+_SUSHI_FASTA_PLACEHOLDER = {"database_path": "NONE", "use_custom_fasta": False}
 
 # SUSHI raw-file column candidates (FGCZ tags + un-suffixed fallbacks), in order.
 SUSHI_RAW_COLUMNS = ("Thermo RAW [File]", "Thermo RAW", "RAW [File]", "RAW")
@@ -102,25 +106,21 @@ def parse_sushi_params(
 ) -> tuple[dict[str, Any], list[Path], str | None]:
     """Parse a SUSHI ``sushi_params.yml`` into (workflow_params, fasta_paths, data_root).
 
-    The readable keys are aliased to B-Fabric keys and merged over the template
-    named by ``paramsTemplate`` (default ``default-DIA``); ``customParamsYml``,
-    when set, fully replaces the template. The result runs through the shared
-    :func:`parse_flat_params`, so the SUSHI path yields the same nested params
-    AppRunner does. ``data_root`` is the ``dataRoot`` key SUSHI's run_PyApp adds
-    (used by :func:`parse_sushi_dataset` to resolve relative raw paths); ``None``
-    when absent.
+    The readable keys are mapped directly onto canonical internal names
+    (:data:`SUSHI_TO_DRUNNER`) and assembled by the shared
+    :func:`diann_runner.param_core.build_internal_params`, so the SUSHI path yields
+    the same nested params AppRunner does (guarded by
+    ``test_matches_apprunner_for_equivalent_keys``). FASTA comes from
+    ``fasta_databases``; ``data_root`` is the ``dataRoot`` key SUSHI's run_PyApp
+    adds (used by :func:`parse_sushi_dataset` to resolve relative raw paths),
+    ``None`` when absent.
     """
     flat = _load_flat(params_file)
-    template = str(flat.get("paramsTemplate") or "default-DIA")
-    aliased = {
-        SUSHI_TO_BFABRIC[k]: v for k, v in flat.items() if k in SUSHI_TO_BFABRIC
+    canonical = {
+        SUSHI_TO_DRUNNER[k]: v for k, v in flat.items() if k in SUSHI_TO_DRUNNER
     }
-    merged = assemble_params(
-        template=template, overrides=aliased, custom_params=flat.get("customParamsYml")
-    )
-    workflow_params = parse_flat_params(merged)
-    data_root = flat.get("dataRoot")
-    return workflow_params, fasta_paths_from_sushi(flat), data_root
+    workflow_params = build_internal_params(canonical, fasta=dict(_SUSHI_FASTA_PLACEHOLDER))
+    return workflow_params, fasta_paths_from_sushi(flat), flat.get("dataRoot")
 
 
 def parse_sushi_dataset(
