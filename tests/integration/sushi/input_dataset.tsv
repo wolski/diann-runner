@@ -1,3 +1,7 @@
 Name	Thermo RAW [File]	Condition [Factor]
-EYH_5_45_50_1ng_R1	input/raw/EYH_5_45_50_1ng_R1.raw	A
-EYH_20_30_50_1ng_R1	input/raw/EYH_20_30_50_1ng_R1.raw	B
+LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_01	../WU346549/input/raw/LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_01.raw	A
+LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_02	../WU346549/input/raw/LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_02.raw	A
+LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_03	../WU346549/input/raw/LFQ_Orbitrap_AIF_Condition_A_Sample_Alpha_03.raw	A
+LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_01	../WU346549/input/raw/LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_01.raw	B
+LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_02	../WU346549/input/raw/LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_02.raw	B
+LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_03	../WU346549/input/raw/LFQ_Orbitrap_AIF_Condition_B_Sample_Alpha_03.raw	B

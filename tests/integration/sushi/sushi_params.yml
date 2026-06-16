@@ -5,17 +5,17 @@
 # SUSHI invocation (tests/.../Proteomics_DIANN_input_685.sh), NOT reverse-
 # engineered from an AppRunner params.yml.
 #
-# Two deviations for a self-contained local/CI run:
-#   - fasta_databases points at the committed stub DB (the real run had it empty)
-#   - dataRoot stays the production value, but run.sh overrides it with
-#     --data-root <this dir> so the relative paths resolve against the fixture.
+# fasta_databases + the dataset's raw paths point into ../WU346549/input/ (run
+# `make setup` there to download them, ~9 GB). dataRoot keeps the production
+# value; run.sh overrides it with --data-root <this dir> so the '../WU346549/...'
+# paths resolve against this fixture dir.
 cores: '8'
 process_mode: DATASET
 name: DIANN_v23
 paramsTemplate: default-DIA
 customParamsYml: ''
 order_fasta: 'false'
-fasta_databases: input/db.fasta
+fasta_databases: ../WU346549/input/p34486_Proteobench_TripleProteome_20240614.fasta
 workflow_mode: two_step
 is_dda: 'false'
 scan_window: AUTO

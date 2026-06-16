@@ -7,7 +7,7 @@
 
 CORES ?= 32
 
-.PHONY: help setup dry dry-apprunner dry-sushi test test-apprunner run clean distclean
+.PHONY: help setup dry dry-apprunner dry-sushi test test-apprunner test-sushi run clean distclean
 
 help: ## Show this help
 	@echo "WU346549 integration test — make <target> (override cores: CORES=64):"
@@ -23,7 +23,7 @@ dry: ## dry-run via diann-snakemake (DAG only, no execution)
 dry-apprunner: ## dry-run via run-diann apprunner (exercises params/dataset parsing)
 	CORES=$(CORES) ./run.sh apprunner
 
-dry-sushi: ## dry-run via run-diann sushi (../sushi/ — committed fixture, no download)
+dry-sushi: setup ## dry-run via run-diann sushi (../sushi/ — reuses these raws+FASTA)
 	cd ../sushi && ./run.sh
 
 test: setup ## setup + execute the full workflow via diann-snakemake (~2 h on 32 cores)
@@ -31,6 +31,9 @@ test: setup ## setup + execute the full workflow via diann-snakemake (~2 h on 32
 
 test-apprunner: setup ## setup + execute the full workflow via run-diann apprunner
 	CORES=$(CORES) ./run.sh apprunner run
+
+test-sushi: setup ## setup + execute the full workflow via run-diann sushi (../sushi/)
+	cd ../sushi && CORES=$(CORES) ./run.sh run
 
 run: test ## back-compat alias for `test`
 
