@@ -11,6 +11,12 @@ This is a Python package for running DIA-NN (mass spectrometry data analysis) wo
 
 The package uses `uv` for dependency management and `cyclopts` for CLI argument parsing.
 
+## Git Workflow
+
+- Work directly on `master`; do not create local feature branches unless the user
+  explicitly asks for one.
+- Before changing files, check the current branch and working tree status.
+
 ## CLI Entry Points
 
 All commands defined in `pyproject.toml`:
