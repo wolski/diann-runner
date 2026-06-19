@@ -23,5 +23,5 @@ sif_output_dir: sif
 # Versions for the upstream images pulled by all_sif. These default to
 # match the values in src/diann_runner/config/defaults_server.yml.
 thermoraw_version: "2.0.0"
-prolfquapp_version: "2.0.20"
+prolfquapp_version: "2.0.21"
 msconvert_image: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"

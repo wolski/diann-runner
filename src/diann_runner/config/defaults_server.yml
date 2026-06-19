@@ -25,7 +25,7 @@ images:
     thermoraw_image: "thermorawfileparser:2.0.0"
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
     # QC.
-    prolfquapp_image: "prolfqua/prolfquapp:2.0.20"
+    prolfquapp_image: "prolfqua/prolfquapp:2.0.21"
 
   apptainer:
     # SIF paths. Shared FGCZ apptainer cache, populated by deploy.smk
@@ -38,4 +38,4 @@ images:
     diann_docker_image: "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
     thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
     msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.0.20.sif"
+    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.0.21.sif"
