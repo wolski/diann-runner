@@ -70,6 +70,11 @@ def _apply_fasta(workflow_params: dict, fastas: list[Path], work_dir: Path) -> l
     derive the staged locations from the parsed params (input/<name> and, if
     use_custom_fasta, input/order.fasta) — the AppRunner default where app_runner
     has already staged them. Returns the database_fasta list for the request.
+
+    Custom sequences default to ON, so the derived order.fasta is included only
+    when it actually exists and is non-empty; a missing/empty one is skipped so it
+    never enters database_fasta (which would trip validate_request or stage an
+    empty custom FASTA). The Snakefile applies the same skip via get_fasta_paths.
     """
     fasta_cfg = workflow_params["fasta"]
     if fastas:
@@ -80,7 +85,11 @@ def _apply_fasta(workflow_params: dict, fastas: list[Path], work_dir: Path) -> l
     db_name = Path(fasta_cfg["database_path"]).name
     derived = [work_dir / "input" / db_name]
     if fasta_cfg.get("use_custom_fasta"):
-        derived.append(work_dir / "input" / "order.fasta")
+        order_fasta = work_dir / "input" / "order.fasta"
+        if order_fasta.is_file() and order_fasta.stat().st_size > 0:
+            derived.append(order_fasta)
+        else:
+            logger.info(f"Custom sequences enabled but {order_fasta} is missing/empty — skipping it.")
     return derived
 
 

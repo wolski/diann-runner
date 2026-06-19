@@ -714,16 +714,24 @@ def get_fasta_paths(fasta_config: dict) -> list[str]:
 
     Returns:
         List of FASTA paths (database first, then custom if enabled)
+
+    Custom sequences default to ON, so the common case is "enabled but the order
+    carries no custom sequences" → a missing or empty ``input/order.fasta``. That
+    is not an error: the empty file is skipped (with a log line) and only the
+    database FASTA is used, so DIA-NN is never handed an empty FASTA.
     """
+    from loguru import logger
+
     paths = [fasta_config["database_path"]]
 
     if fasta_config["use_custom_fasta"]:
         order_fasta = Path("input/order.fasta")
         if not order_fasta.exists():
-            raise FileNotFoundError("Custom FASTA was enabled, but input/order.fasta does not exist")
-        if order_fasta.stat().st_size == 0:
-            raise ValueError("Custom FASTA was enabled, but input/order.fasta is empty")
-        paths.append(str(order_fasta))
+            logger.info("Custom sequences enabled but input/order.fasta is missing — skipping it.")
+        elif order_fasta.stat().st_size == 0:
+            logger.info("Custom sequences enabled but input/order.fasta is empty — skipping it.")
+        else:
+            paths.append(str(order_fasta))
 
     return paths
 

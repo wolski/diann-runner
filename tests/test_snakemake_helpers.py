@@ -113,7 +113,8 @@ class TestSnakemakeHelpers(unittest.TestCase):
             self.assertIn("Result_WUTEST.zip", content)
             self.assertEqual(content.count("store_entry_path:"), 1)
 
-    def test_get_fasta_paths_requires_selected_custom_fasta(self):
+    def test_get_fasta_paths_skips_missing_or_empty_order_fasta(self):
+        """Custom sequences default ON: a missing/empty order.fasta is skipped, not fatal."""
         original_dir = os.getcwd()
         with tempfile.TemporaryDirectory() as tmpdir:
             os.chdir(tmpdir)
@@ -123,14 +124,15 @@ class TestSnakemakeHelpers(unittest.TestCase):
                     "use_custom_fasta": True,
                 }
 
-                with self.assertRaises(FileNotFoundError):
-                    get_fasta_paths(fasta_config)
+                # order.fasta missing -> skipped, database FASTA only (no raise)
+                self.assertEqual(get_fasta_paths(fasta_config), ["input/database.fasta"])
 
                 Path("input").mkdir()
                 Path("input/order.fasta").write_text("", encoding="utf-8")
-                with self.assertRaises(ValueError):
-                    get_fasta_paths(fasta_config)
+                # order.fasta empty -> skipped, database FASTA only (no raise)
+                self.assertEqual(get_fasta_paths(fasta_config), ["input/database.fasta"])
 
+                # order.fasta non-empty -> included
                 Path("input/order.fasta").write_text(">custom\nPEPTIDE\n", encoding="utf-8")
                 self.assertEqual(
                     get_fasta_paths(fasta_config),

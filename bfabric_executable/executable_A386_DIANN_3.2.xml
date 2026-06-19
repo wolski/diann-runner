@@ -209,7 +209,7 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>If true, inject additional FASTA sequences from order.fasta in working directory (custom sequences for specific experiments).</description>
+        <description>If true, inject additional FASTA sequences from order.fasta in working directory (custom sequences for specific experiments). Safe to leave on: when the order has no custom sequences the (empty) order.fasta is skipped and only the database FASTA is used.</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
@@ -219,7 +219,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>BOOLEAN</type>
-        <value>false</value>
+        <value>true</value>
     </parameter>
 
     <!-- 05: Data Type Configuration -->

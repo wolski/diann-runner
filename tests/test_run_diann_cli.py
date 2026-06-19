@@ -251,6 +251,31 @@ class TestApplyFasta(unittest.TestCase):
         self.assertEqual(Path(wf["fasta"]["database_path"]).name, "realdb.fasta")
         self.assertTrue(wf["fasta"]["use_custom_fasta"])
 
+    def test_derive_skips_missing_or_empty_order_fasta(self):
+        """Custom sequences ON but no staged order.fasta -> derive db only (no phantom path)."""
+        wf = parse_flat_params(dict(FLAT))
+        wf["fasta"]["use_custom_fasta"] = True
+        with tempfile.TemporaryDirectory() as t:
+            work = Path(t)
+            (work / "input").mkdir()
+            # order.fasta missing -> db only
+            self.assertEqual(_apply_fasta(wf, [], work), [work / "input" / "db.fasta"])
+            # order.fasta empty -> still db only
+            (work / "input" / "order.fasta").write_text("", encoding="utf-8")
+            self.assertEqual(_apply_fasta(wf, [], work), [work / "input" / "db.fasta"])
+
+    def test_derive_includes_nonempty_order_fasta(self):
+        wf = parse_flat_params(dict(FLAT))
+        wf["fasta"]["use_custom_fasta"] = True
+        with tempfile.TemporaryDirectory() as t:
+            work = Path(t)
+            (work / "input").mkdir()
+            (work / "input" / "order.fasta").write_text(">c\nPEPTIDE\n", encoding="utf-8")
+            self.assertEqual(
+                _apply_fasta(wf, [], work),
+                [work / "input" / "db.fasta", work / "input" / "order.fasta"],
+            )
+
 
 class TestSushiCliParsing(unittest.TestCase):
     """The sushi command takes --params/--dataset; raw-dir/fasta are optional."""
