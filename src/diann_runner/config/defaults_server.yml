@@ -3,6 +3,10 @@
 # Both runtime blocks live here. The right one is selected at runtime
 # based on what is installed on the host (apptainer wins if both are
 # present). See diann_runner.container_utils.detect_runtime().
+#
+# To pin the runtime instead of auto-detecting (e.g. a host that has apptainer
+# installed but no SIF cache), uncomment:
+# container_runtime: docker   # or: apptainer
 
 threads: 64
 app_runner: "fgcz_app_runner"
@@ -14,13 +18,14 @@ images:
       "2.3.2": "diann:2.3.2"
       "2.5.0": "diann:2.5.0"
       "2.5.1": "diann:2.5.1"
+      "2.6.0": "diann:2.6.0"
     # Legacy fallback for old params.yml without 01_diann_version.
     diann_docker_image: "diann:2.3.2"
     # File conversion images.
     thermoraw_image: "thermorawfileparser:2.0.0"
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
     # QC.
-    prolfquapp_image: "prolfqua/prolfquapp:2.0.16"
+    prolfquapp_image: "prolfqua/prolfquapp:2.0.20"
 
   apptainer:
     # SIF paths. Shared FGCZ apptainer cache, populated by deploy.smk
@@ -29,7 +34,8 @@ images:
       "2.3.2": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
       "2.5.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.0.sif"
       "2.5.1": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.1.sif"
+      "2.6.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.6.0.sif"
     diann_docker_image: "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
     thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
     msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.0.16.sif"
+    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.0.20.sif"

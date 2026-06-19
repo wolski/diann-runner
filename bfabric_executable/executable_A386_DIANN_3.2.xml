@@ -19,11 +19,12 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>DIA-NN version to use. 2.3.2 is the current production default; 2.5.1 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.</description>
+        <description>DIA-NN version to use. 2.3.2 is the current production default; 2.6.0 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.</description>
         <context>APPLICATION</context>
         <enumeration>2.3.2</enumeration>
         <enumeration>2.5.0</enumeration>
         <enumeration>2.5.1</enumeration>
+        <enumeration>2.6.0</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>01_diann_version</key>
