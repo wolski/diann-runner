@@ -74,18 +74,29 @@ def max_suffix(strs: list[str]) -> str:
 def remove_common(strs: list[str]) -> list[str]:
     """Remove common prefix and suffix from a list of strings.
 
+    The common prefix/suffix depend only on the *distinct* values, so they are
+    computed from the uniques and the trimming is applied with a single
+    vectorized pandas string slice. Looping element-by-element (the previous
+    implementation) is pathological on DIA-NN reports, which have millions of
+    rows but only a handful of distinct File.Name values — it turned a ~21-value
+    computation into ~5 minutes of Series get/set overhead per call.
+
     Args:
-        strs: List of strings to process.
+        strs: Sequence of strings to process (list or pandas Series).
 
     Returns:
-        List with common prefix and suffix removed from each string.
+        Same container type as the input (Series in → Series out, preserving the
+        index; list in → list out), with the common prefix/suffix removed.
     """
-    res = copy.deepcopy(strs)
-    prefix = len(max_prefix(res))
-    suffix = len(max_suffix(res))
-    for i in range(len(res)):
-        res[i] = res[i][prefix:-suffix] if suffix > 0 else res[i][prefix:]
-    return res
+    is_series = isinstance(strs, pd.Series)
+    s = strs if is_series else pd.Series(list(strs), dtype="object")
+    if len(s) == 0:
+        return strs
+    uniq = s.unique().tolist()
+    prefix = len(max_prefix(uniq))
+    suffix = len(max_suffix(uniq))
+    res = s.str.slice(prefix, -suffix if suffix > 0 else None)
+    return res if is_series else res.tolist()
 
 
 def add_labels(bars: Any, al: int = 1) -> None:
