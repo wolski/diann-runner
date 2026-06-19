@@ -77,11 +77,18 @@ def load_deploy_config(raw_dir: Path) -> dict:
     Search order: raw_dir first, then package config/ dir.
 
     The shipped YAML carries both runtime image blocks under
-    ``images.docker`` and ``images.apptainer``. This function auto-detects
-    the runtime (via :func:`diann_runner.container_utils.detect_runtime`),
-    flattens the matching sub-block to the top level so existing callers
-    see ``deploy_dict["diann_images"]`` etc. unchanged, and adds
-    ``deploy_dict["container_runtime"]`` for downstream forwarding.
+    ``images.docker`` and ``images.apptainer``. The runtime is chosen by an
+    explicit ``container_runtime:`` key in the config when present (``docker``
+    or ``apptainer``), otherwise auto-detected from the host
+    (:func:`diann_runner.container_utils.detect_runtime`). This function then
+    flattens the matching sub-block to the top level so existing callers see
+    ``deploy_dict["diann_images"]`` etc. unchanged, and sets
+    ``deploy_dict["container_runtime"]`` to the resolved runtime for
+    downstream forwarding.
+
+    The explicit key is how a host that has apptainer installed but no SIF
+    cache (e.g. a docker-only dev/test box) pins ``docker`` without relying on
+    PATH-order detection.
 
     Returns:
         Dict with deployment settings flattened for the active runtime.
@@ -107,7 +114,17 @@ def load_deploy_config(raw_dir: Path) -> dict:
             f"Deploy config not found: {defaults_filename} (searched: {search_paths})"
         )
 
-    runtime = detect_runtime()
+    configured_runtime = raw_config.get("container_runtime")
+    if configured_runtime is None:
+        runtime = detect_runtime()
+    elif configured_runtime in ("docker", "apptainer"):
+        runtime = configured_runtime
+    else:
+        raise ValueError(
+            f"Deploy config {defaults_filename} has invalid container_runtime "
+            f"{configured_runtime!r}; expected 'docker' or 'apptainer'."
+        )
+
     images_by_runtime = raw_config.get("images")
     if not images_by_runtime or runtime not in images_by_runtime:
         raise KeyError(

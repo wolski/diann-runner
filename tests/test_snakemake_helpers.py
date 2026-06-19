@@ -381,6 +381,16 @@ images:
 class TestLoadDeployConfig(unittest.TestCase):
     """load_deploy_config must auto-detect runtime and flatten the right block."""
 
+    def setUp(self) -> None:
+        # Pin the environment so the temp defaults_local.yml fixtures below are
+        # the file under test. Otherwise on a server host (where /home/bfabric
+        # exists) is_server_environment() is True and load_deploy_config reads
+        # the packaged defaults_server.yml instead, masking these assertions.
+        p = patch("diann_runner.snakemake_helpers.is_server_environment",
+                  return_value=False)
+        p.start()
+        self.addCleanup(p.stop)
+
     def _write_config(self, tmp_path: Path) -> None:
         (tmp_path / "defaults_local.yml").write_text(CONFIG_WITH_BOTH_BLOCKS)
 
@@ -426,6 +436,31 @@ class TestLoadDeployConfig(unittest.TestCase):
                 "threads: 4\nimages:\n  apptainer:\n    diann_docker_image: x\n"
             )
             with self.assertRaises(KeyError):
+                load_deploy_config(tmp_path)
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/apptainer" if n == "apptainer" else None)
+    def test_explicit_container_runtime_overrides_detection(self, _):
+        # apptainer is the only runtime on PATH, but the config pins docker:
+        # the explicit key wins and the docker block is flattened.
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "defaults_local.yml").write_text(
+                "container_runtime: docker\n" + CONFIG_WITH_BOTH_BLOCKS
+            )
+            deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(deploy_dict["container_runtime"], "docker")
+        self.assertEqual(deploy_dict["diann_docker_image"], "diann:2.3.2")
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/docker" if n == "docker" else None)
+    def test_invalid_container_runtime_raises(self, _):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "defaults_local.yml").write_text(
+                "container_runtime: podman\n" + CONFIG_WITH_BOTH_BLOCKS
+            )
+            with self.assertRaises(ValueError):
                 load_deploy_config(tmp_path)
 
 
