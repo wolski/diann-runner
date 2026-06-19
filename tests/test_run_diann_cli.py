@@ -16,7 +16,7 @@ from diann_runner.request import (
     DIANNRunnerParams,
     dataset_raw_basenames,
 )
-from diann_runner.run_diann_cli import _apply_fasta, _load_flat_params, app, sushi
+from diann_runner.run_diann_cli import _apply_fasta, _build_request, _load_flat_params, app, sushi
 from diann_runner.snakemake_helpers import parse_flat_params
 from diann_runner.sushi_adapter import parse_sushi_dataset, parse_sushi_params
 
@@ -287,6 +287,40 @@ class TestSushiCliParsing(unittest.TestCase):
         self.assertIs(command, sushi)
         self.assertEqual(bound.arguments["params"], Path("p.yml"))
         self.assertEqual(bound.arguments["dataset"], Path("d.tsv"))
+
+
+class TestRuntimeFlag(unittest.TestCase):
+    """--docker pins the container runtime; default is apptainer."""
+
+    def test_apprunner_docker_flag_parses(self):
+        _, bound, _ = app.parse_args(
+            ["apprunner", "--docker", "--work-dir", "w"]
+        )
+        self.assertTrue(bound.arguments["docker"])
+
+    def test_apprunner_default_is_not_docker(self):
+        _, bound, _ = app.parse_args(["apprunner", "--work-dir", "w"])
+        # cyclopts omits unset args from bound.arguments; default is False
+        self.assertFalse(bound.arguments.get("docker", False))
+
+    def test_build_request_maps_docker_to_runtime(self):
+        wf = parse_flat_params(dict(FLAT))
+        req = _build_request(
+            workflow_params=wf, dataset=Path("d.parquet"), raw_dir=Path("input/raw"),
+            fastas=[Path("/abs/db.fasta")], work_dir=Path("w"), output_dir=None,
+            cores=8, workunit_id="0", container_id="0", register_outputs=True,
+            runtime="docker",
+        )
+        self.assertEqual(req.container_runtime, "docker")
+
+    def test_build_request_defaults_runtime_none(self):
+        wf = parse_flat_params(dict(FLAT))
+        req = _build_request(
+            workflow_params=wf, dataset=Path("d.parquet"), raw_dir=Path("input/raw"),
+            fastas=[Path("/abs/db.fasta")], work_dir=Path("w"), output_dir=None,
+            cores=8, workunit_id="0", container_id="0", register_outputs=True,
+        )
+        self.assertIsNone(req.container_runtime)
 
     def test_legacy_param_overrides_flag_rejected(self):
         # The mid-stream --param-overrides flag is gone; guard against it.

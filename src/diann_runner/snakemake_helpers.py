@@ -72,25 +72,31 @@ def load_config(raw_dir: Path) -> dict:
     return config_dict
 
 
-def load_deploy_config(raw_dir: Path) -> dict:
+def load_deploy_config(raw_dir: Path, runtime_override: str | None = None) -> dict:
     """Load deployment config (container images, threads, etc.).
 
     Loads defaults_server.yml or defaults_local.yml based on environment.
     Search order: raw_dir first, then package config/ dir.
 
     The shipped YAML carries both runtime image blocks under
-    ``images.docker`` and ``images.apptainer``. The runtime is chosen by an
-    explicit ``container_runtime:`` key in the config when present (``docker``
-    or ``apptainer``), otherwise auto-detected from the host
+    ``images.docker`` and ``images.apptainer``. The runtime is resolved by
+    precedence: ``runtime_override`` (highest) > an explicit
+    ``container_runtime:`` key in the config > host auto-detection
     (:func:`diann_runner.container_utils.detect_runtime`). This function then
     flattens the matching sub-block to the top level so existing callers see
     ``deploy_dict["diann_images"]`` etc. unchanged, and sets
     ``deploy_dict["container_runtime"]`` to the resolved runtime for
     downstream forwarding.
 
-    The explicit key is how a host that has apptainer installed but no SIF
-    cache (e.g. a docker-only dev/test box) pins ``docker`` without relying on
-    PATH-order detection.
+    ``runtime_override`` is how the caller pins the runtime per invocation —
+    ``run-diann --runtime docker`` / ``diann-snakemake --config
+    container_runtime=docker`` — so a host with apptainer installed but no SIF
+    cache (e.g. a docker-only box) uses docker without editing any config.
+
+    Args:
+        raw_dir: directory searched (before the package config) for the YAML.
+        runtime_override: ``"docker"``/``"apptainer"`` to force the runtime,
+            or ``None`` to fall back to the config key / auto-detection.
 
     Returns:
         Dict with deployment settings flattened for the active runtime.
@@ -116,15 +122,16 @@ def load_deploy_config(raw_dir: Path) -> dict:
             f"Deploy config not found: {defaults_filename} (searched: {search_paths})"
         )
 
-    configured_runtime = raw_config.get("container_runtime")
+    configured_runtime = runtime_override or raw_config.get("container_runtime")
     if configured_runtime is None:
         runtime = detect_runtime()
     elif configured_runtime in ("docker", "apptainer"):
         runtime = configured_runtime
     else:
+        source = "--runtime/--config container_runtime" if runtime_override else f"deploy config {defaults_filename}"
         raise ValueError(
-            f"Deploy config {defaults_filename} has invalid container_runtime "
-            f"{configured_runtime!r}; expected 'docker' or 'apptainer'."
+            f"Invalid container_runtime {configured_runtime!r} from {source}; "
+            f"expected 'docker' or 'apptainer'."
         )
 
     images_by_runtime = raw_config.get("images")

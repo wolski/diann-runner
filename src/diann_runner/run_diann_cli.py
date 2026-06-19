@@ -105,6 +105,7 @@ def _build_request(
     workunit_id: str,
     container_id: str,
     register_outputs: bool,
+    runtime: str | None = None,
 ) -> DiannRunRequest:
     database_fasta = _apply_fasta(workflow_params, fastas, work_dir)
     return DiannRunRequest(
@@ -118,6 +119,7 @@ def _build_request(
         workunit_id=str(workunit_id),
         container_id=str(container_id),
         register_outputs=register_outputs,
+        container_runtime=runtime,
     )
 
 
@@ -131,6 +133,7 @@ def apprunner(
     work_dir: Annotated[Path, cyclopts.Parameter(name=["--work-dir"])] = Path("."),
     output_dir: Annotated[Path | None, cyclopts.Parameter(name=["--output-dir"])] = None,
     cores: int = 64,
+    docker: Annotated[bool, cyclopts.Parameter(name=["--docker"])] = False,
     dry_run: Annotated[bool, cyclopts.Parameter(name=["--dry-run", "-n"])] = False,
 ) -> int:
     """Run DIA-NN from AppRunner-staged inputs (params.yml + dataset.parquet).
@@ -139,6 +142,10 @@ def apprunner(
     ``--work-dir`` last in the app.yml command and leave the relative input
     paths (``--params``/``--dataset``/``--raw-dir``/``--fasta``) anchored under
     it — they resolve against ``--work-dir``, not cwd.
+
+    The container runtime defaults to apptainer; pass ``--docker`` to use docker
+    instead (e.g. on a host with apptainer installed but no SIF cache, so the
+    built docker images are used).
     """
     params = _under(work_dir, params)
     dataset = _under(work_dir, dataset)
@@ -157,6 +164,7 @@ def apprunner(
         workunit_id=registration.get("workunit_id", "0"),
         container_id=registration.get("container_id", "0"),
         register_outputs=True,
+        runtime="docker" if docker else "apptainer",
     )
     logger.info(f"run-diann apprunner: WU{request.workunit_id}, {len(request.database_fasta)} FASTA")
     return prepare.run_request(request, dry_run=dry_run)
@@ -175,6 +183,7 @@ def sushi(
     cores: int = 64,
     workunit_id: Annotated[str, cyclopts.Parameter(name=["--workunit-id"])] = "0",
     container_id: Annotated[str, cyclopts.Parameter(name=["--container-id"])] = "0",
+    docker: Annotated[bool, cyclopts.Parameter(name=["--docker"])] = False,
     dry_run: Annotated[bool, cyclopts.Parameter(name=["--dry-run", "-n"])] = False,
 ) -> int:
     """Run DIA-NN from SUSHI/EzPyz inputs.
@@ -204,6 +213,7 @@ def sushi(
         workunit_id=workunit_id,
         container_id=container_id,
         register_outputs=False,
+        runtime="docker" if docker else "apptainer",
     )
     logger.info(
         f"run-diann sushi: WU{request.workunit_id}, {len(normalized)} samples, "

@@ -166,6 +166,10 @@ class DiannRunRequest:
     # AppRunner writes outputs.yml and registers in B-Fabric; SUSHI does not
     # (the EzPyz wrapper delivers outputs itself). Decision 4.
     register_outputs: bool = True
+    # Pin the container runtime ("docker"/"apptainer"); None auto-detects from
+    # the host. Lets the caller force docker on a host with apptainer installed
+    # but no SIF cache, without editing the deploy config.
+    container_runtime: str | None = None
 
     def __post_init__(self) -> None:
         self.raw_file_dir = Path(self.raw_file_dir)

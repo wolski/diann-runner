@@ -102,6 +102,8 @@ def build_snakemake_config(request: DiannRunRequest) -> dict[str, str]:
         "container_id": str(request.container_id),
         "register_outputs": "True" if request.register_outputs else "False",
     }
+    if request.container_runtime:
+        cfg["container_runtime"] = request.container_runtime
     if raw_dir == work or raw_dir.is_relative_to(work):
         cfg["raw_file_dir"] = str(raw_dir.relative_to(work)) or "."
     else:

@@ -111,6 +111,15 @@ class TestSnakemakeConfig(unittest.TestCase):
             self.assertNotIn("converted_dir", cfg)
             self.assertEqual(cfg["register_outputs"], "False")
 
+    def test_container_runtime_forwarded_when_set(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            req = _make_request(tmp, raw_dir=tmp / "work" / "input" / "raw", work_dir=tmp / "work")
+            # default: no container_runtime in request -> not in config (auto-detect)
+            self.assertNotIn("container_runtime", prepare.build_snakemake_config(req))
+            req.container_runtime = "docker"
+            self.assertEqual(prepare.build_snakemake_config(req)["container_runtime"], "docker")
+
 
 class TestDeliverOutputs(unittest.TestCase):
     def test_noop_when_output_equals_work(self):

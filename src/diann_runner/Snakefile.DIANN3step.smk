@@ -49,8 +49,10 @@ RAW_MOUNT = (
 # Detect input files in the source directory
 SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_SOURCE_DIR)
 
-# Deploy config (docker images, threads, etc.)
-deploy_dict = load_deploy_config(".")  # defaults_server.yml or defaults_local.yml
+# Deploy config (docker images, threads, etc.). An explicit container_runtime
+# (run-diann --runtime / snakemake --config container_runtime=...) overrides the
+# config key and host auto-detection.
+deploy_dict = load_deploy_config(".", runtime_override=config.get("container_runtime"))
 
 # Dual-mode params + registration: normalized diann_runner_params.toml if present,
 # else legacy params.yml + parse_flat_params (keeps diann-snakemake / AppRunner working).
