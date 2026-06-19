@@ -36,6 +36,18 @@ app = cyclopts.App(
 )
 
 
+def _under(base: Path, p: Path) -> Path:
+    """Anchor a relative path under ``base``; absolute paths pass through.
+
+    The AppRunner ``process`` step appends the chunk/work dir as the trailing
+    argument and runs the command in AppRunner's own cwd (not the work dir;
+    see bfabric_app_runner ``runner.run_process``). Relative input paths must
+    therefore resolve against ``--work-dir`` rather than cwd.
+    """
+    p = Path(p)
+    return p if p.is_absolute() else base / p
+
+
 def _load_flat_params(path: Path) -> tuple[dict, dict]:
     """Load a params file → (flat_params, registration).
 
@@ -112,7 +124,17 @@ def apprunner(
     cores: int = 64,
     dry_run: Annotated[bool, cyclopts.Parameter(name=["--dry-run", "-n"])] = False,
 ) -> int:
-    """Run DIA-NN from AppRunner-staged inputs (params.yml + dataset.parquet)."""
+    """Run DIA-NN from AppRunner-staged inputs (params.yml + dataset.parquet).
+
+    AppRunner appends the chunk/work dir as the trailing argument, so put
+    ``--work-dir`` last in the app.yml command and leave the relative input
+    paths (``--params``/``--dataset``/``--raw-dir``/``--fasta``) anchored under
+    it — they resolve against ``--work-dir``, not cwd.
+    """
+    params = _under(work_dir, params)
+    dataset = _under(work_dir, dataset)
+    raw_dir = _under(work_dir, raw_dir)
+    fasta = tuple(_under(work_dir, f) for f in fasta)
     flat, registration = _load_flat_params(params)
     workflow_params = parse_flat_params(flat)
     request = _build_request(
