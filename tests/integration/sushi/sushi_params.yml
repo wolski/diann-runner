@@ -12,8 +12,7 @@
 cores: '8'
 process_mode: DATASET
 name: DIANN_v23
-paramsTemplate: default-DIA
-customParamsYml: ''
+diann_version: '2.5.1'
 order_fasta: 'false'
 fasta_databases: ../WU346549/input/p34486_Proteobench_TripleProteome_20240614.fasta
 workflow_mode: two_step

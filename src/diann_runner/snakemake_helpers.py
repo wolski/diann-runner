@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import os
-import re
 import shlex
 from pathlib import Path
 
 import pandas as pd
 import yaml
+
+# parse_var_mods_string is re-exported here for back-compat (historical home).
+from diann_runner.param_core import build_internal_params, parse_var_mods_string  # noqa: F401
 
 
 def write_outputs_yml(
@@ -233,148 +235,73 @@ def detect_input_files(raw_dir: Path) -> tuple[list[str], str, dict[str, list[Pa
     return samples, input_type, file_lists
 
 
-def parse_var_mods_string(var_mods_str):
-    """Parse variable modifications string from XML format to list of tuples.
+# B-Fabric flat key -> diann_runner canonical internal field name. parse_flat_params
+# is the BFABRIC_TO_DRUNNER adapter: it renames these keys onto canonical names and
+# hands them to build_internal_params (the shared transform core in param_core);
+# the value transforms + defaults live there, not here.
+BFABRIC_TO_DRUNNER: dict[str, str] = {
+    "06a_diann_mods_variable": "var_mods",
+    "06b_diann_mods_no_peptidoforms": "no_peptidoforms",
+    "06c_diann_mods_unimod4": "unimod4",
+    "06d_diann_mods_met_excision": "met_excision",
+    "07_diann_peptide_min_length": "min_pep_len",
+    "07_diann_peptide_max_length": "max_pep_len",
+    "07_diann_peptide_precursor_charge_min": "min_pr_charge",
+    "07_diann_peptide_precursor_charge_max": "max_pr_charge",
+    "07_diann_peptide_precursor_mz_min": "min_pr_mz",
+    "07_diann_peptide_precursor_mz_max": "max_pr_mz",
+    "07_diann_peptide_fragment_mz_min": "min_fr_mz",
+    "07_diann_peptide_fragment_mz_max": "max_fr_mz",
+    "08_diann_digestion_cut": "cut",
+    "08_diann_digestion_missed_cleavages": "missed_cleavages",
+    "09_diann_mass_acc_ms2": "mass_acc",
+    "09_diann_mass_acc_ms1": "mass_acc_ms1",
+    "05b_diann_scan_window": "scan_window",
+    "10_diann_scoring_qvalue": "qvalue",
+    "11a_diann_protein_pg_level": "pg_level",
+    "11b_diann_protein_relaxed_prot_inf": "relaxed_prot_inf",
+    "11c_diann_protein_ids_to_names": "ids_to_names",
+    "12a_diann_quantification_reanalyse": "reanalyse",
+    "12b_diann_quantification_no_norm": "no_norm",
+    "99_other_verbose": "verbose",
+    "05_diann_is_dda": "is_dda",
+    "01_diann_version": "diann_version",
+    "02_workflow_mode": "workflow_mode",
+    "97_raw_converter": "raw_converter",
+    "library_predictor": "library_predictor",
+    "enable_step_c": "enable_step_c",
+    "14_include_libs": "include_libs",
+}
 
-    Example input: '--var-mods 1 --var-mod UniMod:35,15.994915,M'
-    Returns: [('35', '15.994915', 'M')]
 
-    Args:
-        var_mods_str: String from Bfabric XML parameter
-
-    Returns:
-        List of tuples: [(unimod_id, mass_delta, residues), ...]
-    """
-    if not var_mods_str or var_mods_str == 'None':
-        return []
-
-    var_mods = []
-    # Find all --var-mod definitions
-    pattern = r'--var-mod UniMod:(\d+),([0-9.]+),([A-Z^]+)'
-    matches = re.findall(pattern, var_mods_str)
-
-    for unimod_id, mass, residues in matches:
-        var_mods.append((unimod_id, mass, residues))
-
-    return var_mods
+def _bfabric_fasta(flat_params: dict) -> dict:
+    """Resolve the B-Fabric FASTA sub-dict (main path, or 03b fallback when NONE)."""
+    fasta_main = flat_params["03_fasta_database_path"]
+    database_path = (
+        flat_params["03b_additional_fasta_database_path"]
+        if fasta_main.upper() == "NONE"
+        else fasta_main
+    )
+    return {
+        "database_path": database_path,
+        "use_custom_fasta": flat_params["03_fasta_use_custom"].lower() == "true",
+    }
 
 
 def parse_flat_params(flat_params):
-    """Transform flat Bfabric XML keys to nested structure expected by workflow.
+    """Transform flat B-Fabric XML keys into diann_runner's nested internal params.
 
-    Maps Bfabric XML keys (e.g., '06a_diann_mods_variable') to Python-friendly
-    nested structure (e.g., diann.var_mods).
-
-    Args:
-        flat_params: Dictionary with flat XML parameter keys from params.yml
-
-    Returns:
-        Dictionary with keys:
-        - 'diann': Dict of DIA-NN parameters
-        - 'fasta': Dict of FASTA parameters
-        - 'var_mods': List of modification tuples (already converted from diann.var_mods)
-        - 'library_predictor': String ('diann' or 'oktoberfest')
-        - 'enable_step_c': Boolean (whether to run Step C quantification)
+    This is the ``BFABRIC_TO_DRUNNER`` adapter: it renames the flat ``06a_*`` keys
+    onto canonical internal field names (:data:`BFABRIC_TO_DRUNNER`) and delegates
+    the value transforms + defaults to
+    :func:`diann_runner.param_core.build_internal_params`. Output shape is
+    unchanged: ``{'diann', 'fasta', 'var_mods', 'library_predictor',
+    'enable_step_c', 'workflow_mode', 'raw_converter', 'include_libs'}``.
     """
-    diann = {}
-    fasta = {}
-
-    # Parse modification parameters
-    if '06a_diann_mods_variable' in flat_params:
-        var_mods_str = flat_params['06a_diann_mods_variable']
-        diann['var_mods'] = parse_var_mods_string(var_mods_str)
-    else:
-        diann['var_mods'] = []
-
-    diann['no_peptidoforms'] = flat_params['06b_diann_mods_no_peptidoforms'].lower() == 'true'
-    diann['unimod4'] = flat_params['06c_diann_mods_unimod4'].lower() == 'true'
-    diann['met_excision'] = flat_params['06d_diann_mods_met_excision'].lower() == 'true'
-
-    # Parse peptide constraints
-    diann['min_pep_len'] = int(flat_params['07_diann_peptide_min_length'])
-    diann['max_pep_len'] = int(flat_params['07_diann_peptide_max_length'])
-    diann['min_pr_charge'] = int(flat_params['07_diann_peptide_precursor_charge_min'])
-    diann['max_pr_charge'] = int(flat_params['07_diann_peptide_precursor_charge_max'])
-    diann['min_pr_mz'] = int(flat_params['07_diann_peptide_precursor_mz_min'])
-    diann['max_pr_mz'] = int(flat_params['07_diann_peptide_precursor_mz_max'])
-    diann['min_fr_mz'] = int(flat_params['07_diann_peptide_fragment_mz_min'])
-    diann['max_fr_mz'] = int(flat_params['07_diann_peptide_fragment_mz_max'])
-
-    # Parse digestion
-    diann['cut'] = flat_params['08_diann_digestion_cut']
-    diann['missed_cleavages'] = int(flat_params['08_diann_digestion_missed_cleavages'])
-
-    # Parse mass accuracy (AUTO = omit flag, let DIA-NN auto-determine)
-    mass_acc_ms2_str = flat_params['09_diann_mass_acc_ms2']
-    diann['mass_acc'] = int(mass_acc_ms2_str) if mass_acc_ms2_str != 'AUTO' else 'AUTO'
-    mass_acc_ms1_str = flat_params['09_diann_mass_acc_ms1']
-    diann['mass_acc_ms1'] = int(mass_acc_ms1_str) if mass_acc_ms1_str != 'AUTO' else 'AUTO'
-
-    # Parse scoring
-    diann['qvalue'] = float(flat_params['10_diann_scoring_qvalue'])
-
-    # Parse protein inference (e.g., "protein_names_1" -> 1)
-    pg_level_str = flat_params['11a_diann_protein_pg_level']
-    diann['pg_level'] = int(pg_level_str.split("_")[-1])
-    diann['relaxed_prot_inf'] = flat_params['11b_diann_protein_relaxed_prot_inf'].lower() == 'true'
-    diann['ids_to_names'] = flat_params.get('11c_diann_protein_ids_to_names', 'false').lower() == 'true'
-
-    # Parse quantification & normalization
-    diann['reanalyse'] = flat_params['12a_diann_quantification_reanalyse'].lower() == 'true'
-    diann['no_norm'] = flat_params['12b_diann_quantification_no_norm'].lower() == 'true'
-
-    # Parse other settings
-    diann['verbose'] = int(flat_params['99_other_verbose'])
-    diann['diann_bin'] = 'diann-docker'
-
-    # Parse DDA mode
-    diann['is_dda'] = flat_params['05_diann_is_dda'].lower() == 'true'
-
-    # Parse scan window
-    scan_window_str = flat_params.get('05b_diann_scan_window', 'AUTO')
-    diann['scan_window'] = 'AUTO' if scan_window_str == 'AUTO' else int(scan_window_str)
-
-    # Parse FASTA - use alternate path if main is NONE
-    fasta_main = flat_params['03_fasta_database_path']
-    if fasta_main.upper() == 'NONE':
-        fasta['database_path'] = flat_params['03b_additional_fasta_database_path']
-    else:
-        fasta['database_path'] = fasta_main
-    fasta['use_custom_fasta'] = flat_params['03_fasta_use_custom'].lower() == 'true'
-
-    # Convert var_mods to tuples for DiannWorkflow
-    var_mods_tuples = [tuple(mod) for mod in diann['var_mods']]
-
-    # Parse workflow control parameters
-    library_predictor = flat_params.get('library_predictor', 'diann')  # Default to diann
-    enable_step_c_str = flat_params.get('enable_step_c', 'false')
-    enable_step_c = enable_step_c_str.lower() == 'true' if isinstance(enable_step_c_str, str) else bool(enable_step_c_str)
-    workflow_mode = flat_params.get('02_workflow_mode', 'two_step')
-
-    # Parse conversion/runtime parameters
-    # raw_converter: native (no conversion, DIA-NN reads .raw natively),
-    # thermoraw, msconvert, msconvert-demultiplex. Fallback stays
-    # 'thermoraw' so old params.yml that predate this key keep their
-    # always-convert behavior.
-    raw_converter = flat_params.get('97_raw_converter', 'thermoraw')
-
-    # DIA-NN version dropdown. Default '2.3.2' for back-compat with old
-    # params.yml that predate the dropdown.
-    diann['diann_version'] = flat_params.get('01_diann_version', '2.3.2')
-
-    # Parse output options
-    include_libs = flat_params.get('14_include_libs', 'false').lower() == 'true'
-
-    return {
-        'diann': diann,
-        'fasta': fasta,
-        'var_mods': var_mods_tuples,
-        'library_predictor': library_predictor,
-        'enable_step_c': enable_step_c,
-        'workflow_mode': workflow_mode,
-        'raw_converter': raw_converter,
-        'include_libs': include_libs,
+    canonical = {
+        BFABRIC_TO_DRUNNER[k]: v for k, v in flat_params.items() if k in BFABRIC_TO_DRUNNER
     }
+    return build_internal_params(canonical, fasta=_bfabric_fasta(flat_params))
 
 
 def resolve_diann_docker_image(diann_version: str | None, deploy_params: dict) -> str:
