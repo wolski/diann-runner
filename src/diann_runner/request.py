@@ -39,6 +39,26 @@ COL_RELATIVE_PATH = "Relative Path"
 COL_NAME = "Name"
 COL_GROUPING = "Grouping Var"
 
+# B-Fabric / SUSHI tag marking an experimental-design (grouping) column, e.g.
+# "Condition [Factor]". Datasets carry the grouping under such a tagged column
+# rather than literally "Grouping Var".
+FACTOR_TAG = "[Factor]"
+
+
+def first_factor_column(df: pd.DataFrame) -> str | None:
+    """Return the first column whose name carries the B-Fabric ``[Factor]`` tag.
+
+    SUSHI/B-Fabric datasets tag experimental-design columns like
+    ``Condition [Factor]``. The first such column is used as the grouping
+    variable (a UI-selectable choice may come later). Returns ``None`` when no
+    factor column is present.
+    """
+    for col in df.columns:
+        if FACTOR_TAG in str(col):
+            return col
+    return None
+
+
 DatasetLike = Union[pd.DataFrame, Path]
 
 

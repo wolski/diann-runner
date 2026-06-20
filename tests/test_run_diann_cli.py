@@ -202,7 +202,11 @@ class TestParseSushiDataset(unittest.TestCase):
                 }
             ).to_csv(tsv, sep="\t", index=False)
             df, raw_dir = parse_sushi_dataset(tsv, data_root="/data")
-            self.assertEqual(list(df.columns), [COL_RELATIVE_PATH, COL_NAME])
+            # The "Group [Factor]" column is mapped onto Grouping Var.
+            self.assertEqual(
+                list(df.columns), [COL_RELATIVE_PATH, COL_NAME, COL_GROUPING]
+            )
+            self.assertEqual(list(df[COL_GROUPING]), ["g1", "g2"])
             self.assertEqual(dataset_raw_basenames(df), ["a.raw", "b.raw"])
             self.assertEqual(str(raw_dir), "/data/p34486/x")
 
@@ -223,6 +227,32 @@ class TestParseSushiDataset(unittest.TestCase):
             ).to_csv(tsv, sep="\t", index=False)
             df, _ = parse_sushi_dataset(tsv)
             self.assertIn(COL_GROUPING, df.columns)
+
+    def test_explicit_grouping_var_wins_over_factor(self):
+        # An explicit "Grouping Var" takes precedence over a "[Factor]" column.
+        with tempfile.TemporaryDirectory() as t:
+            tsv = Path(t) / "ds.tsv"
+            pd.DataFrame(
+                {
+                    "Name": ["A"],
+                    "RAW": ["a.raw"],
+                    COL_GROUPING: ["x"],
+                    "Condition [Factor]": ["y"],
+                }
+            ).to_csv(tsv, sep="\t", index=False)
+            df, _ = parse_sushi_dataset(tsv)
+            self.assertEqual(list(df[COL_GROUPING]), ["x"])
+
+    def test_no_grouping_when_no_factor_column(self):
+        # Datasets with only Name + raw (e.g. this run's input_dataset.tsv) carry
+        # no grouping; prolfquapp QC supplies a single dummy group downstream.
+        with tempfile.TemporaryDirectory() as t:
+            tsv = Path(t) / "ds.tsv"
+            pd.DataFrame(
+                {"Name": ["A", "B"], "Thermo RAW [File]": ["p1/a.raw", "p1/b.raw"]}
+            ).to_csv(tsv, sep="\t", index=False)
+            df, _ = parse_sushi_dataset(tsv, data_root="/data")
+            self.assertNotIn(COL_GROUPING, df.columns)
 
     def test_multiple_dirs_raises(self):
         with tempfile.TemporaryDirectory() as t:

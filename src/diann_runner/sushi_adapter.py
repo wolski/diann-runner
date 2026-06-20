@@ -27,7 +27,12 @@ import pandas as pd
 import yaml
 
 from diann_runner.param_core import build_internal_params
-from diann_runner.request import COL_GROUPING, COL_NAME, COL_RELATIVE_PATH
+from diann_runner.request import (
+    COL_GROUPING,
+    COL_NAME,
+    COL_RELATIVE_PATH,
+    first_factor_column,
+)
 
 # SUSHI readable param name -> diann_runner canonical internal field name. Only
 # the fields build_internal_params consumes are listed; SUSHI-framework params
@@ -129,7 +134,10 @@ def parse_sushi_dataset(
     """Parse a SUSHI ``input_dataset.tsv`` into (normalized_dataset, raw_dir).
 
     Maps the raw-file column (``Thermo RAW [File]`` / fallbacks) onto
-    ``Relative Path`` and keeps ``Name`` (+ ``Grouping Var`` when present). The
+    ``Relative Path`` and keeps ``Name``. The grouping variable is carried as
+    ``Grouping Var`` when present, else from the first B-Fabric ``[Factor]``
+    column (e.g. ``Condition [Factor]``); when neither exists it is left out and
+    prolfquapp QC falls back to a single group. The
     raw paths are relative to ``data_root`` (SUSHI's ``dataRoot``); they are
     resolved under it to derive the single raw-file directory (common parent).
     Absolute paths are used as-is. Errors if the dataset spans more than one
@@ -158,6 +166,14 @@ def parse_sushi_dataset(
     raw_dir = Path(parents[0])
 
     out = pd.DataFrame({COL_RELATIVE_PATH: df[raw_col], COL_NAME: df[COL_NAME]})
+    # Carry the grouping forward: an explicit "Grouping Var" wins; otherwise map
+    # the first B-Fabric "[Factor]" column (e.g. "Condition [Factor]") onto it.
+    # If neither exists, grouping is left absent and prolfquapp QC supplies a
+    # single dummy group.
     if COL_GROUPING in df.columns:
         out[COL_GROUPING] = df[COL_GROUPING]
+    else:
+        factor_col = first_factor_column(df)
+        if factor_col is not None:
+            out[COL_GROUPING] = df[factor_col]
     return out, raw_dir
