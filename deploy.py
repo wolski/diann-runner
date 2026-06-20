@@ -34,13 +34,7 @@ def load_diann_build_matrix() -> list[dict]:
     - ``dockerfile``: the shared DIA-NN Dockerfile
     - ``slug``: filesystem-safe token used for SIF/.def/flag/log names
     """
-    import yaml
-
-    config_path = Path(__file__).parent / "src" / "diann_runner" / "config" / "defaults_server.yml"
-    with config_path.open() as f:
-        raw = yaml.safe_load(f)
-
-    images = raw["images"]["docker"]["diann_images"]
+    images = _load_server_docker_images()["diann_images"]
     return [
         {
             "version": version,
@@ -50,6 +44,74 @@ def load_diann_build_matrix() -> list[dict]:
         }
         for version, tag in images.items()
     ]
+
+
+def _load_server_config() -> dict:
+    """Parse ``defaults_server.yml`` — the single source of truth for deploy.
+
+    Both the image definitions deploy.smk builds/pulls and its build-time
+    knobs (the ``deploy:`` block) live in this one file, so there is no
+    separate deploy config to drift out of sync.
+
+    Read straight from the filesystem (``deploy.py`` sits at the repo root
+    next to ``src/``) so ``deploy.smk`` runs under plain ``snakemake -s
+    deploy.smk`` without ``diann_runner`` needing to be importable.
+    """
+    import yaml
+
+    config_path = Path(__file__).parent / "src" / "diann_runner" / "config" / "defaults_server.yml"
+    with config_path.open() as f:
+        return yaml.safe_load(f)
+
+
+def _load_server_docker_images() -> dict:
+    """Return the ``images.docker`` block of ``defaults_server.yml``.
+
+    This is the single source of truth for every container the deploy
+    workflow builds or pulls — DIA-NN, thermorawfileparser, msconvert and
+    prolfquapp. The docker block is host-independent, so the same values
+    drive both the docker and the apptainer/SIF build paths.
+    """
+    return _load_server_config()["images"]["docker"]
+
+
+def load_deploy_settings() -> dict:
+    """Build-time knobs from the ``deploy:`` block of ``defaults_server.yml``.
+
+    Keys: ``sif_output_dir``, ``sif_builder``, ``force_rebuild``. These used
+    to live in a separate ``deploy_config.yaml``; folding them in here keeps
+    one config source. Image *versions* are not part of this block — they are
+    derived from the ``images:`` block (see ``load_*_version``).
+    """
+    return _load_server_config()["deploy"]
+
+
+def _version_from_ref(ref: str) -> str:
+    """Extract the tag from a docker image reference (``repo/name:1.2.3`` -> ``1.2.3``)."""
+    if ":" not in ref:
+        raise ValueError(
+            f"image reference {ref!r} has no ':<version>' tag to derive a version from"
+        )
+    return ref.rsplit(":", 1)[1]
+
+
+def load_prolfquapp_version() -> str:
+    """prolfquapp version, derived from ``prolfquapp_image`` in defaults_server.yml.
+
+    Single source of truth — keeps the SIF that deploy.smk pulls in lockstep
+    with the image the runtime workflow (Snakefile.DIANN3step) actually uses.
+    """
+    return _version_from_ref(_load_server_docker_images()["prolfquapp_image"])
+
+
+def load_thermoraw_version() -> str:
+    """thermorawfileparser version, derived from ``thermoraw_image`` in defaults_server.yml."""
+    return _version_from_ref(_load_server_docker_images()["thermoraw_image"])
+
+
+def load_msconvert_image() -> str:
+    """msconvert (pwiz) image reference, from ``msconvert_docker`` in defaults_server.yml."""
+    return _load_server_docker_images()["msconvert_docker"]
 
 
 def check_command(cmd: str) -> bool:

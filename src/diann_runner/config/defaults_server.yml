@@ -39,3 +39,18 @@ images:
     thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
     msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
     prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.0.21.sif"
+
+# Build-time settings for deploy.smk (building/pulling the images above).
+# Kept here, next to the image definitions, so there is a single config
+# source and no separate deploy file to drift. Image *versions* are not
+# repeated — deploy.smk derives them from the images block above. Override
+# any of these for a one-off build with `--config key=value`.
+deploy:
+  # Where deploy.smk writes/pulls SIFs. The shared FGCZ apptainer cache is
+  # also where the runtime workflow (images.apptainer above) reads them from.
+  sif_output_dir: /misc/fgcz01/nextflow_apptainer_cache
+  # SIF builder: "native" (apptainer build from .def, no docker) or "docker"
+  # (convert local docker images via docker-daemon://).
+  sif_builder: native
+  # Rebuild/repull images even when they already exist.
+  force_rebuild: false

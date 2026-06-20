@@ -41,7 +41,11 @@ from deploy import (
     check_docker_images,
     check_prerequisites,
     generate_def_from_dockerfile,
+    load_deploy_settings,
     load_diann_build_matrix,
+    load_msconvert_image,
+    load_prolfquapp_version,
+    load_thermoraw_version,
     print_deployment_complete,
     print_sif_deployment_complete,
 )
@@ -52,19 +56,18 @@ BASE_DIR = Path(workflow.basedir).resolve() if "workflow" in globals() else Path
 # Ensure all paths are relative to the directory containing deploy.smk
 workdir: str(BASE_DIR)
 
-# Load the committed deploy_config.yaml (next to this Snakefile) so the
-# documented `snakemake -s deploy.smk` honors it without an explicit
-# --configfile. An absolute path keeps it cwd-independent; `--config key=value`
-# still overrides individual values.
-configfile: str(BASE_DIR / "deploy_config.yaml")
+# Single config source: everything deploy.smk needs comes from
+# src/diann_runner/config/defaults_server.yml — the same file the runtime
+# workflow (Snakefile.DIANN3step) reads. There is no separate deploy config
+# file. Build-time knobs live in its `deploy:` block; image versions are
+# derived from its `images:` block. An explicit `--config key=value` still
+# overrides any of these for a one-off build.
+DEPLOY = load_deploy_settings()
 
-# Configuration with defaults
-FORCE_REBUILD = config.get("force_rebuild", False)
-THERMORAW_VERSION = config.get("thermoraw_version", "2.0.0")
-PROLFQUAPP_VERSION = config.get("prolfquapp_version", "2.0.10")
-MSCONVERT_IMAGE = config.get(
-    "msconvert_image", "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
-)
+FORCE_REBUILD = config.get("force_rebuild", DEPLOY["force_rebuild"])
+THERMORAW_VERSION = config.get("thermoraw_version", load_thermoraw_version())
+PROLFQUAPP_VERSION = config.get("prolfquapp_version", load_prolfquapp_version())
+MSCONVERT_IMAGE = config.get("msconvert_image", load_msconvert_image())
 
 # DIA-NN build matrix — one entry per version in the diann_images config map
 # (the single source of truth, mirroring the bfabric XML dropdown). Each spec
@@ -78,15 +81,15 @@ DIANN_SLUGS = list(DIANN_BY_SLUG)
 wildcard_constraints:
     slug = "|".join(re.escape(s) for s in DIANN_SLUGS)
 
-# SIF output directory (used by all_sif). Defaults to ./sif relative to
-# this Snakefile. Override with --config sif_output_dir=/opt/sif when
-# running on the target apptainer host directly.
-SIF_DIR = Path(config.get("sif_output_dir", BASE_DIR / "sif"))
+# SIF output directory (used by all_sif), from the deploy: block — the shared
+# FGCZ apptainer cache, where the runtime workflow also reads SIFs from.
+# Override with --config sif_output_dir=... for a one-off build elsewhere.
+SIF_DIR = Path(config.get("sif_output_dir", DEPLOY["sif_output_dir"]))
 
-# SIF builder: "native" (default; apptainer build from spython-generated
-# .def, no docker needed) or "docker" (converts locally-built docker
-# images via docker-daemon://, requires docker daemon + apptainer).
-SIF_BUILDER = config.get("sif_builder", "native")
+# SIF builder: "native" (apptainer build from spython-generated .def, no
+# docker needed) or "docker" (converts locally-built docker images via
+# docker-daemon://, requires docker daemon + apptainer). From the deploy: block.
+SIF_BUILDER = config.get("sif_builder", DEPLOY["sif_builder"])
 if SIF_BUILDER not in ("docker", "native"):
     raise ValueError(
         f"sif_builder must be 'docker' or 'native', got {SIF_BUILDER!r}"

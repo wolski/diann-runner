@@ -87,7 +87,7 @@ Useful when several apptainer hosts share the same registry.
 - `pull_msconvert_sif`, `pull_prolfquapp_sif` — same in both modes (`apptainer pull docker://<ref>`, no docker needed)
 - `sif_deployment_complete` — combined marker
 
-Versions and the msconvert image reference come from `deploy_config.yaml` (`thermoraw_version`, `prolfquapp_version`, `msconvert_image`) and default to the values in `defaults_server.yml`.
+All deploy configuration lives in one file, `src/diann_runner/config/defaults_server.yml` — the same file the runtime workflow reads, so nothing can drift. Image versions (DIA-NN, thermorawfileparser, prolfquapp, msconvert) are derived from its `images:` block; build-time knobs (`sif_output_dir`, `sif_builder`, `force_rebuild`) live in its `deploy:` block. Override any of them for a one-off build with `--config key=value`.
 
 #### Verify
 
