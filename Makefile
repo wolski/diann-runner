@@ -4,6 +4,7 @@
 #
 #   make deploy                 # docker images   (rule all  in deploy.smk)
 #   make deploy SIF=1           # apptainer SIFs   (rule all_sif)
+#   make deploy_sif             # apptainer SIFs   (shortcut for `deploy SIF=1`)
 #   make integration            # dry-run the WU346549 end-to-end workflow
 #   make integration RUN=1      # execute it (downloads ~9 GB raws, ~2 h)
 #   make integration CORES=64   # override core count
@@ -24,7 +25,7 @@ else
 INTEGRATION_TARGET := dry
 endif
 
-.PHONY: help deploy integration
+.PHONY: help deploy deploy_sif integration
 
 help: ## Show this help
 	@echo "diann-runner — make <target>:"
@@ -33,6 +34,9 @@ help: ## Show this help
 
 deploy: ## build/verify container images (SIF=1 for apptainer)
 	snakemake -s deploy.smk $(DEPLOY_TARGET) --cores 1
+
+deploy_sif: ## build apptainer SIFs (native builder, no docker needed)
+	snakemake -s deploy.smk all_sif --cores 1
 
 integration: ## run the WU346549 end-to-end test (RUN=1 to execute, CORES=N)
 	$(MAKE) -C tests/integration/WU346549 $(INTEGRATION_TARGET) CORES=$(CORES)
