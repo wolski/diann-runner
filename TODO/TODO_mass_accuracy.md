@@ -121,10 +121,13 @@ final / large / publishable run:
       copy (`slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.xml`).
       **B-Fabric caps each `<value>` at 256 chars** (`InvalidDataException: value
       size must be between 0 and 256`), so a single long paragraph is rejected — the
-      guidance is split into 4 short `modifiable=false` STRING rows
-      (`09_diann_mass_acc_rec_{timstof,orbitrap,tof,auto}`), one per instrument
-      class. Keys are not in `BFABRIC_TO_DRUNNER`, so `parse_flat_params` ignores
-      them (display-only, cannot affect a run).
+      guidance is split into 4 short `modifiable=false` STRING rows, one per
+      instrument class. Keys are not in `BFABRIC_TO_DRUNNER`, so `parse_flat_params`
+      ignores them (display-only, cannot affect a run).
+- [x] **Order rows before MS1/MS2.** B-Fabric lays the form out by sorting
+      parameters **alphabetically by `<key>`** (not XML order). To place the rows
+      above the inputs, keys are `09_diann_mass_acc_hint{1..4}_{timstof,orbitrap,
+      tof,auto}` ('hint' < 'ms', so they precede `09_diann_mass_acc_ms1/ms2`).
 - [x] **Add `4/5/7` ppm to the MS1/MS2 enumerations** in both A386 executable XMLs
       (now `4/5/7/10/15/20/AUTO`), so the recommended high-res Orbitrap/Astral
       values are selectable.

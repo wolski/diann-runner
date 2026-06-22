@@ -550,7 +550,7 @@
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>09_diann_mass_acc_rec_timstof</key>
+        <key>09_diann_mass_acc_hint1_timstof</key>
         <label>Rec. mass acc - timsTOF</label>
         <modifiable>false</modifiable>
         <parentAllowsModification>false</parentAllowsModification>
@@ -566,7 +566,7 @@
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>09_diann_mass_acc_rec_orbitrap</key>
+        <key>09_diann_mass_acc_hint2_orbitrap</key>
         <label>Rec. mass acc - Orbitrap</label>
         <modifiable>false</modifiable>
         <parentAllowsModification>false</parentAllowsModification>
@@ -582,7 +582,7 @@
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>09_diann_mass_acc_rec_tof</key>
+        <key>09_diann_mass_acc_hint3_tof</key>
         <label>Rec. mass acc - TripleTOF/ZenoTOF</label>
         <modifiable>false</modifiable>
         <parentAllowsModification>false</parentAllowsModification>
@@ -598,7 +598,7 @@
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
-        <key>09_diann_mass_acc_rec_auto</key>
+        <key>09_diann_mass_acc_hint4_auto</key>
         <label>Rec. mass acc - use AUTO when</label>
         <modifiable>false</modifiable>
         <parentAllowsModification>false</parentAllowsModification>
