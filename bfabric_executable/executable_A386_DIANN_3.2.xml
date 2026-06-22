@@ -544,8 +544,32 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
+        <description>Read-only guidance (cannot be edited). Leave MS1/MS2 = AUTO for exploratory runs; for final or large studies fix MS1/MS2 to the instrument-specific values shown here. Source: DIA-NN documentation, github.com/vdemichev/DiaNN.</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>09_diann_mass_acc_recommendations</key>
+        <label>Mass Accuracy: Recommendations (read-only)</label>
+        <modifiable>false</modifiable>
+        <parentAllowsModification>false</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>Recommended mass accuracy (ppm):
+timsTOF (Bruker): MS1 = 15, MS2 = 15
+Orbitrap Astral / 240k: MS1 = 4, MS2 = 10
+Orbitrap by MS2 resolution: 240k -&gt; 4, 120k -&gt; 7, 60k -&gt; 10, 30k -&gt; 15 (set MS1 similar or tighter)
+TripleTOF 6600 / ZenoTOF: MS1 = 20, MS2 = 20
+Use AUTO only for quick/exploratory runs or an unknown instrument: DIA-NN tunes mass accuracy from the FIRST run only (noisy, run-order dependent). For final/large studies, fix MS1/MS2 to the values above.</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
         <description>MS2 (fragment) mass accuracy in ppm. Lower values are more stringent. DIA-NN command: --mass-acc</description>
         <context>APPLICATION</context>
+        <enumeration>4</enumeration>
+        <enumeration>5</enumeration>
+        <enumeration>7</enumeration>
         <enumeration>10</enumeration>
         <enumeration>15</enumeration>
         <enumeration>20</enumeration>
@@ -566,6 +590,9 @@
         <updatable>false</updatable>
         <description>MS1 (precursor) mass accuracy in ppm. Lower values are more stringent. DIA-NN command: --mass-acc-ms1</description>
         <context>APPLICATION</context>
+        <enumeration>4</enumeration>
+        <enumeration>5</enumeration>
+        <enumeration>7</enumeration>
         <enumeration>10</enumeration>
         <enumeration>15</enumeration>
         <enumeration>20</enumeration>
