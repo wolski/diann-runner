@@ -65,6 +65,7 @@ SUSHI_TO_DRUNNER: dict[str, str] = {
     "protein_relaxed_prot_inf": "relaxed_prot_inf",
     "quantification_reanalyse": "reanalyse",
     "quantification_no_norm": "no_norm",
+    "quantification_export_quant": "export_quant",
     "raw_converter": "raw_converter",
     "verbose": "verbose",
 }

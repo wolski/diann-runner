@@ -89,11 +89,18 @@ class TestLeafTransforms(unittest.TestCase):
     def test_unrelated_runs_and_freestyle_defaults(self):
         # Omitted from the canonical input -> typed defaults in the diann sub-dict.
         result = build_internal_params(dict(CANON), fasta=dict(FASTA))
+        self.assertEqual(result["diann"]["export_quant"], False)
         self.assertEqual(result["diann"]["unrelated_runs"], False)
         self.assertEqual(result["diann"]["freestyle"], [])
         # Supplied values are transformed.
-        canon = dict(CANON, unrelated_runs="true", freestyle="--unrelated-runs")
+        canon = dict(
+            CANON,
+            export_quant="true",
+            unrelated_runs="true",
+            freestyle="--unrelated-runs",
+        )
         result = build_internal_params(canon, fasta=dict(FASTA))
+        self.assertEqual(result["diann"]["export_quant"], True)
         self.assertEqual(result["diann"]["unrelated_runs"], True)
         self.assertEqual(result["diann"]["freestyle"], ["--unrelated-runs"])
         self.assertEqual(parse_var_mods_string(""), [])
@@ -153,6 +160,7 @@ class TestBuildInternalParams(unittest.TestCase):
                 "scan_window",
                 "ids_to_names",
                 "diann_version",
+                "export_quant",
                 "unrelated_runs",
                 "freestyle",
                 "workflow_mode",

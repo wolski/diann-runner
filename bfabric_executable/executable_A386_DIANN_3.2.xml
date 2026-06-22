@@ -686,6 +686,22 @@
         <value>false</value>
     </parameter>
 
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Export fragment-level per-run quantities in the DIA-NN report. Adds fragment quantity and correlation columns needed by downstream fragment-level converters. This can substantially increase report size. DIA-NN command: --export-quant</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>12c_diann_quantification_export_quant</key>
+        <label>Export Fragment Quantities</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
     <!-- 14: Output Options -->
     <parameter>
         <deletable>false</deletable>

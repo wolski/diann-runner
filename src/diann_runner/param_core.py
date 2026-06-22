@@ -117,6 +117,7 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     # quantification
     "reanalyse":        FieldSpec("diann", _to_bool),
     "no_norm":          FieldSpec("diann", _to_bool),
+    "export_quant":     FieldSpec("diann", _to_bool, default=False),
     # per-run calibration: GUI "Unrelated runs" = --individual-mass-acc --individual-windows
     "unrelated_runs":   FieldSpec("diann", _to_bool, default=False),
     # freestyle passthrough (arbitrary DIA-NN flags, applied to quant steps B/C only)

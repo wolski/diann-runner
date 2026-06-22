@@ -390,8 +390,17 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 ### Export Options
 
 **`--export-quant`**
-- **Purpose**: Export raw fragment intensity information
-- **Usage**: Access detailed fragment-level data
+- **Purpose**: Export fragment-level per-run quantity information into the DIA-NN
+  report.
+- **Usage**: Enable when downstream tools need fragment-level quantities, such as
+  APB fragment-level AnnData/MuData conversion.
+- **Output impact**: Adds fragment quantity / correlation fields such as
+  `Fragment.Quant.Raw`, `Fragment.Quant.Corrected`, `Fragment.Correlations`, and
+  version-dependent fragment labels. DIA-NN 2.x reports omit these fragment-level
+  quantities unless this flag is enabled.
+- **Size impact**: Can substantially increase report size because fragment data are
+  exported per precursor and per run.
+- **B-Fabric parameter**: `12c_diann_quantification_export_quant`
 
 **`--cont-quant-exclude`**
 - **Purpose**: Exclude contaminants from quantification

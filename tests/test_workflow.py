@@ -603,6 +603,32 @@ class TestDiannWorkflow(unittest.TestCase):
         self.assertNotIn('--individual-mass-acc', content)
         self.assertNotIn('--individual-windows', content)
 
+    def test_export_quant_flags_in_b_and_c_only(self):
+        """Export quant emits --export-quant on raw-data steps B/C, not A."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_EXPORT_QUANT',
+            fasta_file=self.fasta_path,
+            export_quant=True,
+        )
+        script_a = workflow.generate_step_a_library(
+            self.fasta_path, script_name='export_quant_a.sh')
+        script_b = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files, script_name='export_quant_b.sh')
+        script_c = workflow.generate_step_c_final_quantification(
+            raw_files=self.raw_files, script_name='export_quant_c.sh')
+
+        a, b, c = (self.read_script(s) for s in (script_a, script_b, script_c))
+        self.assertNotIn('--export-quant', a)
+        for content in (b, c):
+            self.assertIn('--export-quant', content)
+
+    def test_export_quant_off_by_default(self):
+        """No --export-quant unless export_quant is enabled."""
+        script = self.workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files, script_name='export_quant_off.sh')
+        content = self.read_script(script)
+        self.assertNotIn('--export-quant', content)
+
     def test_freestyle_passthrough_in_b_and_c_only(self):
         """Freestyle tokens are appended verbatim to B/C, never to A."""
         workflow = DiannWorkflow(
@@ -628,11 +654,13 @@ class TestDiannWorkflow(unittest.TestCase):
         """to_config_dict / from_config_file preserve the new fields."""
         workflow = DiannWorkflow(
             workunit_id='TEST_RT',
+            export_quant=True,
             unrelated_runs=True,
             freestyle=['--mass-acc', '10'],
         )
         config_path = workflow.save_config('rt')
         loaded = DiannWorkflow.from_config_file(config_path)
+        self.assertEqual(loaded.export_quant, True)
         self.assertEqual(loaded.unrelated_runs, True)
         self.assertEqual(loaded.freestyle, ['--mass-acc', '10'])
 

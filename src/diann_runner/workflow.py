@@ -97,6 +97,7 @@ class DiannWorkflow:
         relaxed_prot_inf: bool = False,
         reanalyse: bool = True,
         no_norm: bool = False,
+        export_quant: bool = False,
         unrelated_runs: bool = False,
         freestyle: list[str] | tuple = (),
         ids_to_names: bool = False,
@@ -138,6 +139,8 @@ class DiannWorkflow:
             relaxed_prot_inf: Enable relaxed protein inference (group by gene, not protein)
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
             no_norm: Disable cross-run normalization
+            export_quant: Export fragment-level per-run quantities into DIA-NN report
+                files. Emits --export-quant on raw-data steps only.
             unrelated_runs: Treat runs as unrelated — determine mass accuracy (when
                 automatic) and the scan window separately for each run. The GUI
                 "Unrelated runs" toggle; emits --individual-mass-acc --individual-windows.
@@ -195,6 +198,7 @@ class DiannWorkflow:
         self.relaxed_prot_inf = relaxed_prot_inf
         self.reanalyse = reanalyse
         self.no_norm = no_norm
+        self.export_quant = export_quant
         self.unrelated_runs = unrelated_runs
         self.freestyle = list(freestyle)
         self.ids_to_names = ids_to_names
@@ -266,6 +270,7 @@ class DiannWorkflow:
             'relaxed_prot_inf': self.relaxed_prot_inf,
             'reanalyse': self.reanalyse,
             'no_norm': self.no_norm,
+            'export_quant': self.export_quant,
             'unrelated_runs': self.unrelated_runs,
             'freestyle': self.freestyle,
             'ids_to_names': self.ids_to_names,
@@ -374,6 +379,9 @@ class DiannWorkflow:
 
         if self.no_norm:
             cmd.append("--no-norm")
+
+        if self.export_quant:
+            cmd.append("--export-quant")
 
     def _append_run_mode_and_passthrough_options(self, cmd: list[str]) -> None:
         """Append run-mode flags and final user passthrough args for raw-data steps."""

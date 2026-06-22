@@ -1,7 +1,7 @@
 # TODO: enable DIA-NN `--export-quant` (fragment-level quantities)
 
 **Date:** 2026-06-22
-**Status:** Decision needed — documented but not a first-class option, off by default.
+**Status:** Implemented as an opt-in first-class option, off by default.
 
 ## Why this came up
 
@@ -25,23 +25,19 @@ fragment-level / 5-level MuData (only ion / peptidoform / peptide / protein).
 
 ## Current status in diann_runner
 
-- **Documented:** yes, in `docs/DIANN_PARAMETERS.md:392` ("Export Options"), and `--xic` /
-  `--xic-theoretical-fr` at `docs/DIANN_PARAMETERS.md:437`. The entry is minimal — it doesn't list
-  the columns produced, that 2.x omits fragments without it, or the downstream APB consumer.
-- **Exposed as a parameter:** **no.** Not in `data/*/params.yml`, not a dedicated bfabric
-  executable key (`bfabric_executable/executable_A386_DIANN_3.2.xml`), not built by
-  `src/diann_runner/param_core.py`.
-- **Reachable:** only via the **freestyle passthrough** (`param_core._tokenise_passthrough`;
-  bfabric "13: Freestyle Parameters") — arbitrary DIA-NN flags applied to quant steps B/C. A user
-  would have to know to type `--export-quant` there.
+- **Documented:** yes, in `docs/DIANN_PARAMETERS.md` ("Export Options"). The entry now
+  documents the fragment columns, the DIA-NN 2.x omits-by-default caveat, APB as a
+  downstream consumer, and the report-size trade-off.
+- **Exposed as a parameter:** yes. B-Fabric key
+  `12c_diann_quantification_export_quant` maps to canonical `export_quant` and emits
+  `--export-quant` on raw-data quantification steps.
+- **Reachable:** via the dedicated checkbox or, still, via freestyle passthrough for
+  advanced users.
 - **On by default:** no.
 
 ## Proposed actions
 
-1. **Decide the exposure level:**
-   - (a) enable `--export-quant` **by default** on the quant steps, or
-   - (b) add a **dedicated bfabric toggle** (e.g. `NN_diann_export_fragments`, default off), or
-   - (c) leave it to the freestyle passthrough but **document** it as the way to get fragments.
+1. **Done:** add a dedicated B-Fabric toggle, default off.
 2. **Trade-off to weigh:** fragment export substantially enlarges `report.parquet` (top-12
    fragments × every precursor × every run). Only worth it when a fragment-level downstream is
    actually wanted → argues for opt-in (b) over default (a).
