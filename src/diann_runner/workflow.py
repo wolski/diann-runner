@@ -142,7 +142,9 @@ class DiannWorkflow:
                 automatic) and the scan window separately for each run. The GUI
                 "Unrelated runs" toggle; emits --individual-mass-acc --individual-windows.
                 Applied to the quantification steps (B/C) only, never to library
-                prediction (Step A has no runs to calibrate).
+                prediction (Step A has no runs to calibrate). When combined with MBR
+                (reanalyse), also emits --mbr-fix-settings to keep the second MBR pass
+                on shared settings.
             freestyle: Extra DIA-NN CLI tokens (already shlex-split) passed through
                 verbatim. Applied to the quantification steps (B/C) only, appended after
                 all generated flags. Pure passthrough — not validated. Step A (FASTA →
@@ -361,6 +363,30 @@ class DiannWorkflow:
             params.append("--ids-to-names")
 
         return params
+
+    def _append_cross_run_options(self, cmd: list[str]) -> None:
+        """Append protein inference, MBR, and normalization flags."""
+        if self.relaxed_prot_inf:
+            cmd.append("--relaxed-prot-inf")
+
+        if self.reanalyse:
+            cmd.append("--reanalyse")
+
+        if self.no_norm:
+            cmd.append("--no-norm")
+
+    def _append_run_mode_and_passthrough_options(self, cmd: list[str]) -> None:
+        """Append run-mode flags and final user passthrough args for raw-data steps."""
+        if self.is_dda:
+            cmd.append("--dda")
+
+        if self.unrelated_runs:
+            cmd.append("--individual-mass-acc")
+            cmd.append("--individual-windows")
+            if self.reanalyse:
+                cmd.append("--mbr-fix-settings")
+
+        cmd.extend(self.freestyle)
     
     def _write_shell_script(
         self,
@@ -550,17 +576,7 @@ class DiannWorkflow:
             cmd.append("--matrices")
             cmd.append(f"--pg-level {self.pg_level}")
 
-        # Protein inference
-        if self.relaxed_prot_inf:
-            cmd.append("--relaxed-prot-inf")
-
-        # Match-between-runs (MBR)
-        if self.reanalyse:
-            cmd.append("--reanalyse")
-
-        # Normalization
-        if self.no_norm:
-            cmd.append("--no-norm")
+        self._append_cross_run_options(cmd)
 
         # Optional: reuse .quant files (typically Step C only)
         if use_quant:
@@ -571,20 +587,7 @@ class DiannWorkflow:
             cmd.append("--gen-spec-lib")
             cmd.append(f'--out-lib "{output_lib}"')
 
-        # DDA mode if specified
-        if self.is_dda:
-            cmd.append("--dda")
-
-        # "Unrelated runs": per-run mass accuracy + scan window (quant steps only;
-        # Step A has no raw runs to calibrate). GUI "Unrelated runs" toggle.
-        if self.unrelated_runs:
-            cmd.append("--individual-mass-acc")
-            cmd.append("--individual-windows")
-
-        # Freestyle passthrough — arbitrary user-supplied DIA-NN flags, appended last
-        # so they can override generated flags (DIA-NN honours last-wins). Quant
-        # steps only; never injected into library prediction (Step A).
-        cmd.extend(self.freestyle)
+        self._append_run_mode_and_passthrough_options(cmd)
 
         # Output files
         cmd.append(f'--out "{output_file}"')
@@ -702,36 +705,13 @@ class DiannWorkflow:
         cmd.append("--matrices")
         cmd.append(f"--pg-level {self.pg_level}")
 
-        # Protein inference
-        if self.relaxed_prot_inf:
-            cmd.append("--relaxed-prot-inf")
-
-        # Match-between-runs (MBR)
-        if self.reanalyse:
-            cmd.append("--reanalyse")
-
-        # Normalization
-        if self.no_norm:
-            cmd.append("--no-norm")
+        self._append_cross_run_options(cmd)
 
         # Generate output library
         cmd.append("--gen-spec-lib")
         cmd.append(f'--out-lib "{output_lib}"')
 
-        # DDA mode if specified
-        if self.is_dda:
-            cmd.append("--dda")
-
-        # "Unrelated runs": per-run mass accuracy + scan window (quant steps only;
-        # Step A has no raw runs to calibrate). GUI "Unrelated runs" toggle.
-        if self.unrelated_runs:
-            cmd.append("--individual-mass-acc")
-            cmd.append("--individual-windows")
-
-        # Freestyle passthrough — arbitrary user-supplied DIA-NN flags, appended last
-        # so they can override generated flags (DIA-NN honours last-wins). Quant
-        # steps only; never injected into library prediction (Step A).
-        cmd.extend(self.freestyle)
+        self._append_run_mode_and_passthrough_options(cmd)
 
         # Output files
         cmd.append(f'--out "{output_file}"')

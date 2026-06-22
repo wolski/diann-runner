@@ -266,7 +266,7 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Treat runs as unrelated: mass accuracy (when automatic) and the retention time scan window are determined separately for each run, instead of being taken from the first run. Use for sample sets that do not share common peptides / calibration. DIA-NN command: --individual-mass-acc --individual-windows</description>
+        <description>Treat runs as unrelated: mass accuracy (when automatic) and the retention time scan window are determined separately for each run, instead of being taken from the first run. Meaningful mainly when MS1/MS2 Mass Accuracy and Scan Window are AUTO; fixed values override the automatic tuning. If Reanalyse (MBR) is enabled, the runner also emits --mbr-fix-settings to keep the second MBR pass on shared settings. DIA-NN command: --individual-mass-acc --individual-windows</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>

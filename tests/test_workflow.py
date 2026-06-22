@@ -554,6 +554,7 @@ class TestDiannWorkflow(unittest.TestCase):
         workflow = DiannWorkflow(
             workunit_id='TEST_UNREL',
             fasta_file=self.fasta_path,
+            reanalyse=False,
             unrelated_runs=True,
         )
         script_a = workflow.generate_step_a_library(
@@ -571,6 +572,28 @@ class TestDiannWorkflow(unittest.TestCase):
         # Step A has no raw runs to calibrate — must stay clean.
         self.assertNotIn('--individual-mass-acc', a)
         self.assertNotIn('--individual-windows', a)
+        self.assertNotIn('--mbr-fix-settings', b)
+        self.assertNotIn('--mbr-fix-settings', c)
+
+    def test_unrelated_runs_with_mbr_fixes_second_pass_settings(self):
+        """MBR + unrelated runs must stabilize the second pass settings explicitly."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_UNREL_MBR',
+            fasta_file=self.fasta_path,
+            reanalyse=True,
+            unrelated_runs=True,
+        )
+
+        script_b = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files, script_name='unrel_mbr_b.sh')
+        script_c = workflow.generate_step_c_final_quantification(
+            raw_files=self.raw_files, script_name='unrel_mbr_c.sh')
+
+        for content in (self.read_script(script_b), self.read_script(script_c)):
+            self.assertIn('--reanalyse', content)
+            self.assertIn('--individual-mass-acc', content)
+            self.assertIn('--individual-windows', content)
+            self.assertIn('--mbr-fix-settings', content)
 
     def test_unrelated_runs_off_by_default(self):
         """No --individual-* flags unless unrelated_runs is enabled."""

@@ -137,6 +137,13 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Purpose**: Determine mass accuracy (when automatic) and the RT scan window
   separately for each run, instead of taking them from the first run.
 - **Usage**: Use when processing samples that don't share common peptides / calibration.
+- **Interaction with fixed settings**: This is meaningful mainly when MS1/MS2 mass
+  accuracy and/or scan window are automatic (`AUTO`). If `--mass-acc-ms1`,
+  `--mass-acc`, and `--scan-window` are fixed to concrete values, there is little
+  or no automatic tuning left for this option to change.
+- **Interaction with MBR**: When this runner combines Unrelated Runs with
+  `--reanalyse`, it also emits `--mbr-fix-settings` so the second MBR pass uses
+  shared settings across runs.
 - **Note**: This is the GUI "Unrelated runs" checkbox. There is **no** `--unrelated-runs`
   flag — the GUI emits the two `--individual-*` flags as an inseparable pair
   (`GUI/GUI/Form1.cs`). Off by default in DIA-NN. Exposed here as the `Unrelated Runs`
@@ -321,10 +328,12 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 
 ### Match-Between-Runs
 
-**`--mbr` / `--reanalyse`**
+**`--reanalyse`**
 - **Purpose**: Enable match-between-runs feature
 - **Usage**: Transfer identifications across runs for improved quantification
 - **Note**: Essential for library refinement
+- **With Unrelated Runs**: the runner adds `--mbr-fix-settings` automatically when
+  `05c_diann_unrelated_runs` and `12a_diann_quantification_reanalyse` are both true.
 
 ### RT Profiling
 
@@ -614,7 +623,8 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 **Problem**: Poor identification rates
 **Solution**:
 - Set instrument-specific mass accuracy values (don't rely on auto)
-- Use `--individual-mass-acc --individual-windows` (GUI "Unrelated runs") for diverse sample sets
+- Use `--individual-mass-acc --individual-windows` (GUI "Unrelated runs") for diverse
+  technical sample sets while settings are automatic; prefer fixed values for final runs
 - Provide calibration library with `--ref`
 - Source: GitHub Wiki
 
