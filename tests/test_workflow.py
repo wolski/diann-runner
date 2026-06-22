@@ -629,6 +629,21 @@ class TestDiannWorkflow(unittest.TestCase):
         content = self.read_script(script)
         self.assertNotIn('--export-quant', content)
 
+    def test_export_quant_skipped_on_library_only_step_b(self):
+        """Library-only Step B (quantify=False) must not emit --export-quant."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_EXPORT_QUANT_LIB',
+            fasta_file=self.fasta_path,
+            export_quant=True,
+        )
+        script = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files,
+            quantify=False,
+            script_name='export_quant_lib_only.sh',
+        )
+        content = self.read_script(script)
+        self.assertNotIn('--export-quant', content)
+
     def test_freestyle_passthrough_in_b_and_c_only(self):
         """Freestyle tokens are appended verbatim to B/C, never to A."""
         workflow = DiannWorkflow(

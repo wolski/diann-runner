@@ -29,10 +29,12 @@ fragment-level / 5-level MuData (only ion / peptidoform / peptide / protein).
   documents the fragment columns, the DIA-NN 2.x omits-by-default caveat, APB as a
   downstream consumer, and the report-size trade-off.
 - **Exposed as a parameter:** yes. B-Fabric key
-  `12c_diann_quantification_export_quant` maps to canonical `export_quant` and emits
-  `--export-quant` on raw-data quantification steps.
-- **Reachable:** via the dedicated checkbox or, still, via freestyle passthrough for
-  advanced users.
+  `12c_diann_quantification_export_quant` and the SUSHI GUI param
+  `quantification_export_quant` (`DIANNApp.rb`) both map to canonical `export_quant`
+  and emit `--export-quant` on *quantifying* raw-data steps (skipped on a library-only
+  Step B run).
+- **Reachable:** via the dedicated checkbox in B-Fabric or SUSHI, or, still, via
+  freestyle passthrough for advanced users.
 - **On by default:** no.
 
 ## Proposed actions

@@ -140,7 +140,8 @@ class DiannWorkflow:
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
             no_norm: Disable cross-run normalization
             export_quant: Export fragment-level per-run quantities into DIA-NN report
-                files. Emits --export-quant on raw-data steps only.
+                files. Emits --export-quant on quantifying raw-data steps (B/C with
+                quantify enabled); skipped on library-only Step B runs.
             unrelated_runs: Treat runs as unrelated — determine mass accuracy (when
                 automatic) and the scan window separately for each run. The GUI
                 "Unrelated runs" toggle; emits --individual-mass-acc --individual-windows.
@@ -380,9 +381,6 @@ class DiannWorkflow:
         if self.no_norm:
             cmd.append("--no-norm")
 
-        if self.export_quant:
-            cmd.append("--export-quant")
-
     def _append_run_mode_and_passthrough_options(self, cmd: list[str]) -> None:
         """Append run-mode flags and final user passthrough args for raw-data steps."""
         if self.is_dda:
@@ -583,6 +581,11 @@ class DiannWorkflow:
         if quantify:
             cmd.append("--matrices")
             cmd.append(f"--pg-level {self.pg_level}")
+            # Fragment-level export only makes sense when quantifying; skip it on
+            # library-only Step B runs (quantify=False) to avoid bloating the
+            # intermediate report.
+            if self.export_quant:
+                cmd.append("--export-quant")
 
         self._append_cross_run_options(cmd)
 
