@@ -97,6 +97,8 @@ class DiannWorkflow:
         relaxed_prot_inf: bool = False,
         reanalyse: bool = True,
         no_norm: bool = False,
+        unrelated_runs: bool = False,
+        freestyle: list[str] | tuple = (),
         ids_to_names: bool = False,
         raw_mount: tuple[str, str] | None = None
     ):
@@ -136,6 +138,15 @@ class DiannWorkflow:
             relaxed_prot_inf: Enable relaxed protein inference (group by gene, not protein)
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
             no_norm: Disable cross-run normalization
+            unrelated_runs: Treat runs as unrelated — determine mass accuracy (when
+                automatic) and the scan window separately for each run. The GUI
+                "Unrelated runs" toggle; emits --individual-mass-acc --individual-windows.
+                Applied to the quantification steps (B/C) only, never to library
+                prediction (Step A has no runs to calibrate).
+            freestyle: Extra DIA-NN CLI tokens (already shlex-split) passed through
+                verbatim. Applied to the quantification steps (B/C) only, appended after
+                all generated flags. Pure passthrough — not validated. Step A (FASTA →
+                predicted library, no raw runs) is intentionally left untouched.
             ids_to_names: Use protein IDs as gene names (for FASTA without GN= annotations)
             raw_mount: Optional (host_dir, container_target) for an external raw-file
                 directory bind-mounted read-only into the DIA-NN container. When set,
@@ -182,6 +193,8 @@ class DiannWorkflow:
         self.relaxed_prot_inf = relaxed_prot_inf
         self.reanalyse = reanalyse
         self.no_norm = no_norm
+        self.unrelated_runs = unrelated_runs
+        self.freestyle = list(freestyle)
         self.ids_to_names = ids_to_names
 
         # Derived paths
@@ -251,6 +264,8 @@ class DiannWorkflow:
             'relaxed_prot_inf': self.relaxed_prot_inf,
             'reanalyse': self.reanalyse,
             'no_norm': self.no_norm,
+            'unrelated_runs': self.unrelated_runs,
+            'freestyle': self.freestyle,
             'ids_to_names': self.ids_to_names,
             'raw_mount': list(self.raw_mount) if self.raw_mount else None,
         }
@@ -560,6 +575,17 @@ class DiannWorkflow:
         if self.is_dda:
             cmd.append("--dda")
 
+        # "Unrelated runs": per-run mass accuracy + scan window (quant steps only;
+        # Step A has no raw runs to calibrate). GUI "Unrelated runs" toggle.
+        if self.unrelated_runs:
+            cmd.append("--individual-mass-acc")
+            cmd.append("--individual-windows")
+
+        # Freestyle passthrough — arbitrary user-supplied DIA-NN flags, appended last
+        # so they can override generated flags (DIA-NN honours last-wins). Quant
+        # steps only; never injected into library prediction (Step A).
+        cmd.extend(self.freestyle)
+
         # Output files
         cmd.append(f'--out "{output_file}"')
         cmd.append(f'--temp "{temp_dir}"')
@@ -695,6 +721,17 @@ class DiannWorkflow:
         # DDA mode if specified
         if self.is_dda:
             cmd.append("--dda")
+
+        # "Unrelated runs": per-run mass accuracy + scan window (quant steps only;
+        # Step A has no raw runs to calibrate). GUI "Unrelated runs" toggle.
+        if self.unrelated_runs:
+            cmd.append("--individual-mass-acc")
+            cmd.append("--individual-windows")
+
+        # Freestyle passthrough — arbitrary user-supplied DIA-NN flags, appended last
+        # so they can override generated flags (DIA-NN honours last-wins). Quant
+        # steps only; never injected into library prediction (Step A).
+        cmd.extend(self.freestyle)
 
         # Output files
         cmd.append(f'--out "{output_file}"')

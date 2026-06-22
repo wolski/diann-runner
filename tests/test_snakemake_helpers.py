@@ -257,6 +257,8 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 'ids_to_names': False,
                 'reanalyse': True,
                 'no_norm': False,
+                'unrelated_runs': False,
+                'freestyle': [],
                 'verbose': 1,
                 'is_dda': False,
                 'diann_version': '2.3.2',

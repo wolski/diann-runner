@@ -549,6 +549,70 @@ class TestDiannWorkflow(unittest.TestCase):
         content = self.read_script(script)
         self.assertIn('--ids-to-names', content)
 
+    def test_unrelated_runs_flags_in_b_and_c_only(self):
+        """'Unrelated runs' emits --individual-mass-acc/--individual-windows on B/C, not A."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_UNREL',
+            fasta_file=self.fasta_path,
+            unrelated_runs=True,
+        )
+        script_a = workflow.generate_step_a_library(
+            self.fasta_path, script_name='unrel_a.sh')
+        script_b = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files, script_name='unrel_b.sh')
+        script_c = workflow.generate_step_c_final_quantification(
+            raw_files=self.raw_files, script_name='unrel_c.sh')
+
+        a, b, c = (self.read_script(s) for s in (script_a, script_b, script_c))
+        # The two flags are always emitted together, on the quant steps only.
+        for content in (b, c):
+            self.assertIn('--individual-mass-acc', content)
+            self.assertIn('--individual-windows', content)
+        # Step A has no raw runs to calibrate — must stay clean.
+        self.assertNotIn('--individual-mass-acc', a)
+        self.assertNotIn('--individual-windows', a)
+
+    def test_unrelated_runs_off_by_default(self):
+        """No --individual-* flags unless unrelated_runs is enabled."""
+        script = self.workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files, script_name='unrel_off.sh')
+        content = self.read_script(script)
+        self.assertNotIn('--individual-mass-acc', content)
+        self.assertNotIn('--individual-windows', content)
+
+    def test_freestyle_passthrough_in_b_and_c_only(self):
+        """Freestyle tokens are appended verbatim to B/C, never to A."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_FREE',
+            fasta_file=self.fasta_path,
+            freestyle=['--unrelated-runs', '--foo', 'bar'],
+        )
+        script_a = workflow.generate_step_a_library(
+            self.fasta_path, script_name='free_a.sh')
+        script_b = workflow.generate_step_b_quantification_with_refinement(
+            raw_files=self.raw_files, script_name='free_b.sh')
+        script_c = workflow.generate_step_c_final_quantification(
+            raw_files=self.raw_files, script_name='free_c.sh')
+
+        a, b, c = (self.read_script(s) for s in (script_a, script_b, script_c))
+        for content in (b, c):
+            self.assertIn('--foo', content)
+            self.assertIn('--unrelated-runs', content)
+        self.assertNotIn('--foo', a)
+        self.assertNotIn('--unrelated-runs', a)
+
+    def test_unrelated_runs_and_freestyle_survive_config_round_trip(self):
+        """to_config_dict / from_config_file preserve the new fields."""
+        workflow = DiannWorkflow(
+            workunit_id='TEST_RT',
+            unrelated_runs=True,
+            freestyle=['--mass-acc', '10'],
+        )
+        config_path = workflow.save_config('rt')
+        loaded = DiannWorkflow.from_config_file(config_path)
+        self.assertEqual(loaded.unrelated_runs, True)
+        self.assertEqual(loaded.freestyle, ['--mass-acc', '10'])
+
 
 class TestEdgeCases(unittest.TestCase):
     """Test edge cases and error conditions."""

@@ -133,10 +133,14 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Purpose**: Provide calibration library for mass/RT/IM alignment
 - **Example**: `--ref calibration.speclib`
 
-**`--unrelated-runs`**
-- **Purpose**: Optimize mass accuracy across unrelated samples
-- **Usage**: Use when processing samples that don't share common peptides
-- **Note**: Prevents assumptions about run relatedness
+**Unrelated runs** (`--individual-mass-acc --individual-windows`)
+- **Purpose**: Determine mass accuracy (when automatic) and the RT scan window
+  separately for each run, instead of taking them from the first run.
+- **Usage**: Use when processing samples that don't share common peptides / calibration.
+- **Note**: This is the GUI "Unrelated runs" checkbox. There is **no** `--unrelated-runs`
+  flag — the GUI emits the two `--individual-*` flags as an inseparable pair
+  (`GUI/GUI/Form1.cs`). Off by default in DIA-NN. Exposed here as the `Unrelated Runs`
+  parameter (`05c_diann_unrelated_runs`).
 
 ---
 
@@ -610,7 +614,7 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 **Problem**: Poor identification rates
 **Solution**:
 - Set instrument-specific mass accuracy values (don't rely on auto)
-- Use `--unrelated-runs` for diverse sample sets
+- Use `--individual-mass-acc --individual-windows` (GUI "Unrelated runs") for diverse sample sets
 - Provide calibration library with `--ref`
 - Source: GitHub Wiki
 

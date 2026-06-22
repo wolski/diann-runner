@@ -6,6 +6,7 @@ from diann_runner.param_core import (
     _MISSING,
     DIANN_BIN,
     DIANN_FIELDS,
+    _freestyle,
     _int_or_auto,
     _pg_level,
     _to_bool,
@@ -67,6 +68,34 @@ class TestLeafTransforms(unittest.TestCase):
             [("35", "15.994915", "M")],
         )
         self.assertEqual(parse_var_mods_string("None"), [])
+
+    def test_freestyle(self):
+        # Empty / sentinel -> [] (and never the shared default object).
+        self.assertEqual(_freestyle("None"), [])
+        self.assertEqual(_freestyle(""), [])
+        self.assertEqual(_freestyle("  "), [])
+        # Plain flags split on whitespace.
+        self.assertEqual(
+            _freestyle("--individual-mass-acc --individual-windows"),
+            ["--individual-mass-acc", "--individual-windows"],
+        )
+        # shlex preserves quoted arguments.
+        self.assertEqual(
+            _freestyle('--foo "a b" --bar'), ["--foo", "a b", "--bar"]
+        )
+        # Fresh list each call.
+        self.assertIsNot(_freestyle("None"), _freestyle("None"))
+
+    def test_unrelated_runs_and_freestyle_defaults(self):
+        # Omitted from the canonical input -> typed defaults in the diann sub-dict.
+        result = build_internal_params(dict(CANON), fasta=dict(FASTA))
+        self.assertEqual(result["diann"]["unrelated_runs"], False)
+        self.assertEqual(result["diann"]["freestyle"], [])
+        # Supplied values are transformed.
+        canon = dict(CANON, unrelated_runs="true", freestyle="--unrelated-runs")
+        result = build_internal_params(canon, fasta=dict(FASTA))
+        self.assertEqual(result["diann"]["unrelated_runs"], True)
+        self.assertEqual(result["diann"]["freestyle"], ["--unrelated-runs"])
         self.assertEqual(parse_var_mods_string(""), [])
 
 
@@ -124,6 +153,8 @@ class TestBuildInternalParams(unittest.TestCase):
                 "scan_window",
                 "ids_to_names",
                 "diann_version",
+                "unrelated_runs",
+                "freestyle",
                 "workflow_mode",
                 "raw_converter",
                 "library_predictor",

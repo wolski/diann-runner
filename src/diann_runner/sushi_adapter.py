@@ -36,13 +36,14 @@ from diann_runner.request import (
 
 # SUSHI readable param name -> diann_runner canonical internal field name. Only
 # the fields build_internal_params consumes are listed; SUSHI-framework params
-# (cores, mail, name, …), the FASTA keys, and `freestyle` (unwired downstream)
-# are ignored.
+# (cores, mail, name, …) and the FASTA keys are ignored.
 SUSHI_TO_DRUNNER: dict[str, str] = {
     "diann_version": "diann_version",
     "workflow_mode": "workflow_mode",
     "is_dda": "is_dda",
     "scan_window": "scan_window",
+    "unrelated_runs": "unrelated_runs",
+    "freestyle": "freestyle",
     "mods_variable": "var_mods",
     "mods_no_peptidoforms": "no_peptidoforms",
     "mods_unimod4": "unimod4",

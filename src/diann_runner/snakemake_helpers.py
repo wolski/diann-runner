@@ -270,6 +270,8 @@ BFABRIC_TO_DRUNNER: dict[str, str] = {
     "11c_diann_protein_ids_to_names": "ids_to_names",
     "12a_diann_quantification_reanalyse": "reanalyse",
     "12b_diann_quantification_no_norm": "no_norm",
+    "05c_diann_unrelated_runs": "unrelated_runs",
+    "13_diann_freestyle": "freestyle",
     "99_other_verbose": "verbose",
     "05_diann_is_dda": "is_dda",
     "01_diann_version": "diann_version",
@@ -463,6 +465,8 @@ def create_diann_workflow(
         relaxed_prot_inf=diann_params["relaxed_prot_inf"],
         reanalyse=diann_params["reanalyse"],
         no_norm=diann_params["no_norm"],
+        unrelated_runs=diann_params["unrelated_runs"],
+        freestyle=diann_params["freestyle"],
         ids_to_names=diann_params["ids_to_names"],
         raw_mount=raw_mount,
     )

@@ -263,6 +263,22 @@
         <value>AUTO</value>
     </parameter>
 
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Treat runs as unrelated: mass accuracy (when automatic) and the retention time scan window are determined separately for each run, instead of being taken from the first run. Use for sample sets that do not share common peptides / calibration. DIA-NN command: --individual-mass-acc --individual-windows</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>05c_diann_unrelated_runs</key>
+        <label>Unrelated Runs</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
     <!-- 06: Modification Configuration -->
     <parameter classname="parameter" id="171594">
         <deletable>false</deletable>

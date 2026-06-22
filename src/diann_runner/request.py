@@ -94,6 +94,8 @@ class DiannParams(BaseModel):
     ids_to_names: bool
     reanalyse: bool
     no_norm: bool
+    unrelated_runs: bool = False
+    freestyle: list[str] = []
     verbose: int
     diann_bin: str
     is_dda: bool

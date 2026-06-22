@@ -17,6 +17,7 @@ two callers converge on identical internal params without sharing vocabulary.
 from __future__ import annotations
 
 import re
+import shlex
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -41,6 +42,19 @@ def parse_var_mods_string(var_mods_str):
 
 def _to_bool(value: Any) -> bool:
     return str(value).strip().lower() == "true"
+
+
+def _freestyle(value: Any) -> list[str]:
+    """Tokenise the freestyle passthrough string into DIA-NN CLI args.
+
+    Empty / ``'None'`` input yields ``[]``. ``shlex.split`` so quoted arguments
+    survive intact, e.g. ``'--mass-acc 10 --foo "a b"'`` -> ``['--mass-acc', '10',
+    '--foo', 'a b']``. Always returns a fresh list (never the shared default).
+    """
+    s = str(value).strip()
+    if not s or s == "None":
+        return []
+    return shlex.split(s)
 
 
 def _int_or_auto(value: Any) -> int | str:
@@ -103,6 +117,10 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     # quantification
     "reanalyse":        FieldSpec("diann", _to_bool),
     "no_norm":          FieldSpec("diann", _to_bool),
+    # per-run calibration: GUI "Unrelated runs" = --individual-mass-acc --individual-windows
+    "unrelated_runs":   FieldSpec("diann", _to_bool, default=False),
+    # freestyle passthrough (arbitrary DIA-NN flags, applied to quant steps B/C only)
+    "freestyle":        FieldSpec("diann", _freestyle, default=[]),
     # other
     "verbose":          FieldSpec("diann", int),
     "is_dda":           FieldSpec("diann", _to_bool),
