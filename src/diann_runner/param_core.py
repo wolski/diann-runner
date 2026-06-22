@@ -112,7 +112,6 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     # scoring + protein inference
     "qvalue":           FieldSpec("diann", float),
     "pg_level":         FieldSpec("diann", _pg_level),
-    "relaxed_prot_inf": FieldSpec("diann", _to_bool),
     "ids_to_names":     FieldSpec("diann", _to_bool, default=False),
     # quantification
     "reanalyse":        FieldSpec("diann", _to_bool),

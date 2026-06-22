@@ -34,7 +34,6 @@ FLAT = {
     "09_diann_mass_acc_ms1": "AUTO",
     "10_diann_scoring_qvalue": "0.01",
     "11a_diann_protein_pg_level": "protein_names_1",
-    "11b_diann_protein_relaxed_prot_inf": "true",
     "12a_diann_quantification_reanalyse": "true",
     "12b_diann_quantification_no_norm": "false",
     "99_other_verbose": "1",

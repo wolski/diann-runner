@@ -36,7 +36,6 @@ CANON = {
     "mass_acc_ms1": "AUTO",
     "qvalue": "0.01",
     "pg_level": "protein_names_1",
-    "relaxed_prot_inf": "true",
     "reanalyse": "true",
     "no_norm": "false",
     "verbose": "1",

@@ -90,7 +90,6 @@ class DiannParams(BaseModel):
     scan_window: IntOrAuto
     qvalue: float
     pg_level: int
-    relaxed_prot_inf: bool
     ids_to_names: bool
     reanalyse: bool
     no_norm: bool

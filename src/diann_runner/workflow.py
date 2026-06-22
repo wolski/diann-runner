@@ -94,7 +94,6 @@ class DiannWorkflow:
         unimod4: bool = True,
         met_excision: bool = True,
         no_peptidoforms: bool = False,
-        relaxed_prot_inf: bool = False,
         reanalyse: bool = True,
         no_norm: bool = False,
         export_quant: bool = False,
@@ -136,7 +135,6 @@ class DiannWorkflow:
             unimod4: Enable Carbamidomethyl (C) fixed modification
             met_excision: Enable N-terminal methionine excision
             no_peptidoforms: Disable peptidoform scoring (faster but no modification localization)
-            relaxed_prot_inf: Enable relaxed protein inference (group by gene, not protein)
             reanalyse: Enable match-between-runs (MBR) for cross-run quantification
             no_norm: Disable cross-run normalization
             export_quant: Export fragment-level per-run quantities into DIA-NN report
@@ -196,7 +194,6 @@ class DiannWorkflow:
         self.unimod4 = unimod4
         self.met_excision = met_excision
         self.no_peptidoforms = no_peptidoforms
-        self.relaxed_prot_inf = relaxed_prot_inf
         self.reanalyse = reanalyse
         self.no_norm = no_norm
         self.export_quant = export_quant
@@ -268,7 +265,6 @@ class DiannWorkflow:
             'unimod4': self.unimod4,
             'met_excision': self.met_excision,
             'no_peptidoforms': self.no_peptidoforms,
-            'relaxed_prot_inf': self.relaxed_prot_inf,
             'reanalyse': self.reanalyse,
             'no_norm': self.no_norm,
             'export_quant': self.export_quant,
@@ -371,10 +367,7 @@ class DiannWorkflow:
         return params
 
     def _append_cross_run_options(self, cmd: list[str]) -> None:
-        """Append protein inference, MBR, and normalization flags."""
-        if self.relaxed_prot_inf:
-            cmd.append("--relaxed-prot-inf")
-
+        """Append MBR and normalization flags."""
         if self.reanalyse:
             cmd.append("--reanalyse")
 

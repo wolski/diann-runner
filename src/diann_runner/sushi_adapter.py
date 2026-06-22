@@ -62,7 +62,6 @@ SUSHI_TO_DRUNNER: dict[str, str] = {
     "mass_acc_ms2": "mass_acc",
     "scoring_qvalue": "qvalue",
     "protein_pg_level": "pg_level",
-    "protein_relaxed_prot_inf": "relaxed_prot_inf",
     "quantification_reanalyse": "reanalyse",
     "quantification_no_norm": "no_norm",
     "quantification_export_quant": "export_quant",

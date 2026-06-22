@@ -696,22 +696,6 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Use relaxed protein inference (more permissive protein grouping). DIA-NN command: --relaxed-prot-inf</description>
-        <context>APPLICATION</context>
-        <executable classname="executable" id="26960"/>
-        <inUse>true</inUse>
-        <key>11b_diann_protein_relaxed_prot_inf</key>
-        <label>Relaxed Protein Inference</label>
-        <modifiable>true</modifiable>
-        <parentAllowsModification>true</parentAllowsModification>
-        <required>true</required>
-        <type>BOOLEAN</type>
-        <value>true</value>
-    </parameter>
-
-    <parameter>
-        <deletable>false</deletable>
-        <updatable>false</updatable>
         <description>Use protein IDs as gene names when FASTA lacks GN= annotations. Useful for non-model organisms or custom databases without gene name fields. DIA-NN command: --ids-to-names</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
@@ -816,7 +800,7 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --relaxed-prot-inf --rt-profiling</description>
+        <description>Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --no-prot-inf --rt-profiling</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>

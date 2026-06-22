@@ -39,7 +39,6 @@ FLAT = {
     "09_diann_mass_acc_ms1": "AUTO",
     "10_diann_scoring_qvalue": "0.01",
     "11a_diann_protein_pg_level": "protein_names_1",
-    "11b_diann_protein_relaxed_prot_inf": "true",
     "12a_diann_quantification_reanalyse": "true",
     "12b_diann_quantification_no_norm": "false",
     "99_other_verbose": "1",
@@ -70,7 +69,6 @@ SUSHI_FULL = {
     "mass_acc_ms1": "AUTO",
     "scoring_qvalue": "0.01",
     "protein_pg_level": "protein_names_1",
-    "protein_relaxed_prot_inf": "true",
     "quantification_reanalyse": "true",
     "quantification_no_norm": "false",
     "verbose": "1",
@@ -112,13 +110,11 @@ class TestParseSushiParams(unittest.TestCase):
                 Path(t),
                 quantification_no_norm="true",       # override template 'false'
                 peptide_min_length="8",              # override template '6'
-                protein_relaxed_prot_inf="false",    # match template
                 dataRoot="/srv/gstore/projects",
             )
             wf, fastas, data_root = parse_sushi_params(p)
             self.assertTrue(wf["diann"]["no_norm"])
             self.assertEqual(wf["diann"]["min_pep_len"], 8)
-            self.assertFalse(wf["diann"]["relaxed_prot_inf"])
             self.assertEqual(data_root, "/srv/gstore/projects")
             self.assertEqual(fastas, [])
 
