@@ -116,19 +116,24 @@ final / large / publishable run:
 ## Action items
 
 - [x] **Keep `AUTO` as the default** in A386; do not copy A366's fixed 20/15.
-- [x] **Add a read-only recommendations field** (`09_diann_mass_acc_recommendations`,
-      `modifiable=false` STRING) to the A386 executable XML — both the source
-      (`bfabric_executable/executable_A386_DIANN_3.2.xml`) and the deployed copy
-      (`slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.xml`). The
-      parser ignores the key (`parse_flat_params` only maps keys in
-      `BFABRIC_TO_DRUNNER`), so it is display-only and cannot affect a run.
+- [x] **Add read-only recommendation fields** to the A386 executable XML — both the
+      source (`bfabric_executable/executable_A386_DIANN_3.2.xml`) and the deployed
+      copy (`slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.xml`).
+      **B-Fabric caps each `<value>` at 256 chars** (`InvalidDataException: value
+      size must be between 0 and 256`), so a single long paragraph is rejected — the
+      guidance is split into 4 short `modifiable=false` STRING rows
+      (`09_diann_mass_acc_rec_{timstof,orbitrap,tof,auto}`), one per instrument
+      class. Keys are not in `BFABRIC_TO_DRUNNER`, so `parse_flat_params` ignores
+      them (display-only, cannot affect a run).
 - [x] **Add `4/5/7` ppm to the MS1/MS2 enumerations** in both A386 executable XMLs
       (now `4/5/7/10/15/20/AUTO`), so the recommended high-res Orbitrap/Astral
       values are selectable.
-- [ ] **VERIFY rendering on the B-Fabric test instance:** does the read-only field
-      show the `<value>` with line breaks? B-Fabric may collapse newlines in a STRING
-      widget. If so, fall back to a single-line pipe-separated value or move the text
-      into `<description>`.
+- [x] **Resolved the 256-char value limit** by splitting into 4 short rows (above);
+      no newlines needed — each instrument is its own labeled row.
+- [ ] **Heads-up:** 3 pre-existing `<description>` fields exceed 256 chars
+      (`unrelated_runs` ~467, raw-converter ~294, var-mods ~280). The 256 cap is on
+      `<value>`, not `<description>`, so these should be fine — but trim them if a
+      re-upload errors on description size.
 - [ ] **Re-upload / re-register** the updated A386 executable in B-Fabric for the new
       field + dropdown values to appear (XML edits alone don't change the live app).
 - [ ] **Confirm the FGCZ instrument fleet** for this app (Orbitrap Exploris /
