@@ -8,7 +8,7 @@
 # installed but no SIF cache), uncomment:
 # container_runtime: docker   # or: apptainer
 
-threads: 64
+threads: 24
 app_runner: "fgcz_app_runner"
 
 images:
