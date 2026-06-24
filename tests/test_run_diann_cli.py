@@ -154,6 +154,11 @@ class TestParseSushiParams(unittest.TestCase):
             self.assertIs(wf["enable_step_c"], False)
             self.assertIs(wf["include_libs"], False)
 
+    def test_enable_step_c_override(self):
+        with tempfile.TemporaryDirectory() as t:
+            wf, _, _ = parse_sushi_params(self._write(Path(t), enable_step_c="true"))
+            self.assertIs(wf["enable_step_c"], True)
+
     def test_hardcoded_invariants(self):
         with tempfile.TemporaryDirectory() as t:
             wf, _, _ = parse_sushi_params(self._write(Path(t)))

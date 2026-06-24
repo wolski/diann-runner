@@ -40,6 +40,7 @@ from diann_runner.request import (
 SUSHI_TO_DRUNNER: dict[str, str] = {
     "diann_version": "diann_version",
     "workflow_mode": "workflow_mode",
+    "enable_step_c": "enable_step_c",
     "is_dda": "is_dda",
     "scan_window": "scan_window",
     "unrelated_runs": "unrelated_runs",
