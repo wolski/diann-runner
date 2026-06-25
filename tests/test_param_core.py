@@ -134,6 +134,7 @@ class TestBuildInternalParams(unittest.TestCase):
         self.assertEqual(wf["library_predictor"], "diann")
         self.assertIs(wf["enable_step_c"], False)
         self.assertIs(wf["include_libs"], False)
+        self.assertIs(wf["generate_pmultiqc"], True)
 
     def test_missing_required_field_raises(self):
         partial = dict(CANON)
@@ -167,6 +168,7 @@ class TestBuildInternalParams(unittest.TestCase):
                 "library_predictor",
                 "enable_step_c",
                 "include_libs",
+                "generate_pmultiqc",
             },
         )
 

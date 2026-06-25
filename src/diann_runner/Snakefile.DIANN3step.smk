@@ -22,7 +22,6 @@ from diann_runner.snakemake_helpers import (
     resolve_raw_converter_image,
     create_diann_workflow,
     detect_input_files,
-    convert_parquet_to_tsv,
     zip_diann_results,
     zip_library_files,
     load_deploy_config,
@@ -88,6 +87,7 @@ FASTA_PATHS = get_fasta_paths(fasta_config)
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
 WORKFLOW_MODE = WORKFLOW_PARAMS.get("workflow_mode", "two_step")
 INCLUDE_LIBS = WORKFLOW_PARAMS.get("include_libs", False)
+GENERATE_PMULTIQC = WORKFLOW_PARAMS.get("generate_pmultiqc", True)
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
 def final_quant_outputs(wildcards):
@@ -105,6 +105,10 @@ def final_quant_outputs(wildcards):
 FINAL_TARGETS = [f"Result_WU{WORKUNITID}.zip"]
 if REGISTER_OUTPUTS:
     FINAL_TARGETS.append("outputs.yml")
+# Optional pmultiqc HTML report — standalone final target (not folded into the
+# Result zip yet). Gated on the generate_pmultiqc flag (default true).
+if GENERATE_PMULTIQC:
+    FINAL_TARGETS.append("pmultiqc_result/pmultiqc_diann_report.html")
 
 rule all:
     input:
@@ -322,7 +326,7 @@ else:
         """Execute Step C: Final Quantification.
 
         This rule is always defined, but only executes when downstream rules
-        (convert_parquet_to_tsv, diannqc, prolfqua_qc) depend on Step C outputs.
+        (diannqc, prolfqua_qc, pmultiqc_diann_report) depend on Step C outputs.
         When enable_step_c=False, they depend on Step B outputs instead.
         """
         input:
@@ -345,19 +349,6 @@ else:
             bash {input.script:q}
             {params.copy_fasta_cmd}
             """
-
-rule convert_parquet_to_tsv:
-    """Convert main parquet report to TSV format for prolfqua and diann-qc."""
-    input:
-        report_parquet = FINAL_QUANT_OUTPUTS["report_parquet"]
-    output:
-        tsv = FINAL_QUANT_OUTPUTS["report_tsv"]
-    log:
-        logfile = "logs/convert_parquet_to_tsv.log"
-    params:
-        is_dda = WORKFLOW_PARAMS["diann"]["is_dda"]
-    run:
-        convert_parquet_to_tsv(str(input.report_parquet), str(output.tsv), params.is_dda)
 
 rule run_prozor_inference:
     """Run prozor protein inference on DIA-NN report.
@@ -392,7 +383,7 @@ rule diannqc:
         logfile = "logs/diannqc.log"
     shell:
         """
-        diann-qc {input.stats:q} {input.report_tsv:q} {output.pdf:q}
+        diann-qc {input.stats:q} {input.report_parquet:q} {output.pdf:q}
         """
 
 # ============================================================================
@@ -456,7 +447,9 @@ rule prolfqua_qc:
     params:
         prolfquapp_image = deploy_dict["prolfquapp_image"],
         runtime = deploy_dict["container_runtime"],
-        indir = lambda wildcards, input: str(Path(input.report_tsv).parent),
+        # prolfquapp 2.2.6+ discovers and reads the native DIA-NN parquet in this
+        # directory directly (no Run->File.Name TSV needed).
+        indir = lambda wildcards, input: str(Path(input.report_parquet).parent),
         container_id = CONTAINERID,
         workunit_id = WORKUNITID
     shell:
@@ -467,6 +460,36 @@ rule prolfqua_qc:
             --project {params.container_id} --order {params.container_id} --workunit {params.workunit_id} \
             --outdir qc_result --flat_outdir | tee {output.runlog:q}
         cp {input.dataset:q} qc_result/dataset.csv
+        """
+
+rule pmultiqc_diann_report:
+    """Generate a pmultiqc HTML report from the native DIA-NN parquet.
+
+    Stages a clean input dir (the parquet renamed to report.parquet, the run log
+    to report.log.txt) so pmultiqc's exact-name file patterns match, then runs
+    MultiQC with the DIA-NN plugin. The staging dir deliberately contains no
+    *report.tsv: pmultiqc tries the TSV pattern first and the DIA-NN reader needs
+    the native Run column. Report-derived sections populate; experimental-design
+    and MS1-level metrics are not shown (the runner does not emit those inputs).
+    """
+    input:
+        report = FINAL_QUANT_OUTPUTS["report_parquet"],
+        runlog = FINAL_QUANT_OUTPUTS["runlog"],
+    output:
+        html = "pmultiqc_result/pmultiqc_diann_report.html"
+    log:
+        logfile = "logs/pmultiqc_diann_report.log"
+    shell:
+        """
+        rm -rf pmultiqc_input pmultiqc_result
+        mkdir -p pmultiqc_input
+        cp {input.report:q} pmultiqc_input/report.parquet
+        cp {input.runlog:q} pmultiqc_input/report.log.txt
+        multiqc pmultiqc_input --diann-plugin \
+            -o pmultiqc_result \
+            --filename pmultiqc_diann_report.html \
+            --force --verbose
+        test -s {output.html:q}
         """
 
 rule outputsyml:

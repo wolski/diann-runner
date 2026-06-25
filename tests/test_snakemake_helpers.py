@@ -11,6 +11,7 @@ from diann_runner.snakemake_helpers import (
     get_diann_input_dependency,
     get_diann_input_path,
     get_fasta_paths,
+    get_final_quantification_outputs,
     load_deploy_config,
     parse_flat_params,
     resolve_diann_docker_image,
@@ -269,6 +270,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
             'workflow_mode': 'two_step',
             'raw_converter': 'thermoraw',
             'include_libs': False,
+            'generate_pmultiqc': True,
         }
         self.assertEqual(parse_flat_params(dict(BASE_FLAT_PARAMS)), expected)
 
@@ -506,6 +508,31 @@ class TestLoadDeployConfig(unittest.TestCase):
             )
             with self.assertRaises(ValueError):
                 load_deploy_config(tmp_path)
+
+
+class TestFinalQuantificationOutputs(unittest.TestCase):
+    """get_final_quantification_outputs after dropping the prolfqua-format TSV.
+
+    The native parquet is the single report source; report_tsv is gone and a
+    runlog key (for pmultiqc / the DIA-NN version badge) is exposed.
+    """
+
+    def test_step_c_outputs(self):
+        out = get_final_quantification_outputs("out-DIANN", "347715", enable_step_c=True)
+        self.assertEqual(
+            out["report_parquet"], "out-DIANN_quantC/WU347715_report.parquet"
+        )
+        self.assertEqual(out["runlog"], "out-DIANN_quantC/diann_quantC.log.txt")
+        # The prolfqua-format Run->File.Name TSV is no longer produced or exposed.
+        self.assertNotIn("report_tsv", out)
+
+    def test_step_b_outputs_when_step_c_disabled(self):
+        out = get_final_quantification_outputs("out-DIANN", "347715", enable_step_c=False)
+        self.assertEqual(
+            out["report_parquet"], "out-DIANN_quantB/WU347715_report.parquet"
+        )
+        self.assertEqual(out["runlog"], "out-DIANN_quantB/diann_quantB.log.txt")
+        self.assertNotIn("report_tsv", out)
 
 
 if __name__ == "__main__":

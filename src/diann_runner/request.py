@@ -131,6 +131,9 @@ class DIANNRunnerParams(BaseModel):
     workflow_mode: str
     raw_converter: str
     include_libs: bool
+    # Default True so normalized TOMLs written before this flag existed still
+    # validate (pmultiqc report on by default); matches param_core's default.
+    generate_pmultiqc: bool = True
 
     # -- construction from / projection to the parse_flat_params() contract --
 

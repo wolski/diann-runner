@@ -139,6 +139,7 @@ class TestParseSushiParams(unittest.TestCase):
                 "library_predictor",
                 "enable_step_c",
                 "include_libs",
+                "generate_pmultiqc",
             ):
                 self.assertEqual(su_wf[key], ar_wf[key])
 
@@ -153,6 +154,7 @@ class TestParseSushiParams(unittest.TestCase):
             self.assertEqual(wf["library_predictor"], "diann")
             self.assertIs(wf["enable_step_c"], False)
             self.assertIs(wf["include_libs"], False)
+            self.assertIs(wf["generate_pmultiqc"], True)
 
     def test_enable_step_c_override(self):
         with tempfile.TemporaryDirectory() as t:

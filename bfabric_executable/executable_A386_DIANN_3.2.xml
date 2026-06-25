@@ -775,6 +775,22 @@
         <value>false</value>
     </parameter>
 
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Generate a pmultiqc HTML report from the DIA-NN report as an extra QC artifact (alongside diann-qc and prolfqua QC). Report-derived sections populate; experimental-design and MS1-level metrics are not shown.</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>15_generate_pmultiqc</key>
+        <label>Generate pmultiqc HTML report</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>true</value>
+    </parameter>
+
     <!-- 99: Other Settings -->
     <parameter>
         <deletable>false</deletable>

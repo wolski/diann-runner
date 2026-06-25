@@ -131,6 +131,7 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     "library_predictor": FieldSpec("top", str, default="diann"),
     "enable_step_c":     FieldSpec("top", _to_bool, default=False),
     "include_libs":      FieldSpec("top", _to_bool, default=False),
+    "generate_pmultiqc": FieldSpec("top", _to_bool, default=True),
 }
 
 
@@ -169,4 +170,5 @@ def build_internal_params(canonical: dict[str, Any], *, fasta: dict[str, Any]) -
         "workflow_mode": top["workflow_mode"],
         "raw_converter": top["raw_converter"],
         "include_libs": top["include_libs"],
+        "generate_pmultiqc": top["generate_pmultiqc"],
     }

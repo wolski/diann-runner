@@ -43,7 +43,7 @@ run: test ## back-compat alias for `test`
 # --delete-all-output`, which eagerly evaluates every rule's input function and
 # trips resolve_raw_converter_image() when 97_raw_converter resolves to False.
 clean: ## remove generated outputs; keep raws/FASTA/fixtures
-	rm -rf .snakemake logs qc_result \
+	rm -rf .snakemake logs qc_result pmultiqc_input pmultiqc_result \
 	       out-DIANN_libA out-DIANN_quantB out-DIANN_quantC \
 	       temp-DIANN_libA temp-DIANN_quantB temp-DIANN_quantC \
 	       step_A_library_search.sh step_B_quantification_refinement.sh step_C_final_quantification.sh \

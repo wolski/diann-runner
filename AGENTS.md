@@ -171,7 +171,6 @@ All source modules are located in `src/diann_runner/`:
 - `parse_var_mods_string()`: Parses modification strings into tuples
 - `create_diann_workflow()`: Factory function to initialize DiannWorkflow from parsed params
 - `get_final_quantification_outputs()`: Returns output paths based on Step B vs Step C
-- `convert_parquet_to_tsv()`: Converts DIA-NN 2.3+ parquet output to TSV
 
 ### Snakemake Workflow
 
@@ -319,7 +318,7 @@ By default, all workflow scripts use `diann-docker` as the DIA-NN binary. Overri
 
 ## Key Output Files
 
-DIA-NN 2.3+ outputs `.parquet` files by default. The workflow converts these to TSV for downstream tools.
+DIA-NN 2.3+ outputs `.parquet` files by default. Downstream tools read the parquet directly.
 
 ```
 out-DIANN_libA/
@@ -329,18 +328,22 @@ out-DIANN_libA/
 out-DIANN_quantB/
   ├── WU{id}_report-lib.parquet        # Step B: Refined library (parquet format)
   ├── WU{id}_quantB.config.json
-  ├── WU{id}_report.parquet            # Main report (parquet)
-  ├── WU{id}_report.tsv                # Converted for downstream tools
+  ├── WU{id}_report.parquet            # Main report (parquet) — native Run column
   ├── WU{id}_report.pg_matrix.tsv      # Protein group matrix
-  └── WU{id}_report.stats.tsv          # Statistics
+  ├── WU{id}_report.stats.tsv          # Statistics
+  └── diann_quantB.log.txt             # DIA-NN run log
 
 out-DIANN_quantC/                      # Only if enable_step_c=True
   ├── WU{id}_report-lib.parquet        # ★ Final library
-  ├── WU{id}_report.parquet            # ★ Main results (parquet)
-  ├── WU{id}_report.tsv                # ★ Converted for prolfqua/diann-qc
+  ├── WU{id}_report.parquet            # ★ Main results (parquet) — native Run column
   ├── WU{id}_report.pg_matrix.tsv      # ★ Protein matrix
-  └── WU{id}_report.stats.tsv          # Statistics
+  ├── WU{id}_report.stats.tsv          # Statistics
+  └── diann_quantC.log.txt             # DIA-NN run log
 ```
+
+All downstream QC tools (diann-qc, prolfqua QC via prolfquapp ≥2.2.6, pmultiqc)
+read the native `WU{id}_report.parquet` directly. The runner no longer emits a
+`Run`→`File.Name`-renamed `WU{id}_report.tsv` (the old DIA-NN 1.x prolfqua shim).
 
 **Note on FASTA files:**
 - Step A requires FASTA input via `--fasta` for library generation

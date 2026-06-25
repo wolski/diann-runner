@@ -6,7 +6,6 @@ import os
 import shlex
 from pathlib import Path
 
-import pandas as pd
 import yaml
 
 # parse_var_mods_string is re-exported here for back-compat (historical home).
@@ -280,6 +279,7 @@ BFABRIC_TO_DRUNNER: dict[str, str] = {
     "library_predictor": "library_predictor",
     "enable_step_c": "enable_step_c",
     "14_include_libs": "include_libs",
+    "15_generate_pmultiqc": "generate_pmultiqc",
 }
 
 
@@ -489,8 +489,10 @@ def get_final_quantification_outputs(
         enable_step_c: If True, use Step C outputs; if False, use Step B outputs
 
     Returns:
-        Dictionary with keys: report_parquet, report_tsv, pg_matrix,
-                             stats, library
+        Dictionary with keys: report_parquet, pg_matrix, stats, library, runlog.
+        ``report_parquet`` is the native DIA-NN 2.x report (bare ``Run`` column);
+        all downstream consumers (diann-qc, prolfqua QC, pmultiqc) read it
+        directly. ``runlog`` is the DIA-NN run log for the step.
     """
     step = "quantC" if enable_step_c else "quantB"
 
@@ -499,42 +501,11 @@ def get_final_quantification_outputs(
 
     return {
         "report_parquet": f"{output_prefix}_{step}/WU{workunit_id}_report.parquet",
-        "report_tsv": f"{output_prefix}_{step}/WU{workunit_id}_report.tsv",
         "pg_matrix": f"{output_prefix}_{step}/WU{workunit_id}_report.pg_matrix.tsv",
         "stats": f"{output_prefix}_{step}/WU{workunit_id}_report.stats.tsv",
-        "library": f"{output_prefix}_{step}/{library_filename}"
+        "library": f"{output_prefix}_{step}/{library_filename}",
+        "runlog": f"{output_prefix}_{step}/diann_{step}.log.txt",
     }
-
-
-def convert_parquet_to_tsv(parquet_path: str, tsv_path: str, is_dda: bool = False) -> None:
-    """
-    Convert a parquet file to TSV format.
-
-    DIA-NN 2.3+ uses different column names than older versions.
-    This function renames columns to match the old naming scheme for compatibility.
-
-    Args:
-        parquet_path: Path to input parquet file
-        tsv_path: Path to output TSV file
-        is_dda: If True, also copy PG.MaxLFQ to PG.Quantity for prolfqua compatibility
-    """
-    df = pd.read_parquet(parquet_path)
-
-    # Map DIA-NN 2.3+ column names to old column names for compatibility
-    # Note: DIA-NN 2.3 already outputs PG.MaxLFQ and Genes.MaxLFQ, so only rename Run
-    column_mapping = {
-        'Run': 'File.Name',
-    }
-    df = df.rename(columns=column_mapping)
-
-    # For DDA data: prolfqua expects PG.Quantity but DIA-NN outputs PG.MaxLFQ
-    # Copy PG.MaxLFQ to PG.Quantity for compatibility with both diann-qc and prolfqua
-    if is_dda and 'PG.MaxLFQ' in df.columns and 'PG.Quantity' not in df.columns:
-        df['PG.Quantity'] = df['PG.MaxLFQ']
-        print("Added PG.Quantity column from PG.MaxLFQ for DDA data compatibility")
-
-    df.to_csv(tsv_path, sep='\t', index=False)
-    print(f"Converted {parquet_path} -> {tsv_path}")
 
 
 def zip_diann_results(
