@@ -22,6 +22,7 @@ from diann_runner.snakemake_helpers import (
     resolve_raw_converter_image,
     create_diann_workflow,
     detect_input_files,
+    write_result_index,
     zip_diann_results,
     zip_library_files,
     load_deploy_config,
@@ -31,7 +32,7 @@ from diann_runner.snakemake_helpers import (
 )
 
 # Local rules that don't need cluster execution
-localrules: all, print_config_dict, outputsyml, run_prozor_inference
+localrules: all, print_config_dict, outputsyml, result_index, run_prozor_inference
 
 # Raw-file source directory (may be external / read-only). Conversion OUTPUTS go
 # to CONVERTED_DIR under the work dir, never back into an external source dir.
@@ -88,6 +89,9 @@ FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID
 WORKFLOW_MODE = WORKFLOW_PARAMS.get("workflow_mode", "two_step")
 INCLUDE_LIBS = WORKFLOW_PARAMS.get("include_libs", False)
 GENERATE_PMULTIQC = WORKFLOW_PARAMS.get("generate_pmultiqc", True)
+PMULTIQC_HTML = "pmultiqc_result/pmultiqc_diann_report.html"
+RESULT_INDEX_MD = "index.md"
+RESULT_INDEX_HTML = "index.html"
 
 # Helper function to get final quantification outputs (must be in Snakefile for Snakemake)
 def final_quant_outputs(wildcards):
@@ -108,7 +112,7 @@ if REGISTER_OUTPUTS:
 # Optional pmultiqc HTML report — standalone final target (not folded into the
 # Result zip yet). Gated on the generate_pmultiqc flag (default true).
 if GENERATE_PMULTIQC:
-    FINAL_TARGETS.append("pmultiqc_result/pmultiqc_diann_report.html")
+    FINAL_TARGETS.append(PMULTIQC_HTML)
 
 rule all:
     input:
@@ -395,7 +399,10 @@ rule zip_diann_result:
         pdf = rules.diannqc.output.pdf,
         prozor = rules.run_prozor_inference.output.prozor_parquet,
         dataset = DATASET_CSV,
-        qc_dir = "qc_result"
+        qc_dir = "qc_result",
+        index_md = RESULT_INDEX_MD,
+        index_html = RESULT_INDEX_HTML,
+        pmultiqc = PMULTIQC_HTML if GENERATE_PMULTIQC else []
     output:
         zip = f"Result_WU{WORKUNITID}.zip"
     log:
@@ -404,10 +411,14 @@ rule zip_diann_result:
         output_dir = lambda wildcards, input: str(Path(input.pdf).parent)
     run:
         shutil.copy2(input.dataset, Path(params.output_dir) / Path(input.dataset).name)
+        extra_dirs = [input.qc_dir]
+        if GENERATE_PMULTIQC:
+            extra_dirs.append(str(Path(input.pmultiqc).parent))
         zip_diann_results(
             output_dir=params.output_dir,
             zip_path=output.zip,
-            extra_dirs=[input.qc_dir]
+            extra_files=[input.index_md, input.index_html],
+            extra_dirs=extra_dirs
         )
 
 if INCLUDE_LIBS:
@@ -462,6 +473,27 @@ rule prolfqua_qc:
         cp {input.dataset:q} qc_result/dataset.csv
         """
 
+rule result_index:
+    input:
+        unpack(final_quant_outputs),
+        pdf = rules.diannqc.output.pdf,
+        prozor = rules.run_prozor_inference.output.prozor_parquet,
+        qc_dir = "qc_result",
+        pmultiqc = PMULTIQC_HTML if GENERATE_PMULTIQC else []
+    output:
+        md = RESULT_INDEX_MD,
+        html = RESULT_INDEX_HTML
+    run:
+        write_result_index(
+            index_md=output.md,
+            index_html=output.html,
+            workunit_id=WORKUNITID,
+            quant_dir=str(Path(input.pdf).parent),
+            final_outputs=FINAL_QUANT_OUTPUTS,
+            fasta_paths=[str(path) for path in FASTA_PATHS],
+            include_pmultiqc=GENERATE_PMULTIQC,
+        )
+
 rule pmultiqc_diann_report:
     """Generate a pmultiqc HTML report from the native DIA-NN parquet.
 
@@ -476,7 +508,7 @@ rule pmultiqc_diann_report:
         report = FINAL_QUANT_OUTPUTS["report_parquet"],
         runlog = FINAL_QUANT_OUTPUTS["runlog"],
     output:
-        html = "pmultiqc_result/pmultiqc_diann_report.html"
+        html = PMULTIQC_HTML
     log:
         logfile = "logs/pmultiqc_diann_report.log"
     shell:

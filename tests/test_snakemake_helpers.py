@@ -16,6 +16,7 @@ from diann_runner.snakemake_helpers import (
     parse_flat_params,
     resolve_diann_docker_image,
     resolve_raw_converter_image,
+    write_result_index,
     write_outputs_yml,
     zip_diann_results,
 )
@@ -113,6 +114,65 @@ class TestSnakemakeHelpers(unittest.TestCase):
             content = outputs_yml.read_text(encoding="utf-8")
             self.assertIn("Result_WUTEST.zip", content)
             self.assertEqual(content.count("store_entry_path:"), 1)
+
+    def test_write_result_index_links_key_outputs_conditionally(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            quant_dir = tmp_path / "out-DIANN_quantC"
+            quant_dir.mkdir()
+            (quant_dir / "db.fasta").write_text(">x\nPEPTIDE\n", encoding="utf-8")
+            final_outputs = get_final_quantification_outputs(
+                "out-DIANN", "347812", enable_step_c=True
+            )
+
+            write_result_index(
+                tmp_path / "index.md",
+                tmp_path / "index.html",
+                workunit_id="347812",
+                quant_dir=quant_dir,
+                final_outputs=final_outputs,
+                fasta_paths=[tmp_path / "input" / "db.fasta"],
+                include_pmultiqc=True,
+            )
+
+            markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
+            html = (tmp_path / "index.html").read_text(encoding="utf-8")
+            self.assertIn("[prolfqua QC overview](qc_result/index.html)", markdown)
+            self.assertIn(
+                "[pmultiqc DIA-NN report](pmultiqc_result/pmultiqc_diann_report.html)",
+                markdown,
+            )
+            self.assertIn(
+                "[Native DIA-NN report parquet](out-DIANN_quantC/WU347812_report.parquet)",
+                markdown,
+            )
+            self.assertIn("[Dataset](out-DIANN_quantC/dataset.csv)", markdown)
+            self.assertIn("[FASTA: db.fasta](out-DIANN_quantC/db.fasta)", markdown)
+            self.assertIn("pmultiqc_result/pmultiqc_diann_report.html", html)
+
+    def test_write_result_index_omits_pmultiqc_when_disabled(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            final_outputs = get_final_quantification_outputs(
+                "out-DIANN", "347812", enable_step_c=False
+            )
+
+            write_result_index(
+                tmp_path / "index.md",
+                tmp_path / "index.html",
+                workunit_id="347812",
+                quant_dir=tmp_path / "out-DIANN_quantB",
+                final_outputs=final_outputs,
+                fasta_paths=[],
+                include_pmultiqc=False,
+            )
+
+            markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
+            self.assertNotIn("pmultiqc", markdown)
+            self.assertIn(
+                "[Native DIA-NN report parquet](out-DIANN_quantB/WU347812_report.parquet)",
+                markdown,
+            )
 
     def test_get_fasta_paths_skips_missing_or_empty_order_fasta(self):
         """Custom sequences default ON: a missing/empty order.fasta is skipped, not fatal."""

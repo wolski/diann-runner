@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shlex
+from html import escape
 from pathlib import Path
 
 import yaml
@@ -506,6 +507,76 @@ def get_final_quantification_outputs(
         "library": f"{output_prefix}_{step}/{library_filename}",
         "runlog": f"{output_prefix}_{step}/diann_{step}.log.txt",
     }
+
+
+def write_result_index(
+    index_md: str | Path,
+    index_html: str | Path,
+    *,
+    workunit_id: str,
+    quant_dir: str | Path,
+    final_outputs: dict[str, str],
+    fasta_paths: list[str | Path],
+    include_pmultiqc: bool = False,
+) -> None:
+    """Write top-level Markdown and HTML indexes for the result zip."""
+    quant_path = Path(quant_dir)
+    quant_archive_path = Path(quant_path.name) if quant_path.is_absolute() else quant_path
+    prozor = final_outputs["report_parquet"].replace(".parquet", "_prozor.parquet")
+    qc_pdf = final_outputs["stats"].replace("_report.stats.tsv", "_qc_report.pdf")
+    links = [
+        ("prolfqua QC overview", "qc_result/index.html"),
+        ("Protein abundance QC", "qc_result/proteinAbundances.html"),
+        ("Sample size QC", "qc_result/QC_sampleSizeEstimation.html"),
+    ]
+    if include_pmultiqc:
+        links.append((
+            "pmultiqc DIA-NN report",
+            "pmultiqc_result/pmultiqc_diann_report.html",
+        ))
+    links.extend([
+        ("Native DIA-NN report parquet", final_outputs["report_parquet"]),
+        ("Prozor-inferred report parquet", prozor),
+        ("Protein-group matrix", final_outputs["pg_matrix"]),
+        ("DIA-NN stats", final_outputs["stats"]),
+        ("DIA-NN QC PDF", qc_pdf),
+        ("DIA-NN run log", final_outputs["runlog"]),
+        ("Dataset", str(quant_archive_path / "dataset.csv")),
+    ])
+    for fasta_path in fasta_paths:
+        staged_fasta = quant_path / Path(fasta_path).name
+        if staged_fasta.is_file():
+            links.append((
+                f"FASTA: {staged_fasta.name}",
+                str(quant_archive_path / staged_fasta.name),
+            ))
+
+    title = f"DIA-NN Results for WU : {workunit_id}"
+    markdown = [f"# {title}", "", "## Reports and Key Files", ""]
+    markdown.extend(f"- [{label}]({target})" for label, target in links)
+    markdown.append("")
+    Path(index_md).write_text("\n".join(markdown), encoding="utf-8")
+
+    items = "\n".join(
+        f"<li><a href='{escape(target, quote=True)}'>{escape(label)}</a></li>"
+        for label, target in links
+    )
+    html = "\n".join([
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        f"<title>{escape(title)}</title>",
+        "</head>",
+        "<body>",
+        f"<h1>{escape(title)}</h1>",
+        "<ul>",
+        items,
+        "</ul>",
+        "</body>",
+        "</html>",
+        "",
+    ])
+    Path(index_html).write_text(html, encoding="utf-8")
 
 
 def zip_diann_results(
