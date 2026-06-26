@@ -24,9 +24,9 @@ images:
     # File conversion images.
     thermoraw_image: "thermorawfileparser:2.0.0"
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
-    # QC. 2.2.6+ reads native DIA-NN 2.x output (parquet / Run column) directly,
+    # QC. X.Y.Z+ reads native DIA-NN 2.x output (parquet / Run column) directly,
     # so the runner no longer renames Run->File.Name into a prolfqua-format TSV.
-    prolfquapp_image: "prolfqua/prolfquapp:2.2.6"
+    prolfquapp_image: "prolfqua/prolfquapp:2.2.7"
 
   apptainer:
     # SIF paths. Shared FGCZ apptainer cache, populated by deploy.smk
@@ -39,7 +39,7 @@ images:
     diann_docker_image: "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
     thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
     msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.2.6.sif"
+    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.2.7.sif"
 
 # Build-time settings for deploy.smk (building/pulling the images above).
 # Kept here, next to the image definitions, so there is a single config

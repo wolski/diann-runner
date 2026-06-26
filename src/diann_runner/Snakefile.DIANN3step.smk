@@ -447,7 +447,7 @@ rule prolfqua_qc:
     params:
         prolfquapp_image = deploy_dict["prolfquapp_image"],
         runtime = deploy_dict["container_runtime"],
-        # prolfquapp 2.2.6+ discovers and reads the native DIA-NN parquet in this
+        # prolfquapp X.Y.Z discovers and reads the native DIA-NN parquet in this
         # directory directly (no Run->File.Name TSV needed).
         indir = lambda wildcards, input: str(Path(input.report_parquet).parent),
         container_id = CONTAINERID,
