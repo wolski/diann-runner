@@ -677,11 +677,11 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Protein grouping level: 0=genes, 1=protein names (default), 2=protein IDs. DIA-NN command: --pg-level</description>
+        <description>Protein grouping level (DIA-NN --pg-level): 0=isoform IDs, 1=protein names, 2=genes (default). Sets the protein inference / proteotypicity level.</description>
         <context>APPLICATION</context>
-        <enumeration>genes_0</enumeration>
-        <enumeration>protein_names_1</enumeration>
-        <enumeration>protein_IDs_2</enumeration>
+        <enumeration>0_isoform_IDs</enumeration>
+        <enumeration>1_protein_names</enumeration>
+        <enumeration>2_genes</enumeration>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
         <key>11a_diann_protein_pg_level</key>
@@ -690,7 +690,7 @@
         <parentAllowsModification>true</parentAllowsModification>
         <required>true</required>
         <type>STRING</type>
-        <value>protein_IDs_2</value>
+        <value>2_genes</value>
     </parameter>
 
     <parameter>

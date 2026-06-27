@@ -35,7 +35,7 @@ CANON = {
     "mass_acc": "AUTO",
     "mass_acc_ms1": "AUTO",
     "qvalue": "0.01",
-    "pg_level": "protein_names_1",
+    "pg_level": "1_protein_names",
     "reanalyse": "true",
     "no_norm": "false",
     "verbose": "1",
@@ -57,9 +57,9 @@ class TestLeafTransforms(unittest.TestCase):
         self.assertEqual(_int_or_auto("10"), 10)
 
     def test_pg_level(self):
-        self.assertEqual(_pg_level("protein_names_1"), 1)
-        self.assertEqual(_pg_level("genes_0"), 0)
-        self.assertEqual(_pg_level("isoforms_2"), 2)
+        self.assertEqual(_pg_level("0_isoform_IDs"), 0)
+        self.assertEqual(_pg_level("1_protein_names"), 1)
+        self.assertEqual(_pg_level("2_genes"), 2)
 
     def test_parse_var_mods_string(self):
         self.assertEqual(

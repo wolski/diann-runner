@@ -37,7 +37,7 @@ BASE_FLAT_PARAMS = {
     "09_diann_mass_acc_ms2": "AUTO",
     "09_diann_mass_acc_ms1": "10",
     "10_diann_scoring_qvalue": "0.01",
-    "11a_diann_protein_pg_level": "protein_names_2",
+    "11a_diann_protein_pg_level": "2_genes",
     "12a_diann_quantification_reanalyse": "true",
     "12b_diann_quantification_no_norm": "false",
     "99_other_verbose": "1",

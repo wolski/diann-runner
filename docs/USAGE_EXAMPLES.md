@@ -318,7 +318,7 @@ workflow.generate_step_c_final_quantification(
 - `threads` - CPU threads (default: `64`)
 - `qvalue` - FDR threshold (default: `0.01`)
 - `is_dda` - Set `True` for DDA data (default: `False`)
-- `pg_level` - Protein grouping: `0`=genes, `1`=names, `2`=IDs (default: `0`)
+- `pg_level` - Protein grouping (DIA-NN --pg-level): `0`=isoform IDs, `1`=protein names, `2`=genes (default: `2`)
 - `min_pep_len` - Minimum peptide length (default: `6`)
 - `max_pep_len` - Maximum peptide length (default: `30`)
 - `min_pr_charge` - Minimum precursor charge (default: `2`)
@@ -365,14 +365,17 @@ workflow = DiannWorkflow(..., is_dda=True)
 
 ### Protein Grouping
 
+DIA-NN `--pg-level`: `0`=isoform IDs (most detailed), `1`=protein names,
+`2`=genes (default, most aggregated).
+
 ```python
-# Group by genes (default, most aggregated)
+# Group by isoform IDs (most detailed)
 workflow = DiannWorkflow(..., pg_level=0)
 
 # Group by protein names (intermediate)
 workflow = DiannWorkflow(..., pg_level=1)
 
-# Group by protein IDs (most detailed)
+# Group by genes (default, most aggregated)
 workflow = DiannWorkflow(..., pg_level=2)
 ```
 

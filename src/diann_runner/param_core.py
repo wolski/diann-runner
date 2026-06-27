@@ -64,8 +64,8 @@ def _int_or_auto(value: Any) -> int | str:
 
 
 def _pg_level(value: Any) -> int:
-    """``'protein_names_1'`` -> ``1`` (trailing number of the enum value)."""
-    return int(str(value).split("_")[-1])
+    """``'1_protein_names'`` -> ``1`` (leading number of the enum value)."""
+    return int(str(value).split("_")[0])
 
 
 @dataclass(frozen=True)

@@ -35,7 +35,7 @@ digestion_missed_cleavages: '1'
 mass_acc_ms1: AUTO
 mass_acc_ms2: AUTO
 scoring_qvalue: '0.01'
-protein_pg_level: protein_names_1
+protein_pg_level: 1_protein_names
 protein_relaxed_prot_inf: 'false'
 quantification_reanalyse: 'true'
 quantification_no_norm: 'false'

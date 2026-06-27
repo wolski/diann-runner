@@ -38,7 +38,7 @@ FLAT = {
     "09_diann_mass_acc_ms2": "AUTO",
     "09_diann_mass_acc_ms1": "AUTO",
     "10_diann_scoring_qvalue": "0.01",
-    "11a_diann_protein_pg_level": "protein_names_1",
+    "11a_diann_protein_pg_level": "1_protein_names",
     "12a_diann_quantification_reanalyse": "true",
     "12b_diann_quantification_no_norm": "false",
     "99_other_verbose": "1",
@@ -68,7 +68,7 @@ SUSHI_FULL = {
     "mass_acc_ms2": "AUTO",
     "mass_acc_ms1": "AUTO",
     "scoring_qvalue": "0.01",
-    "protein_pg_level": "protein_names_1",
+    "protein_pg_level": "1_protein_names",
     "quantification_reanalyse": "true",
     "quantification_no_norm": "false",
     "verbose": "1",
@@ -170,7 +170,7 @@ class TestParseSushiParams(unittest.TestCase):
     def test_int_or_auto_and_pg_level_transforms(self):
         with tempfile.TemporaryDirectory() as t:
             wf, _, _ = parse_sushi_params(
-                self._write(Path(t), scan_window="5", mass_acc_ms2="10", protein_pg_level="protein_names_2")
+                self._write(Path(t), scan_window="5", mass_acc_ms2="10", protein_pg_level="2_genes")
             )
             self.assertEqual(wf["diann"]["scan_window"], 5)
             self.assertEqual(wf["diann"]["mass_acc"], 10)

@@ -88,7 +88,7 @@ class DiannWorkflow:
         mass_acc_ms1: int | str = 'AUTO',
         scan_window: int | str = 'AUTO',
         verbose: int = 1,
-        pg_level: int = 0,
+        pg_level: int = 2,
         is_dda: bool = False,
         temp_dir_base: str = 'temp-DIANN',
         unimod4: bool = True,
@@ -129,7 +129,7 @@ class DiannWorkflow:
             mass_acc_ms1: MS1 mass accuracy in ppm ('AUTO' = omit flag, let DIA-NN auto-determine)
             scan_window: Scan window radius ('AUTO' = omit flag, let DIA-NN auto-determine)
             verbose: Verbosity level
-            pg_level: Protein grouping level (0 = genes, 1 = protein names, 2 = protein IDs)
+            pg_level: Protein grouping level / DIA-NN --pg-level (0 = isoform IDs, 1 = protein names, 2 = genes; default 2)
             is_dda: True for DDA data, False for DIA data
             temp_dir_base: Base name for temporary directories
             unimod4: Enable Carbamidomethyl (C) fixed modification

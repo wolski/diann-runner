@@ -66,7 +66,7 @@ params:
     mass_acc_ms1: 15  # MS1 (ppm)
 
     # Protein grouping
-    pg_level: 1  # 0=genes, 1=protein names, 2=protein IDs
+    pg_level: 2  # DIA-NN --pg-level: 0=isoform IDs, 1=protein names, 2=genes
 
     # Other
     verbose: 1
