@@ -36,8 +36,8 @@ case "$MODE" in
     ;;
   apprunner)
     # FASTA as staged by setup_integration_test.py:
-    # input/<basename of params.yml's 03_fasta_database_path>.
-    db=$(awk -F': *' '/03_fasta_database_path/{print $2; exit}' params.yml)
+    # input/<basename of params.yml's input_fasta_databases>.
+    db=$(awk -F': *' '/input_fasta_databases/{print $2; exit}' params.yml)
     args=(apprunner
       --raw-dir input/raw
       --dataset input/raw/dataset.parquet

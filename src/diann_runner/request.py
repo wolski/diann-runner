@@ -7,19 +7,21 @@ native files (``params.yml`` / ``sushi_params.tsv``, ``dataset.parquet`` /
 validates it, materializes a normalized work directory, and invokes the bundled
 Snakefile.
 
-``DIANNRunnerParams`` is a Pydantic v2 model whose typed sub-models
-(``DiannParams``, ``FastaParams``) validate the nested structure produced by
-:func:`diann_runner.snakemake_helpers.parse_flat_params`. :meth:`to_parsed`
-reproduces that exact dict so the ``parse_flat_params`` → ``create_diann_workflow``
-→ Snakefile contract is preserved; params are serialized to
-``diann_runner_params.toml`` and read back by the Snakefile (dual-mode: TOML when
-present, else legacy ``params.yml`` parsing).
+``DIANNRunnerParams`` is a Pydantic v2 model whose seven category sub-models
+(``PipelineParams``, ``InputParams``, ``LibParams``, ``SearchParams``,
+``QuantParams``, ``OutputParams``, ``AdvancedParams``) validate the nested
+structure produced by :func:`diann_runner.snakemake_helpers.parse_flat_params`.
+:meth:`to_parsed` reproduces that exact dict so the ``parse_flat_params`` →
+``create_diann_workflow`` → Snakefile contract is preserved; params are serialized
+to ``diann_runner_params.toml`` and read back by the Snakefile (dual-mode: TOML
+when present, else legacy ``params.yml`` parsing).
 
 Serialization notes:
-- ``var_mods`` are ``(unimod_id, mass_delta, residues)`` tuples; ``model_dump(mode="json")``
-  emits them as arrays for TOML and ``model_validate`` coerces them back to tuples.
-- ``mass_acc`` / ``mass_acc_ms1`` / ``scan_window`` are ``int | Literal["AUTO"]``;
-  each concrete value keeps its type natively through TOML.
+- ``var_mods`` (``lib.mods_variable``) are ``(unimod_id, mass_delta, residues)``
+  tuples; ``model_dump(mode="json")`` emits them as arrays for TOML and
+  ``model_validate`` coerces them back to tuples.
+- ``search.mass_acc_ms1`` / ``search.mass_acc_ms2`` / ``quant.scan_window`` are
+  ``int | Literal["AUTO"]``; each concrete value keeps its type natively through TOML.
 """
 
 from __future__ import annotations
@@ -66,53 +68,93 @@ VarMod = tuple[str, str, str]
 IntOrAuto = int | Literal["AUTO"]  # mass_acc / mass_acc_ms1 / scan_window sentinel
 
 
-class DiannParams(BaseModel):
-    """Typed DIA-NN parameters — the ``diann`` sub-dict of parse_flat_params."""
+class PipelineParams(BaseModel):
+    """Pipeline / run-level settings: DIA-NN version, workflow mode, acquisition, converter."""
 
     model_config = ConfigDict(extra="forbid")
 
-    var_mods: list[VarMod] = []
-    no_peptidoforms: bool
-    unimod4: bool
-    met_excision: bool
-    min_pep_len: int
-    max_pep_len: int
-    min_pr_charge: int
-    max_pr_charge: int
-    min_pr_mz: int
-    max_pr_mz: int
-    min_fr_mz: int
-    max_fr_mz: int
-    cut: str
-    missed_cleavages: int
-    mass_acc: IntOrAuto
+    diann_version: str
+    workflow_mode: str
+    is_dda: bool
+    raw_converter: str
+
+
+class InputParams(BaseModel):
+    """Input databases. ``fasta_databases`` is a list — DIA-NN merges multiple ``--fasta``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fasta_databases: list[str] = []
+    fasta_use_custom: bool
+
+
+class LibParams(BaseModel):
+    """Library generation: in-silico digest, peptide/precursor/fragment ranges, modifications."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    digestion_cut: str
+    digestion_missed_cleavages: int
+    peptide_min_length: int
+    peptide_max_length: int
+    precursor_charge_min: int
+    precursor_charge_max: int
+    precursor_mz_min: int
+    precursor_mz_max: int
+    fragment_mz_min: int
+    fragment_mz_max: int
+    mods_variable: list[VarMod] = []
+    mods_unimod4: bool
+    mods_met_excision: bool
+    mods_no_peptidoforms: bool
+
+
+class SearchParams(BaseModel):
+    """Search & scoring: MS1/MS2 mass accuracy (+ per-run), FDR, protein inference."""
+
+    model_config = ConfigDict(extra="forbid")
+
     mass_acc_ms1: IntOrAuto
+    mass_acc_ms2: IntOrAuto
+    mass_acc_unrelated_runs: bool = False
+    scoring_qvalue: float
+    protein_pg_level: int
+    protein_ids_to_names: bool
+
+
+class QuantParams(BaseModel):
+    """Quantification: scan window (feature detection), MBR refinement, normalization."""
+
+    model_config = ConfigDict(extra="forbid")
+
     scan_window: IntOrAuto
-    qvalue: float
-    pg_level: int
-    ids_to_names: bool
     reanalyse: bool
     no_norm: bool
-    export_quant: bool = False
-    unrelated_runs: bool = False
-    freestyle: list[str] = []
-    verbose: int
-    diann_bin: str
-    is_dda: bool
-    diann_version: str
 
 
-class FastaParams(BaseModel):
-    """Typed FASTA parameters — the ``fasta`` sub-dict of parse_flat_params."""
+class OutputParams(BaseModel):
+    """Output artifacts: fragment-level quantities, spectral libraries, QC report."""
 
     model_config = ConfigDict(extra="forbid")
 
-    database_path: str
-    use_custom_fasta: bool
+    fragment_quant: bool = False
+    include_libs: bool
+    # Default True so normalized TOMLs written before this flag existed still
+    # validate (pmultiqc report on by default); matches param_core's default.
+    pmultiqc: bool = True
+
+
+class AdvancedParams(BaseModel):
+    """Advanced / diagnostic: freestyle passthrough flags, log verbosity."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    freestyle: list[str] = []
+    verbose: int
 
 
 class DIANNRunnerParams(BaseModel):
-    """Normalized DIA-NN parameters — the typed schema of parse_flat_params output.
+    """Normalized DIA-NN parameters — seven category sub-models + internal-only fields.
 
     :meth:`to_parsed` reconstructs the exact nested dict the Snakefile and
     ``create_diann_workflow`` consume; :meth:`to_toml`/:meth:`from_toml` persist
@@ -122,18 +164,18 @@ class DIANNRunnerParams(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    diann: DiannParams
-    fasta: FastaParams
-    # Faithful mirror of parse_flat_params (a dup of diann.var_mods).
-    var_mods: list[VarMod] = []
+    pipeline: PipelineParams
+    inputs: InputParams
+    lib: LibParams
+    search: SearchParams
+    quant: QuantParams
+    output: OutputParams
+    advanced: AdvancedParams
+
+    # Internal-only (no GUI key): the DIA-NN binary, library predictor, optional Step C.
+    diann_bin: str
     library_predictor: str
     enable_step_c: bool
-    workflow_mode: str
-    raw_converter: str
-    include_libs: bool
-    # Default True so normalized TOMLs written before this flag existed still
-    # validate (pmultiqc report on by default); matches param_core's default.
-    generate_pmultiqc: bool = True
 
     # -- construction from / projection to the parse_flat_params() contract --
 

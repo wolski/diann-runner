@@ -1,72 +1,54 @@
-# params.yml - improved structure
-# Top level (registration, params) must be preserved
-# Everything under params: can be restructured!
+# params.yml - B-Fabric flat-key params for a direct `diann-snakemake` local run.
+# Top level (registration, params) must be preserved. Keys under `params:` are the
+# flat B-Fabric XML keys consumed by parse_flat_params() -> build_internal_params().
 
 registration:
   workunit_id: "12345"
   container_id: "67890"
 
 params:
-  # msconvert options for raw file conversion
-  # Docker image is fixed in Snakefile: chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
-  # Only specify msconvert command-line options here
-  msconvert_docker_image: "--mzML --64 --zlib --filter \"peakPicking vendor msLevel=1-\""
+  # Workflow control: run Step C after Step B (false = use Step B outputs directly).
+  enable_step_c: false
 
-  # Workflow control
-  enable_step_c: false  # Set to true to run Step C after Step B
-                        # When false: uses Step B outputs directly (~50% faster)
-                        # When true: runs Step C for additional refinement
-                        # Note: Step C only benefits workflows with different files in B vs C
+  # Pipeline / run setup
+  pipeline_is_dda: 'false'
+  pipeline_workflow_mode: two_step
+  pipeline_raw_converter: thermoraw
 
-  # FASTA configuration
-  fasta:
-    database_path: "ProteoBenchFASTA_MixedSpecies_HYE.fasta"
-    use_custom_fasta: false  # If true, also use order.fasta from working dir
+  # Input FASTA
+  input_fasta_databases: ProteoBenchFASTA_MixedSpecies_HYE.fasta
+  input_fasta_additional: None
+  input_fasta_use_custom: 'false'
 
-  # DIA-NN parameters matching DiannWorkflow.__init__
-  diann:
-    # Binary and resources
-    diann_bin: "diann-docker"
-    threads: 12  # Set to match your CPU core count (avoid oversubscription)
+  # Library generation: digestion
+  lib_digestion_cut: K*,R*
+  lib_digestion_missed_cleavages: '1'
 
-    # Data type
-    is_dda: false
+  # Library generation: peptide / precursor / fragment ranges
+  lib_peptide_min_length: '6'
+  lib_peptide_max_length: '30'
+  lib_precursor_charge_min: '2'
+  lib_precursor_charge_max: '3'
+  lib_precursor_mz_min: '400'
+  lib_precursor_mz_max: '1500'
+  lib_fragment_mz_min: '200'
+  lib_fragment_mz_max: '1800'
 
-    # Variable modifications: list of [unimod_id, mass_delta, residues]
-    var_mods:
-      - ["35", "15.994915", "M"]  # Oxidation (Met)
+  # Library generation: modifications
+  lib_mods_variable: --var-mods 1 --var-mod UniMod:35,15.994915,M
+  lib_mods_unimod4: 'true'
+  lib_mods_met_excision: 'true'
+  lib_mods_no_peptidoforms: 'false'
 
-    # Fixed modifications
-    unimod4: true  # Carbamidomethyl (C)
-    met_excision: true
+  # Search & scoring
+  search_mass_acc_ms1: '15'
+  search_mass_acc_ms2: '20'
+  search_scoring_qvalue: '0.01'
+  search_protein_pg_level: 2_genes
 
-    # Peptidoform scoring (default: enabled when var_mods present)
-    # Set to true to disable modification localization (faster but less accurate)
-    no_peptidoforms: false
+  # Quantification
+  quant_reanalyse: 'true'
+  quant_no_norm: 'false'
 
-    # FDR and quality
-    qvalue: 0.01
-
-    # Peptide constraints
-    min_pep_len: 6
-    max_pep_len: 30
-
-    # Precursor constraints
-    min_pr_charge: 2
-    max_pr_charge: 3
-    min_pr_mz: 400
-    max_pr_mz: 1500
-
-    # Digestion
-    cut: "K*,R*"  # Trypsin
-    missed_cleavages: 1
-
-    # Mass accuracy
-    mass_acc: 20  # MS2 (ppm)
-    mass_acc_ms1: 15  # MS1 (ppm)
-
-    # Protein grouping
-    pg_level: 2  # DIA-NN --pg-level: 0=isoform IDs, 1=protein names, 2=genes
-
-    # Other
-    verbose: 1
+  # Advanced
+  advanced_verbose: '1'

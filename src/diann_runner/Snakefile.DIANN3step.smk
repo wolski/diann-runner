@@ -77,18 +77,18 @@ OUTPUT_PREFIX = "out-DIANN"
 
 # Only create globals needed for Snakemake wildcards and conditionals
 ENABLE_STEP_C = WORKFLOW_PARAMS["enable_step_c"]
-DIANN_VERSION = WORKFLOW_PARAMS["diann"]["diann_version"]
-RAW_CONVERTER = WORKFLOW_PARAMS["raw_converter"]
-fasta_config = WORKFLOW_PARAMS["fasta"]  # Alias for fasta parameters used in rules
-# Resolve FASTA path (handles /misc/fasta/... paths that don't exist locally)
-fasta_config["database_path"] = str(resolve_fasta_path(fasta_config["database_path"]))
+DIANN_VERSION = WORKFLOW_PARAMS["pipeline"]["diann_version"]
+RAW_CONVERTER = WORKFLOW_PARAMS["pipeline"]["raw_converter"]
+fasta_config = WORKFLOW_PARAMS["inputs"]  # Alias for FASTA parameters used in rules
+# Resolve FASTA paths (handles /misc/fasta/... paths that don't exist locally)
+fasta_config["fasta_databases"] = [str(resolve_fasta_path(db)) for db in fasta_config["fasta_databases"]]
 # Get all FASTA paths (database + custom order.fasta if enabled)
 # DIA-NN merges multiple --fasta arguments internally
 FASTA_PATHS = get_fasta_paths(fasta_config)
 FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID, ENABLE_STEP_C)
-WORKFLOW_MODE = WORKFLOW_PARAMS.get("workflow_mode", "two_step")
-INCLUDE_LIBS = WORKFLOW_PARAMS.get("include_libs", False)
-GENERATE_PMULTIQC = WORKFLOW_PARAMS.get("generate_pmultiqc", True)
+WORKFLOW_MODE = WORKFLOW_PARAMS["pipeline"]["workflow_mode"]
+INCLUDE_LIBS = WORKFLOW_PARAMS["output"]["include_libs"]
+GENERATE_PMULTIQC = WORKFLOW_PARAMS["output"]["pmultiqc"]
 PMULTIQC_HTML = "pmultiqc_result/pmultiqc_diann_report.html"
 RESULT_INDEX_MD = "index.md"
 RESULT_INDEX_HTML = "index.html"
@@ -160,8 +160,8 @@ rule convert_raw:
     log:
         logfile = "logs/convert_raw_{sample}.log"
     params:
-        converter = WORKFLOW_PARAMS["raw_converter"],
-        image = lambda wildcards: resolve_raw_converter_image(WORKFLOW_PARAMS["raw_converter"], deploy_dict),
+        converter = WORKFLOW_PARAMS["pipeline"]["raw_converter"],
+        image = lambda wildcards: resolve_raw_converter_image(WORKFLOW_PARAMS["pipeline"]["raw_converter"], deploy_dict),
         runtime = deploy_dict["container_runtime"]
     retries: 3
     shell:
@@ -202,7 +202,7 @@ if WORKFLOW_MODE == "single_step":
 
             workflow = create_diann_workflow(
                 WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-                fasta_paths, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+                fasta_paths, WORKFLOW_PARAMS["lib"]["mods_variable"], WORKFLOW_PARAMS,
                 deploy_dict, raw_mount=RAW_MOUNT
             )
 
@@ -259,7 +259,7 @@ else:
             # Initialize workflow with all parameters from WORKFLOW_PARAMS via helper function
             workflow = create_diann_workflow(
                 WORKUNITID, OUTPUT_PREFIX, DIANNTEMP,
-                fasta_paths, WORKFLOW_PARAMS["var_mods"], WORKFLOW_PARAMS["diann"],
+                fasta_paths, WORKFLOW_PARAMS["lib"]["mods_variable"], WORKFLOW_PARAMS,
                 deploy_dict, raw_mount=RAW_MOUNT
             )
 
@@ -559,5 +559,6 @@ rule print_config_dict:
         logfile = "logs/print_config_dict.log"
     run:
         print("Normalized DIA-NN workflow parameters:")
-        for key, value in sorted(WORKFLOW_PARAMS["diann"].items()):
-            print(f"{key}: {value}")
+        for category in ("pipeline", "inputs", "lib", "search", "quant", "output", "advanced"):
+            for key, value in sorted(WORKFLOW_PARAMS[category].items()):
+                print(f"{category}.{key}: {value}")

@@ -13,13 +13,13 @@ app_runner: "fgcz_app_runner"
 
 images:
   docker:
-    # DIA-NN images keyed by 01_diann_version dropdown value.
+    # DIA-NN images keyed by pipeline_diann_version dropdown value.
     diann_images:
       "2.3.2": "diann:2.3.2"
       "2.5.0": "diann:2.5.0"
       "2.5.1": "diann:2.5.1"
       "2.6.0": "diann:2.6.0"
-    # Legacy fallback for old params.yml without 01_diann_version.
+    # Legacy fallback for old params.yml without pipeline_diann_version.
     diann_docker_image: "diann:2.3.2"
     # File conversion images.
     thermoraw_image: "thermorawfileparser:2.0.0"

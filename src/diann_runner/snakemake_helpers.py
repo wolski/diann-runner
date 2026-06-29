@@ -247,54 +247,61 @@ def detect_input_files(raw_dir: Path) -> tuple[list[str], str, dict[str, list[Pa
 # hands them to build_internal_params (the shared transform core in param_core);
 # the value transforms + defaults live there, not here.
 BFABRIC_TO_DRUNNER: dict[str, str] = {
-    "06a_diann_mods_variable": "var_mods",
-    "06b_diann_mods_no_peptidoforms": "no_peptidoforms",
-    "06c_diann_mods_unimod4": "unimod4",
-    "06d_diann_mods_met_excision": "met_excision",
-    "07_diann_peptide_min_length": "min_pep_len",
-    "07_diann_peptide_max_length": "max_pep_len",
-    "07_diann_peptide_precursor_charge_min": "min_pr_charge",
-    "07_diann_peptide_precursor_charge_max": "max_pr_charge",
-    "07_diann_peptide_precursor_mz_min": "min_pr_mz",
-    "07_diann_peptide_precursor_mz_max": "max_pr_mz",
-    "07_diann_peptide_fragment_mz_min": "min_fr_mz",
-    "07_diann_peptide_fragment_mz_max": "max_fr_mz",
-    "08_diann_digestion_cut": "cut",
-    "08_diann_digestion_missed_cleavages": "missed_cleavages",
-    "09_diann_mass_acc_ms2": "mass_acc",
-    "09_diann_mass_acc_ms1": "mass_acc_ms1",
-    "05b_diann_scan_window": "scan_window",
-    "10_diann_scoring_qvalue": "qvalue",
-    "11a_diann_protein_pg_level": "pg_level",
-    "11c_diann_protein_ids_to_names": "ids_to_names",
-    "12a_diann_quantification_reanalyse": "reanalyse",
-    "12b_diann_quantification_no_norm": "no_norm",
-    "12c_diann_quantification_export_quant": "export_quant",
-    "05c_diann_unrelated_runs": "unrelated_runs",
-    "13_diann_freestyle": "freestyle",
-    "99_other_verbose": "verbose",
-    "05_diann_is_dda": "is_dda",
-    "01_diann_version": "diann_version",
-    "02_workflow_mode": "workflow_mode",
-    "97_raw_converter": "raw_converter",
+    "pipeline_diann_version": "diann_version",
+    "pipeline_workflow_mode": "workflow_mode",
+    "pipeline_is_dda": "is_dda",
+    "pipeline_raw_converter": "raw_converter",
+    "lib_digestion_cut": "digestion_cut",
+    "lib_digestion_missed_cleavages": "digestion_missed_cleavages",
+    "lib_peptide_min_length": "peptide_min_length",
+    "lib_peptide_max_length": "peptide_max_length",
+    "lib_precursor_charge_min": "precursor_charge_min",
+    "lib_precursor_charge_max": "precursor_charge_max",
+    "lib_precursor_mz_min": "precursor_mz_min",
+    "lib_precursor_mz_max": "precursor_mz_max",
+    "lib_fragment_mz_min": "fragment_mz_min",
+    "lib_fragment_mz_max": "fragment_mz_max",
+    "lib_mods_variable": "mods_variable",
+    "lib_mods_unimod4": "mods_unimod4",
+    "lib_mods_met_excision": "mods_met_excision",
+    "lib_mods_no_peptidoforms": "mods_no_peptidoforms",
+    "search_mass_acc_ms1": "mass_acc_ms1",
+    "search_mass_acc_ms2": "mass_acc_ms2",
+    "search_mass_acc_unrelated_runs": "mass_acc_unrelated_runs",
+    "search_scoring_qvalue": "scoring_qvalue",
+    "search_protein_pg_level": "protein_pg_level",
+    "search_protein_ids_to_names": "protein_ids_to_names",
+    "quant_scan_window": "scan_window",
+    "quant_reanalyse": "reanalyse",
+    "quant_no_norm": "no_norm",
+    "output_fragment_quant": "fragment_quant",
+    "output_include_libs": "include_libs",
+    "output_pmultiqc": "pmultiqc",
+    "advanced_freestyle": "freestyle",
+    "advanced_verbose": "verbose",
     "library_predictor": "library_predictor",
     "enable_step_c": "enable_step_c",
-    "14_include_libs": "include_libs",
-    "15_generate_pmultiqc": "generate_pmultiqc",
 }
 
 
 def _bfabric_fasta(flat_params: dict) -> dict:
-    """Resolve the B-Fabric FASTA sub-dict (main path, or 03b fallback when NONE)."""
-    fasta_main = flat_params["03_fasta_database_path"]
-    database_path = (
-        flat_params["03b_additional_fasta_database_path"]
+    """Resolve the B-Fabric FASTA selection into the ``inputs`` sub-dict.
+
+    ``fasta_databases`` is list-shaped (DIA-NN merges multiple ``--fasta``), but the
+    B-Fabric executable is single-select: the primary database is the dropdown pick
+    (``input_fasta_databases``), or the freestyle ``input_fasta_additional`` path
+    when the dropdown is ``NONE``. ``fasta_use_custom`` toggles injecting an
+    ``order.fasta`` of per-order custom sequences.
+    """
+    fasta_main = flat_params["input_fasta_databases"]
+    primary = (
+        flat_params["input_fasta_additional"]
         if fasta_main.upper() == "NONE"
         else fasta_main
     )
     return {
-        "database_path": database_path,
-        "use_custom_fasta": flat_params["03_fasta_use_custom"].lower() == "true",
+        "fasta_databases": [primary],
+        "fasta_use_custom": flat_params["input_fasta_use_custom"].lower() == "true",
     }
 
 
@@ -409,7 +416,7 @@ def create_diann_workflow(
     temp_dir_base: str,
     fasta_path: str | list[str],
     var_mods: list,
-    diann_params: dict,
+    params: dict,
     deploy_params: dict,
     raw_mount: tuple[str, str] | None = None,
 ):
@@ -426,7 +433,7 @@ def create_diann_workflow(
         temp_dir_base: Base name for temporary directories
         fasta_path: Path(s) to FASTA database file
         var_mods: List of variable modification tuples
-        diann_params: Dictionary of DIA-NN parameters from parse_flat_params()
+        params: Full nested parameter dict from parse_flat_params() (7 category sub-dicts)
         deploy_params: Dictionary of deployment settings from load_deploy_config()
 
     Returns:
@@ -440,35 +447,36 @@ def create_diann_workflow(
         temp_dir_base=temp_dir_base,
         fasta_file=fasta_path,
         var_mods=var_mods,
-        diann_bin=diann_params["diann_bin"],
-        docker_image=resolve_diann_docker_image(diann_params.get("diann_version"), deploy_params),
+        diann_bin=params["diann_bin"],
+        docker_image=resolve_diann_docker_image(params["pipeline"]["diann_version"], deploy_params),
         container_runtime=deploy_params.get("container_runtime", "docker"),
         threads=deploy_params["threads"],
-        qvalue=diann_params["qvalue"],
-        min_pep_len=diann_params["min_pep_len"],
-        max_pep_len=diann_params["max_pep_len"],
-        min_pr_charge=diann_params["min_pr_charge"],
-        max_pr_charge=diann_params["max_pr_charge"],
-        min_pr_mz=diann_params["min_pr_mz"],
-        max_pr_mz=diann_params["max_pr_mz"],
-        min_fr_mz=diann_params["min_fr_mz"],
-        max_fr_mz=diann_params["max_fr_mz"],
-        missed_cleavages=diann_params["missed_cleavages"],
-        cut=diann_params["cut"],
-        mass_acc=diann_params["mass_acc"],
-        mass_acc_ms1=diann_params["mass_acc_ms1"],
-        scan_window=diann_params["scan_window"],
-        verbose=diann_params["verbose"],
-        pg_level=diann_params["pg_level"],
-        is_dda=diann_params["is_dda"],
-        unimod4=diann_params["unimod4"],
-        met_excision=diann_params["met_excision"],
-        reanalyse=diann_params["reanalyse"],
-        no_norm=diann_params["no_norm"],
-        export_quant=diann_params["export_quant"],
-        unrelated_runs=diann_params["unrelated_runs"],
-        freestyle=diann_params["freestyle"],
-        ids_to_names=diann_params["ids_to_names"],
+        qvalue=params["search"]["scoring_qvalue"],
+        min_pep_len=params["lib"]["peptide_min_length"],
+        max_pep_len=params["lib"]["peptide_max_length"],
+        min_pr_charge=params["lib"]["precursor_charge_min"],
+        max_pr_charge=params["lib"]["precursor_charge_max"],
+        min_pr_mz=params["lib"]["precursor_mz_min"],
+        max_pr_mz=params["lib"]["precursor_mz_max"],
+        min_fr_mz=params["lib"]["fragment_mz_min"],
+        max_fr_mz=params["lib"]["fragment_mz_max"],
+        missed_cleavages=params["lib"]["digestion_missed_cleavages"],
+        cut=params["lib"]["digestion_cut"],
+        mass_acc=params["search"]["mass_acc_ms2"],
+        mass_acc_ms1=params["search"]["mass_acc_ms1"],
+        scan_window=params["quant"]["scan_window"],
+        verbose=params["advanced"]["verbose"],
+        pg_level=params["search"]["protein_pg_level"],
+        is_dda=params["pipeline"]["is_dda"],
+        unimod4=params["lib"]["mods_unimod4"],
+        met_excision=params["lib"]["mods_met_excision"],
+        no_peptidoforms=params["lib"]["mods_no_peptidoforms"],
+        reanalyse=params["quant"]["reanalyse"],
+        no_norm=params["quant"]["no_norm"],
+        export_quant=params["output"]["fragment_quant"],
+        unrelated_runs=params["search"]["mass_acc_unrelated_runs"],
+        freestyle=params["advanced"]["freestyle"],
+        ids_to_names=params["search"]["protein_ids_to_names"],
         raw_mount=raw_mount,
     )
 
@@ -763,7 +771,7 @@ def get_fasta_paths(fasta_config: dict) -> list[str]:
     - Custom FASTA: input/order.fasta
 
     Args:
-        fasta_config: Dict with 'database_path' and 'use_custom_fasta' keys
+        fasta_config: Dict with 'fasta_databases' (list) and 'fasta_use_custom' keys
 
     Returns:
         List of FASTA paths (database first, then custom if enabled)
@@ -775,9 +783,9 @@ def get_fasta_paths(fasta_config: dict) -> list[str]:
     """
     from loguru import logger
 
-    paths = [fasta_config["database_path"]]
+    paths = [fasta_config["fasta_databases"][0]]
 
-    if fasta_config["use_custom_fasta"]:
+    if fasta_config["fasta_use_custom"]:
         order_fasta = Path("input/order.fasta")
         if not order_fasta.exists():
             logger.info("Custom sequences enabled but input/order.fasta is missing — skipping it.")

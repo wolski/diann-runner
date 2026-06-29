@@ -23,31 +23,31 @@ from diann_runner.snakemake_helpers import (
 
 
 BASE_FLAT_PARAMS = {
-    '06a_diann_mods_variable': 'None',
-    '06b_diann_mods_no_peptidoforms': 'false',
-    '06c_diann_mods_unimod4': 'true',
-    '06d_diann_mods_met_excision': 'true',
-    '07_diann_peptide_min_length': '7',
-    '07_diann_peptide_max_length': '30',
-    '07_diann_peptide_precursor_charge_min': '2',
-    '07_diann_peptide_precursor_charge_max': '3',
-    '07_diann_peptide_precursor_mz_min': '400',
-    '07_diann_peptide_precursor_mz_max': '1500',
-    '07_diann_peptide_fragment_mz_min': '200',
-    '07_diann_peptide_fragment_mz_max': '1800',
-    '08_diann_digestion_cut': 'K*,R*',
-    '08_diann_digestion_missed_cleavages': '1',
-    '09_diann_mass_acc_ms2': 'AUTO',
-    '09_diann_mass_acc_ms1': 'AUTO',
-    '10_diann_scoring_qvalue': '0.01',
-    '11a_diann_protein_pg_level': '1_protein_names',
-    '12a_diann_quantification_reanalyse': 'true',
-    '12b_diann_quantification_no_norm': 'false',
-    '12c_diann_quantification_export_quant': 'false',
-    '99_other_verbose': '1',
-    '05_diann_is_dda': 'false',
-    '03_fasta_database_path': '/path/to/fasta',
-    '03_fasta_use_custom': 'false',
+    'lib_mods_variable': 'None',
+    'lib_mods_no_peptidoforms': 'false',
+    'lib_mods_unimod4': 'true',
+    'lib_mods_met_excision': 'true',
+    'lib_peptide_min_length': '7',
+    'lib_peptide_max_length': '30',
+    'lib_precursor_charge_min': '2',
+    'lib_precursor_charge_max': '3',
+    'lib_precursor_mz_min': '400',
+    'lib_precursor_mz_max': '1500',
+    'lib_fragment_mz_min': '200',
+    'lib_fragment_mz_max': '1800',
+    'lib_digestion_cut': 'K*,R*',
+    'lib_digestion_missed_cleavages': '1',
+    'search_mass_acc_ms2': 'AUTO',
+    'search_mass_acc_ms1': 'AUTO',
+    'search_scoring_qvalue': '0.01',
+    'search_protein_pg_level': '1_protein_names',
+    'quant_reanalyse': 'true',
+    'quant_no_norm': 'false',
+    'output_fragment_quant': 'false',
+    'advanced_verbose': '1',
+    'pipeline_is_dda': 'false',
+    'input_fasta_databases': '/path/to/fasta',
+    'input_fasta_use_custom': 'false',
 }
 
 class TestSnakemakeHelpers(unittest.TestCase):
@@ -181,8 +181,8 @@ class TestSnakemakeHelpers(unittest.TestCase):
             os.chdir(tmpdir)
             try:
                 fasta_config = {
-                    "database_path": "input/database.fasta",
-                    "use_custom_fasta": True,
+                    "fasta_databases": ["input/database.fasta"],
+                    "fasta_use_custom": True,
                 }
 
                 # order.fasta missing -> skipped, database FASTA only (no raise)
@@ -204,133 +204,145 @@ class TestSnakemakeHelpers(unittest.TestCase):
 
     def test_parse_scan_window_auto(self):
         flat_params = {
-            '06a_diann_mods_variable': 'None',
-            '06b_diann_mods_no_peptidoforms': 'false',
-            '06c_diann_mods_unimod4': 'true',
-            '06d_diann_mods_met_excision': 'true',
-            '07_diann_peptide_min_length': '7',
-            '07_diann_peptide_max_length': '30',
-            '07_diann_peptide_precursor_charge_min': '2',
-            '07_diann_peptide_precursor_charge_max': '3',
-            '07_diann_peptide_precursor_mz_min': '400',
-            '07_diann_peptide_precursor_mz_max': '1500',
-            '07_diann_peptide_fragment_mz_min': '200',
-            '07_diann_peptide_fragment_mz_max': '1800',
-            '08_diann_digestion_cut': 'K*,R*',
-            '08_diann_digestion_missed_cleavages': '1',
-            '09_diann_mass_acc_ms2': 'AUTO',
-            '09_diann_mass_acc_ms1': 'AUTO',
-            '10_diann_scoring_qvalue': '0.01',
-            '11a_diann_protein_pg_level': '1_protein_names',
-            '12a_diann_quantification_reanalyse': 'true',
-            '12b_diann_quantification_no_norm': 'false',
-            '99_other_verbose': '1',
-            '05_diann_is_dda': 'false',
-            '03_fasta_database_path': '/path/to/fasta',
-            '03_fasta_use_custom': 'false',
-            '05b_diann_scan_window': 'AUTO'
+            'lib_mods_variable': 'None',
+            'lib_mods_no_peptidoforms': 'false',
+            'lib_mods_unimod4': 'true',
+            'lib_mods_met_excision': 'true',
+            'lib_peptide_min_length': '7',
+            'lib_peptide_max_length': '30',
+            'lib_precursor_charge_min': '2',
+            'lib_precursor_charge_max': '3',
+            'lib_precursor_mz_min': '400',
+            'lib_precursor_mz_max': '1500',
+            'lib_fragment_mz_min': '200',
+            'lib_fragment_mz_max': '1800',
+            'lib_digestion_cut': 'K*,R*',
+            'lib_digestion_missed_cleavages': '1',
+            'search_mass_acc_ms2': 'AUTO',
+            'search_mass_acc_ms1': 'AUTO',
+            'search_scoring_qvalue': '0.01',
+            'search_protein_pg_level': '1_protein_names',
+            'quant_reanalyse': 'true',
+            'quant_no_norm': 'false',
+            'advanced_verbose': '1',
+            'pipeline_is_dda': 'false',
+            'input_fasta_databases': '/path/to/fasta',
+            'input_fasta_use_custom': 'false',
+            'quant_scan_window': 'AUTO'
         }
-        
+
         params = parse_flat_params(flat_params)
-        self.assertEqual(params['diann']['scan_window'], 'AUTO')
+        self.assertEqual(params['quant']['scan_window'], 'AUTO')
 
     def test_parse_scan_window_integer(self):
         flat_params = {
-            '06a_diann_mods_variable': 'None',
-            '06b_diann_mods_no_peptidoforms': 'false',
-            '06c_diann_mods_unimod4': 'true',
-            '06d_diann_mods_met_excision': 'true',
-            '07_diann_peptide_min_length': '7',
-            '07_diann_peptide_max_length': '30',
-            '07_diann_peptide_precursor_charge_min': '2',
-            '07_diann_peptide_precursor_charge_max': '3',
-            '07_diann_peptide_precursor_mz_min': '400',
-            '07_diann_peptide_precursor_mz_max': '1500',
-            '07_diann_peptide_fragment_mz_min': '200',
-            '07_diann_peptide_fragment_mz_max': '1800',
-            '08_diann_digestion_cut': 'K*,R*',
-            '08_diann_digestion_missed_cleavages': '1',
-            '09_diann_mass_acc_ms2': 'AUTO',
-            '09_diann_mass_acc_ms1': 'AUTO',
-            '10_diann_scoring_qvalue': '0.01',
-            '11a_diann_protein_pg_level': '1_protein_names',
-            '12a_diann_quantification_reanalyse': 'true',
-            '12b_diann_quantification_no_norm': 'false',
-            '99_other_verbose': '1',
-            '05_diann_is_dda': 'false',
-            '03_fasta_database_path': '/path/to/fasta',
-            '03_fasta_use_custom': 'false',
-            '05b_diann_scan_window': '8'
+            'lib_mods_variable': 'None',
+            'lib_mods_no_peptidoforms': 'false',
+            'lib_mods_unimod4': 'true',
+            'lib_mods_met_excision': 'true',
+            'lib_peptide_min_length': '7',
+            'lib_peptide_max_length': '30',
+            'lib_precursor_charge_min': '2',
+            'lib_precursor_charge_max': '3',
+            'lib_precursor_mz_min': '400',
+            'lib_precursor_mz_max': '1500',
+            'lib_fragment_mz_min': '200',
+            'lib_fragment_mz_max': '1800',
+            'lib_digestion_cut': 'K*,R*',
+            'lib_digestion_missed_cleavages': '1',
+            'search_mass_acc_ms2': 'AUTO',
+            'search_mass_acc_ms1': 'AUTO',
+            'search_scoring_qvalue': '0.01',
+            'search_protein_pg_level': '1_protein_names',
+            'quant_reanalyse': 'true',
+            'quant_no_norm': 'false',
+            'advanced_verbose': '1',
+            'pipeline_is_dda': 'false',
+            'input_fasta_databases': '/path/to/fasta',
+            'input_fasta_use_custom': 'false',
+            'quant_scan_window': '8'
         }
-        
+
         params = parse_flat_params(flat_params)
-        self.assertEqual(params['diann']['scan_window'], 8)
+        self.assertEqual(params['quant']['scan_window'], 8)
 
     def test_parse_diann_version_default(self):
         params = parse_flat_params(dict(BASE_FLAT_PARAMS))
-        self.assertEqual(params['diann']['diann_version'], '2.3.2')
+        self.assertEqual(params['pipeline']['diann_version'], '2.3.2')
 
     def test_parse_diann_bin_is_internal_default(self):
         params = parse_flat_params(dict(BASE_FLAT_PARAMS))
-        self.assertEqual(params['diann']['diann_bin'], 'diann-docker')
+        self.assertEqual(params['diann_bin'], 'diann-docker')
 
     def test_parse_diann_version_explicit(self):
         flat = dict(BASE_FLAT_PARAMS)
-        flat['01_diann_version'] = '2.5.0'
+        flat['pipeline_diann_version'] = '2.5.0'
         params = parse_flat_params(flat)
-        self.assertEqual(params['diann']['diann_version'], '2.5.0')
+        self.assertEqual(params['pipeline']['diann_version'], '2.5.0')
 
     def test_parse_raw_converter_native(self):
         # 'native' = no conversion, DIA-NN reads .raw directly. Renamed from
         # 'NO' so PyYAML doesn't booleanize the XML enum on unquoted load.
         flat = dict(BASE_FLAT_PARAMS)
-        flat['97_raw_converter'] = 'native'
+        flat['pipeline_raw_converter'] = 'native'
         params = parse_flat_params(flat)
-        self.assertEqual(params['raw_converter'], 'native')
+        self.assertEqual(params['pipeline']['raw_converter'], 'native')
 
     def test_parse_flat_params_full_contract(self):
         # Frozen expected output — locks the BFABRIC_TO_DRUNNER + param_core
         # refactor against any future drift in the shared transform core.
         expected = {
-            'diann': {
-                'diann_bin': 'diann-docker',
-                'no_peptidoforms': False,
-                'unimod4': True,
-                'met_excision': True,
-                'min_pep_len': 7,
-                'max_pep_len': 30,
-                'min_pr_charge': 2,
-                'max_pr_charge': 3,
-                'min_pr_mz': 400,
-                'max_pr_mz': 1500,
-                'min_fr_mz': 200,
-                'max_fr_mz': 1800,
-                'cut': 'K*,R*',
-                'missed_cleavages': 1,
-                'mass_acc': 'AUTO',
+            'pipeline': {
+                'diann_version': '2.3.2',
+                'workflow_mode': 'two_step',
+                'is_dda': False,
+                'raw_converter': 'thermoraw',
+            },
+            'inputs': {
+                'fasta_databases': ['/path/to/fasta'],
+                'fasta_use_custom': False,
+            },
+            'lib': {
+                'digestion_cut': 'K*,R*',
+                'digestion_missed_cleavages': 1,
+                'peptide_min_length': 7,
+                'peptide_max_length': 30,
+                'precursor_charge_min': 2,
+                'precursor_charge_max': 3,
+                'precursor_mz_min': 400,
+                'precursor_mz_max': 1500,
+                'fragment_mz_min': 200,
+                'fragment_mz_max': 1800,
+                'mods_variable': [],
+                'mods_unimod4': True,
+                'mods_met_excision': True,
+                'mods_no_peptidoforms': False,
+            },
+            'search': {
                 'mass_acc_ms1': 'AUTO',
+                'mass_acc_ms2': 'AUTO',
+                'mass_acc_unrelated_runs': False,
+                'scoring_qvalue': 0.01,
+                'protein_pg_level': 1,
+                'protein_ids_to_names': False,
+            },
+            'quant': {
                 'scan_window': 'AUTO',
-                'qvalue': 0.01,
-                'pg_level': 1,
-                'ids_to_names': False,
                 'reanalyse': True,
                 'no_norm': False,
-                'export_quant': False,
-                'unrelated_runs': False,
+            },
+            'output': {
+                'fragment_quant': False,
+                'include_libs': False,
+                'pmultiqc': True,
+            },
+            'advanced': {
                 'freestyle': [],
                 'verbose': 1,
-                'is_dda': False,
-                'diann_version': '2.3.2',
-                'var_mods': [],
             },
-            'fasta': {'database_path': '/path/to/fasta', 'use_custom_fasta': False},
-            'var_mods': [],
+            'diann_bin': 'diann-docker',
             'library_predictor': 'diann',
             'enable_step_c': False,
-            'workflow_mode': 'two_step',
-            'raw_converter': 'thermoraw',
-            'include_libs': False,
-            'generate_pmultiqc': True,
         }
         self.assertEqual(parse_flat_params(dict(BASE_FLAT_PARAMS)), expected)
 
@@ -431,36 +443,36 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 self.assertEqual(result, raw_dir / expected)
 
     def test_parse_scan_window_default(self):
-        # Missing scan_window should default to 0
+        # Missing scan_window should default to AUTO
         flat_params = {
-            '06a_diann_mods_variable': 'None',
-            '06b_diann_mods_no_peptidoforms': 'false',
-            '06c_diann_mods_unimod4': 'true',
-            '06d_diann_mods_met_excision': 'true',
-            '07_diann_peptide_min_length': '7',
-            '07_diann_peptide_max_length': '30',
-            '07_diann_peptide_precursor_charge_min': '2',
-            '07_diann_peptide_precursor_charge_max': '3',
-            '07_diann_peptide_precursor_mz_min': '400',
-            '07_diann_peptide_precursor_mz_max': '1500',
-            '07_diann_peptide_fragment_mz_min': '200',
-            '07_diann_peptide_fragment_mz_max': '1800',
-            '08_diann_digestion_cut': 'K*,R*',
-            '08_diann_digestion_missed_cleavages': '1',
-            '09_diann_mass_acc_ms2': 'AUTO',
-            '09_diann_mass_acc_ms1': 'AUTO',
-            '10_diann_scoring_qvalue': '0.01',
-            '11a_diann_protein_pg_level': '1_protein_names',
-            '12a_diann_quantification_reanalyse': 'true',
-            '12b_diann_quantification_no_norm': 'false',
-            '99_other_verbose': '1',
-            '05_diann_is_dda': 'false',
-            '03_fasta_database_path': '/path/to/fasta',
-            '03_fasta_use_custom': 'false',
+            'lib_mods_variable': 'None',
+            'lib_mods_no_peptidoforms': 'false',
+            'lib_mods_unimod4': 'true',
+            'lib_mods_met_excision': 'true',
+            'lib_peptide_min_length': '7',
+            'lib_peptide_max_length': '30',
+            'lib_precursor_charge_min': '2',
+            'lib_precursor_charge_max': '3',
+            'lib_precursor_mz_min': '400',
+            'lib_precursor_mz_max': '1500',
+            'lib_fragment_mz_min': '200',
+            'lib_fragment_mz_max': '1800',
+            'lib_digestion_cut': 'K*,R*',
+            'lib_digestion_missed_cleavages': '1',
+            'search_mass_acc_ms2': 'AUTO',
+            'search_mass_acc_ms1': 'AUTO',
+            'search_scoring_qvalue': '0.01',
+            'search_protein_pg_level': '1_protein_names',
+            'quant_reanalyse': 'true',
+            'quant_no_norm': 'false',
+            'advanced_verbose': '1',
+            'pipeline_is_dda': 'false',
+            'input_fasta_databases': '/path/to/fasta',
+            'input_fasta_use_custom': 'false',
         }
-        
+
         params = parse_flat_params(flat_params)
-        self.assertEqual(params['diann']['scan_window'], 'AUTO')
+        self.assertEqual(params['quant']['scan_window'], 'AUTO')
 
 
 CONFIG_WITH_BOTH_BLOCKS = """\

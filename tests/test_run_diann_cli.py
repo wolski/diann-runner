@@ -21,58 +21,59 @@ from diann_runner.snakemake_helpers import parse_flat_params
 from diann_runner.sushi_adapter import parse_sushi_dataset, parse_sushi_params
 
 FLAT = {
-    "06a_diann_mods_variable": "--var-mods 1 --var-mod UniMod:35,15.994915,M",
-    "06b_diann_mods_no_peptidoforms": "false",
-    "06c_diann_mods_unimod4": "true",
-    "06d_diann_mods_met_excision": "true",
-    "07_diann_peptide_min_length": "6",
-    "07_diann_peptide_max_length": "30",
-    "07_diann_peptide_precursor_charge_min": "2",
-    "07_diann_peptide_precursor_charge_max": "3",
-    "07_diann_peptide_precursor_mz_min": "400",
-    "07_diann_peptide_precursor_mz_max": "1500",
-    "07_diann_peptide_fragment_mz_min": "200",
-    "07_diann_peptide_fragment_mz_max": "1800",
-    "08_diann_digestion_cut": "K*,R*",
-    "08_diann_digestion_missed_cleavages": "1",
-    "09_diann_mass_acc_ms2": "AUTO",
-    "09_diann_mass_acc_ms1": "AUTO",
-    "10_diann_scoring_qvalue": "0.01",
-    "11a_diann_protein_pg_level": "1_protein_names",
-    "12a_diann_quantification_reanalyse": "true",
-    "12b_diann_quantification_no_norm": "false",
-    "99_other_verbose": "1",
-    "05_diann_is_dda": "false",
-    "03_fasta_database_path": "db.fasta",
-    "03_fasta_use_custom": "false",
+    "lib_mods_variable": "--var-mods 1 --var-mod UniMod:35,15.994915,M",
+    "lib_mods_no_peptidoforms": "false",
+    "lib_mods_unimod4": "true",
+    "lib_mods_met_excision": "true",
+    "lib_peptide_min_length": "6",
+    "lib_peptide_max_length": "30",
+    "lib_precursor_charge_min": "2",
+    "lib_precursor_charge_max": "3",
+    "lib_precursor_mz_min": "400",
+    "lib_precursor_mz_max": "1500",
+    "lib_fragment_mz_min": "200",
+    "lib_fragment_mz_max": "1800",
+    "lib_digestion_cut": "K*,R*",
+    "lib_digestion_missed_cleavages": "1",
+    "search_mass_acc_ms2": "AUTO",
+    "search_mass_acc_ms1": "AUTO",
+    "search_scoring_qvalue": "0.01",
+    "search_protein_pg_level": "1_protein_names",
+    "quant_reanalyse": "true",
+    "quant_no_norm": "false",
+    "advanced_verbose": "1",
+    "pipeline_is_dda": "false",
+    "input_fasta_databases": "db.fasta",
+    "input_fasta_additional": "NONE",
+    "input_fasta_use_custom": "false",
 }
 
 # SUSHI readable equivalent of FLAT (same values, readable keys). The SUSHI path
 # carries every DIA-NN field via the GUI dump, so the full set is required — there
 # is no longer a B-Fabric template to fill gaps.
 SUSHI_FULL = {
-    "mods_variable": "--var-mods 1 --var-mod UniMod:35,15.994915,M",
-    "mods_no_peptidoforms": "false",
-    "mods_unimod4": "true",
-    "mods_met_excision": "true",
-    "peptide_min_length": "6",
-    "peptide_max_length": "30",
-    "peptide_precursor_charge_min": "2",
-    "peptide_precursor_charge_max": "3",
-    "peptide_precursor_mz_min": "400",
-    "peptide_precursor_mz_max": "1500",
-    "peptide_fragment_mz_min": "200",
-    "peptide_fragment_mz_max": "1800",
-    "digestion_cut": "K*,R*",
-    "digestion_missed_cleavages": "1",
-    "mass_acc_ms2": "AUTO",
-    "mass_acc_ms1": "AUTO",
-    "scoring_qvalue": "0.01",
-    "protein_pg_level": "1_protein_names",
-    "quantification_reanalyse": "true",
-    "quantification_no_norm": "false",
-    "verbose": "1",
-    "is_dda": "false",
+    "lib_mods_variable": "--var-mods 1 --var-mod UniMod:35,15.994915,M",
+    "lib_mods_no_peptidoforms": "false",
+    "lib_mods_unimod4": "true",
+    "lib_mods_met_excision": "true",
+    "lib_peptide_min_length": "6",
+    "lib_peptide_max_length": "30",
+    "lib_precursor_charge_min": "2",
+    "lib_precursor_charge_max": "3",
+    "lib_precursor_mz_min": "400",
+    "lib_precursor_mz_max": "1500",
+    "lib_fragment_mz_min": "200",
+    "lib_fragment_mz_max": "1800",
+    "lib_digestion_cut": "K*,R*",
+    "lib_digestion_missed_cleavages": "1",
+    "search_mass_acc_ms2": "AUTO",
+    "search_mass_acc_ms1": "AUTO",
+    "search_scoring_qvalue": "0.01",
+    "search_protein_pg_level": "1_protein_names",
+    "quant_reanalyse": "true",
+    "quant_no_norm": "false",
+    "advanced_verbose": "1",
+    "pipeline_is_dda": "false",
 }
 
 
@@ -84,7 +85,7 @@ class TestLoadFlatParams(unittest.TestCase):
             p = Path(t) / "params.yml"
             p.write_text(yaml.safe_dump({"params": FLAT, "registration": {"workunit_id": "5", "container_id": "9"}}))
             flat, reg = _load_flat_params(p)
-            self.assertEqual(flat["10_diann_scoring_qvalue"], "0.01")
+            self.assertEqual(flat["search_scoring_qvalue"], "0.01")
             self.assertEqual(reg["workunit_id"], "5")
 
     def test_bare_flat_mapping(self):
@@ -92,7 +93,7 @@ class TestLoadFlatParams(unittest.TestCase):
             p = Path(t) / "params.yml"
             p.write_text(yaml.safe_dump(FLAT))
             flat, reg = _load_flat_params(p)
-            self.assertEqual(flat["08_diann_digestion_cut"], "K*,R*")
+            self.assertEqual(flat["lib_digestion_cut"], "K*,R*")
             self.assertEqual(reg, {})
 
 
@@ -108,53 +109,56 @@ class TestParseSushiParams(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             p = self._write(
                 Path(t),
-                quantification_no_norm="true",       # override template 'false'
-                peptide_min_length="8",              # override template '6'
+                quant_no_norm="true",                # override template 'false'
+                lib_peptide_min_length="8",          # override template '6'
                 dataRoot="/srv/gstore/projects",
             )
             wf, fastas, data_root = parse_sushi_params(p)
-            self.assertTrue(wf["diann"]["no_norm"])
-            self.assertEqual(wf["diann"]["min_pep_len"], 8)
+            self.assertTrue(wf["quant"]["no_norm"])
+            self.assertEqual(wf["lib"]["peptide_min_length"], 8)
             self.assertEqual(data_root, "/srv/gstore/projects")
             self.assertEqual(fastas, [])
 
     def test_fasta_databases_split_into_list(self):
         with tempfile.TemporaryDirectory() as t:
-            p = self._write(Path(t), fasta_databases="/db/a.fasta,/db/b.fasta")
+            p = self._write(Path(t), input_fasta_databases="/db/a.fasta,/db/b.fasta")
             _, fastas, _ = parse_sushi_params(p)
             self.assertEqual(fastas, [Path("/db/a.fasta"), Path("/db/b.fasta")])
 
     def test_matches_apprunner_for_equivalent_keys(self):
         """SUSHI_TO_DRUNNER and BFABRIC_TO_DRUNNER converge on identical internal
         params without sharing any key vocabulary. SUSHI_FULL mirrors FLAT, so the
-        nested `diann` dicts must be byte-identical (regression net against drift)."""
+        nested category dicts must be byte-identical (regression net against drift).
+        Only `inputs` differs — FASTA selection is caller-specific (SUSHI carries it
+        out-of-band, B-Fabric in the flat keys) — so it is compared separately."""
         with tempfile.TemporaryDirectory() as t:
             su_wf, _, _ = parse_sushi_params(self._write(Path(t)))
             ar_wf = parse_flat_params(dict(FLAT))
-            self.assertEqual(su_wf["diann"], ar_wf["diann"])
             for key in (
-                "var_mods",
-                "workflow_mode",
-                "raw_converter",
+                "pipeline",
+                "lib",
+                "search",
+                "quant",
+                "output",
+                "advanced",
+                "diann_bin",
                 "library_predictor",
                 "enable_step_c",
-                "include_libs",
-                "generate_pmultiqc",
             ):
                 self.assertEqual(su_wf[key], ar_wf[key])
 
     def test_defaults_for_optional_keys(self):
         with tempfile.TemporaryDirectory() as t:
             wf, _, _ = parse_sushi_params(self._write(Path(t)))
-            self.assertEqual(wf["diann"]["scan_window"], "AUTO")
-            self.assertEqual(wf["diann"]["diann_version"], "2.3.2")
-            self.assertIs(wf["diann"]["ids_to_names"], False)
-            self.assertEqual(wf["workflow_mode"], "two_step")
-            self.assertEqual(wf["raw_converter"], "thermoraw")
+            self.assertEqual(wf["quant"]["scan_window"], "AUTO")
+            self.assertEqual(wf["pipeline"]["diann_version"], "2.3.2")
+            self.assertIs(wf["search"]["protein_ids_to_names"], False)
+            self.assertEqual(wf["pipeline"]["workflow_mode"], "two_step")
+            self.assertEqual(wf["pipeline"]["raw_converter"], "thermoraw")
             self.assertEqual(wf["library_predictor"], "diann")
             self.assertIs(wf["enable_step_c"], False)
-            self.assertIs(wf["include_libs"], False)
-            self.assertIs(wf["generate_pmultiqc"], True)
+            self.assertIs(wf["output"]["include_libs"], False)
+            self.assertIs(wf["output"]["pmultiqc"], True)
 
     def test_enable_step_c_override(self):
         with tempfile.TemporaryDirectory() as t:
@@ -164,23 +168,28 @@ class TestParseSushiParams(unittest.TestCase):
     def test_hardcoded_invariants(self):
         with tempfile.TemporaryDirectory() as t:
             wf, _, _ = parse_sushi_params(self._write(Path(t)))
-            self.assertEqual(wf["diann"]["diann_bin"], "diann-docker")
-            self.assertEqual(wf["fasta"], {"database_path": "NONE", "use_custom_fasta": False})
+            self.assertEqual(wf["diann_bin"], "diann-docker")
+            self.assertEqual(wf["inputs"], {"fasta_databases": [], "fasta_use_custom": False})
 
     def test_int_or_auto_and_pg_level_transforms(self):
         with tempfile.TemporaryDirectory() as t:
             wf, _, _ = parse_sushi_params(
-                self._write(Path(t), scan_window="5", mass_acc_ms2="10", protein_pg_level="2_genes")
+                self._write(
+                    Path(t),
+                    quant_scan_window="5",
+                    search_mass_acc_ms2="10",
+                    search_protein_pg_level="2_genes",
+                )
             )
-            self.assertEqual(wf["diann"]["scan_window"], 5)
-            self.assertEqual(wf["diann"]["mass_acc"], 10)
-            self.assertEqual(wf["diann"]["pg_level"], 2)
+            self.assertEqual(wf["quant"]["scan_window"], 5)
+            self.assertEqual(wf["search"]["mass_acc_ms2"], 10)
+            self.assertEqual(wf["search"]["protein_pg_level"], 2)
 
     def test_missing_required_key_raises(self):
         with tempfile.TemporaryDirectory() as t:
             p = Path(t) / "sushi_params.yml"
             partial = dict(SUSHI_FULL)
-            del partial["scoring_qvalue"]  # required field, no default
+            del partial["search_scoring_qvalue"]  # required field, no default
             p.write_text(yaml.safe_dump(partial))
             with self.assertRaises(KeyError):
                 parse_sushi_params(p)
@@ -281,13 +290,13 @@ class TestApplyFasta(unittest.TestCase):
         order = Path("/abs/order.fasta")
         result = _apply_fasta(wf, [db, order], Path("work"))
         self.assertEqual(result, [db, order])
-        self.assertEqual(Path(wf["fasta"]["database_path"]).name, "realdb.fasta")
-        self.assertTrue(wf["fasta"]["use_custom_fasta"])
+        self.assertEqual(Path(wf["inputs"]["fasta_databases"][0]).name, "realdb.fasta")
+        self.assertTrue(wf["inputs"]["fasta_use_custom"])
 
     def test_derive_skips_missing_or_empty_order_fasta(self):
         """Custom sequences ON but no staged order.fasta -> derive db only (no phantom path)."""
         wf = parse_flat_params(dict(FLAT))
-        wf["fasta"]["use_custom_fasta"] = True
+        wf["inputs"]["fasta_use_custom"] = True
         with tempfile.TemporaryDirectory() as t:
             work = Path(t)
             (work / "input").mkdir()
@@ -299,7 +308,7 @@ class TestApplyFasta(unittest.TestCase):
 
     def test_derive_includes_nonempty_order_fasta(self):
         wf = parse_flat_params(dict(FLAT))
-        wf["fasta"]["use_custom_fasta"] = True
+        wf["inputs"]["fasta_use_custom"] = True
         with tempfile.TemporaryDirectory() as t:
             work = Path(t)
             (work / "input").mkdir()
@@ -365,7 +374,7 @@ class TestRuntimeFlag(unittest.TestCase):
 
 def _make_sushi_fixture(root: Path) -> dict:
     """Lay out what EzAppDiann hands `run-diann sushi`: a sushi_params.yml (with
-    readable keys + dataRoot + fasta_databases), an input_dataset.tsv with
+    readable keys + dataRoot + input_fasta_databases), an input_dataset.tsv with
     dataRoot-relative raw paths, and the actual raw files under dataRoot."""
     gstore = root / "gstore"
     raw = gstore / "p1"
@@ -391,8 +400,8 @@ def _make_sushi_fixture(root: Path) -> dict:
             {
                 **SUSHI_FULL,
                 "dataRoot": str(gstore),
-                "fasta_databases": str(db),
-                "quantification_no_norm": "true",  # readable override
+                "input_fasta_databases": str(db),
+                "quant_no_norm": "true",  # readable override
                 "cores": "8",
             }
         )
@@ -427,7 +436,7 @@ class TestSushiEndToEnd(unittest.TestCase):
 
             # Readable override flowed through SUSHI_TO_DRUNNER → param_core → TOML.
             params = DIANNRunnerParams.from_toml(fx["work"] / "diann_runner_params.toml")
-            self.assertTrue(params.diann.no_norm)
+            self.assertTrue(params.quant.no_norm)
 
             # Dataset normalized + FASTA copied; no raw files copied in.
             ds = pd.read_csv(fx["work"] / "dataset.csv")

@@ -17,34 +17,36 @@ from diann_runner.request import (
 )
 from diann_runner.snakemake_helpers import parse_flat_params
 
-# A representative flat-params dict exercising both the 'AUTO' sentinel
-# (mass_acc) and a concrete int (mass_acc_ms1), plus a variable modification.
+# A representative flat-params dict (new B-Fabric vocabulary) exercising both the
+# 'AUTO' sentinel (search_mass_acc_ms2) and a concrete int (search_mass_acc_ms1),
+# plus a variable modification.
 BASE_FLAT_PARAMS = {
-    "06a_diann_mods_variable": "--var-mods 1 --var-mod UniMod:35,15.994915,M",
-    "06b_diann_mods_no_peptidoforms": "false",
-    "06c_diann_mods_unimod4": "true",
-    "06d_diann_mods_met_excision": "true",
-    "07_diann_peptide_min_length": "6",
-    "07_diann_peptide_max_length": "30",
-    "07_diann_peptide_precursor_charge_min": "2",
-    "07_diann_peptide_precursor_charge_max": "3",
-    "07_diann_peptide_precursor_mz_min": "400",
-    "07_diann_peptide_precursor_mz_max": "1500",
-    "07_diann_peptide_fragment_mz_min": "200",
-    "07_diann_peptide_fragment_mz_max": "1800",
-    "08_diann_digestion_cut": "K*,R*",
-    "08_diann_digestion_missed_cleavages": "1",
-    "09_diann_mass_acc_ms2": "AUTO",
-    "09_diann_mass_acc_ms1": "10",
-    "10_diann_scoring_qvalue": "0.01",
-    "11a_diann_protein_pg_level": "2_genes",
-    "12a_diann_quantification_reanalyse": "true",
-    "12b_diann_quantification_no_norm": "false",
-    "99_other_verbose": "1",
-    "05_diann_is_dda": "false",
-    "05b_diann_scan_window": "AUTO",
-    "03_fasta_database_path": "/data/db.fasta",
-    "03_fasta_use_custom": "false",
+    "lib_mods_variable": "--var-mods 1 --var-mod UniMod:35,15.994915,M",
+    "lib_mods_no_peptidoforms": "false",
+    "lib_mods_unimod4": "true",
+    "lib_mods_met_excision": "true",
+    "lib_peptide_min_length": "6",
+    "lib_peptide_max_length": "30",
+    "lib_precursor_charge_min": "2",
+    "lib_precursor_charge_max": "3",
+    "lib_precursor_mz_min": "400",
+    "lib_precursor_mz_max": "1500",
+    "lib_fragment_mz_min": "200",
+    "lib_fragment_mz_max": "1800",
+    "lib_digestion_cut": "K*,R*",
+    "lib_digestion_missed_cleavages": "1",
+    "search_mass_acc_ms2": "AUTO",
+    "search_mass_acc_ms1": "10",
+    "search_scoring_qvalue": "0.01",
+    "search_protein_pg_level": "2_genes",
+    "quant_reanalyse": "true",
+    "quant_no_norm": "false",
+    "advanced_verbose": "1",
+    "pipeline_is_dda": "false",
+    "quant_scan_window": "AUTO",
+    "input_fasta_databases": "/data/db.fasta",
+    "input_fasta_additional": "NONE",
+    "input_fasta_use_custom": "false",
 }
 
 
@@ -78,16 +80,16 @@ class TestParamsRoundTrip(unittest.TestCase):
             path = Path(tmp) / "p.toml"
             params.to_toml(path)
             restored = DIANNRunnerParams.from_toml(path).to_parsed()
-        self.assertEqual(restored["diann"]["mass_acc"], "AUTO")
-        self.assertIsInstance(restored["diann"]["mass_acc"], str)
-        self.assertEqual(restored["diann"]["mass_acc_ms1"], 10)
-        self.assertIsInstance(restored["diann"]["mass_acc_ms1"], int)
+        self.assertEqual(restored["search"]["mass_acc_ms2"], "AUTO")
+        self.assertIsInstance(restored["search"]["mass_acc_ms2"], str)
+        self.assertEqual(restored["search"]["mass_acc_ms1"], 10)
+        self.assertIsInstance(restored["search"]["mass_acc_ms1"], int)
 
     def test_var_mods_re_tupled_after_toml(self):
         params = DIANNRunnerParams.from_parsed(self.parsed)
         restored = DIANNRunnerParams.from_toml_dict(params.to_toml_dict())
-        self.assertEqual(restored.var_mods, [("35", "15.994915", "M")])
-        self.assertIsInstance(restored.var_mods[0], tuple)
+        self.assertEqual(restored.lib.mods_variable, [("35", "15.994915", "M")])
+        self.assertIsInstance(restored.lib.mods_variable[0], tuple)
 
 
 class TestParamsValidation(unittest.TestCase):
@@ -100,27 +102,29 @@ class TestParamsValidation(unittest.TestCase):
         DIANNRunnerParams.from_parsed(self.parsed)  # should not raise
 
     def test_auto_sentinel_accepted_for_mass_acc(self):
-        self.parsed["diann"]["mass_acc"] = "AUTO"
-        self.assertEqual(DIANNRunnerParams.from_parsed(self.parsed).diann.mass_acc, "AUTO")
+        self.parsed["search"]["mass_acc_ms2"] = "AUTO"
+        self.assertEqual(
+            DIANNRunnerParams.from_parsed(self.parsed).search.mass_acc_ms2, "AUTO"
+        )
 
     def test_non_int_min_pep_len_rejected(self):
-        self.parsed["diann"]["min_pep_len"] = "not-an-int"
+        self.parsed["lib"]["peptide_min_length"] = "not-an-int"
         with self.assertRaises(ValidationError):
             DIANNRunnerParams.from_parsed(self.parsed)
 
-    def test_unknown_diann_key_rejected(self):
-        self.parsed["diann"]["bogus_param"] = 1
+    def test_unknown_lib_key_rejected(self):
+        self.parsed["lib"]["bogus_param"] = 1
         with self.assertRaises(ValidationError):
             DIANNRunnerParams.from_parsed(self.parsed)
 
     def test_missing_required_key_rejected(self):
-        del self.parsed["diann"]["qvalue"]
+        del self.parsed["search"]["scoring_qvalue"]
         with self.assertRaises(ValidationError):
             DIANNRunnerParams.from_parsed(self.parsed)
 
     def test_bad_auto_string_rejected(self):
         # Only the exact sentinel "AUTO" is allowed alongside int.
-        self.parsed["diann"]["scan_window"] = "MAYBE"
+        self.parsed["quant"]["scan_window"] = "MAYBE"
         with self.assertRaises(ValidationError):
             DIANNRunnerParams.from_parsed(self.parsed)
 

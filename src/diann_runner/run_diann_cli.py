@@ -63,12 +63,12 @@ def _load_flat_params(path: Path) -> tuple[dict, dict]:
 
 
 def _apply_fasta(workflow_params: dict, fastas: list[Path], work_dir: Path) -> list[Path]:
-    """Reconcile the explicit --fasta list with ``workflow_params['fasta']``.
+    """Reconcile the explicit --fasta list with ``workflow_params['inputs']``.
 
     When FASTA paths are given, they are authoritative: the first is the database
-    FASTA, the rest mark custom sequences (use_custom_fasta). When none are given,
+    FASTA, the rest mark custom sequences (fasta_use_custom). When none are given,
     derive the staged locations from the parsed params (input/<name> and, if
-    use_custom_fasta, input/order.fasta) — the AppRunner default where app_runner
+    fasta_use_custom, input/order.fasta) — the AppRunner default where app_runner
     has already staged them. Returns the database_fasta list for the request.
 
     Custom sequences default to ON, so the derived order.fasta is included only
@@ -76,15 +76,21 @@ def _apply_fasta(workflow_params: dict, fastas: list[Path], work_dir: Path) -> l
     never enters database_fasta (which would trip validate_request or stage an
     empty custom FASTA). The Snakefile applies the same skip via get_fasta_paths.
     """
-    fasta_cfg = workflow_params["fasta"]
+    fasta_cfg = workflow_params["inputs"]
     if fastas:
-        fasta_cfg["database_path"] = str(fastas[0])
-        fasta_cfg["use_custom_fasta"] = len(fastas) > 1
+        fasta_cfg["fasta_databases"] = [str(f) for f in fastas]
+        fasta_cfg["fasta_use_custom"] = len(fastas) > 1
         return list(fastas)
 
-    db_name = Path(fasta_cfg["database_path"]).name
+    if not fasta_cfg["fasta_databases"]:
+        raise ValueError(
+            "No FASTA database provided: pass --fasta, or select a FASTA "
+            "(B-Fabric 'input_fasta_databases' dropdown / SUSHI multi-select). "
+            "DIA-NN library search requires at least one FASTA."
+        )
+    db_name = Path(fasta_cfg["fasta_databases"][0]).name
     derived = [work_dir / "input" / db_name]
-    if fasta_cfg.get("use_custom_fasta"):
+    if fasta_cfg["fasta_use_custom"]:
         order_fasta = work_dir / "input" / "order.fasta"
         if order_fasta.is_file() and order_fasta.stat().st_size > 0:
             derived.append(order_fasta)

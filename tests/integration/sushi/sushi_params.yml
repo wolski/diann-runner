@@ -5,41 +5,40 @@
 # SUSHI invocation (tests/.../Proteomics_DIANN_input_685.sh), NOT reverse-
 # engineered from an AppRunner params.yml.
 #
-# fasta_databases + the dataset's raw paths point into ../WU346549/input/ (run
-# `make setup` there to download them, ~9 GB). dataRoot keeps the production
-# value; run.sh overrides it with --data-root <this dir> so the '../WU346549/...'
-# paths resolve against this fixture dir.
+# input_fasta_databases + the dataset's raw paths point into ../WU346549/input/
+# (run `make setup` there to download them, ~9 GB). dataRoot keeps the
+# production value; run.sh overrides it with --data-root <this dir> so the
+# '../WU346549/...' paths resolve against this fixture dir.
 cores: '8'
 process_mode: DATASET
 name: DIANN_v23
-diann_version: '2.5.1'
-order_fasta: 'false'
-fasta_databases: ../WU346549/input/p34486_Proteobench_TripleProteome_20240614.fasta
-workflow_mode: two_step
-is_dda: 'false'
-scan_window: AUTO
-mods_variable: --var-mods 1 --var-mod UniMod:35,15.994915,M
-mods_no_peptidoforms: 'false'
-mods_unimod4: 'true'
-mods_met_excision: 'true'
-peptide_min_length: '6'
-peptide_max_length: '30'
-peptide_precursor_charge_min: '1'
-peptide_precursor_charge_max: '3'
-peptide_precursor_mz_min: '350'
-peptide_precursor_mz_max: '1500'
-peptide_fragment_mz_min: '200'
-peptide_fragment_mz_max: '1800'
-digestion_cut: K*,R*
-digestion_missed_cleavages: '1'
-mass_acc_ms1: AUTO
-mass_acc_ms2: AUTO
-scoring_qvalue: '0.01'
-protein_pg_level: 1_protein_names
-protein_relaxed_prot_inf: 'false'
-quantification_reanalyse: 'true'
-quantification_no_norm: 'false'
-freestyle: 'None'
-raw_converter: thermoraw
-verbose: '1'
+pipeline_diann_version: '2.5.1'
+input_fasta_use_custom: 'false'
+input_fasta_databases: ../WU346549/input/p34486_Proteobench_TripleProteome_20240614.fasta
+pipeline_workflow_mode: two_step
+pipeline_is_dda: 'false'
+quant_scan_window: AUTO
+lib_mods_variable: --var-mods 1 --var-mod UniMod:35,15.994915,M
+lib_mods_no_peptidoforms: 'false'
+lib_mods_unimod4: 'true'
+lib_mods_met_excision: 'true'
+lib_peptide_min_length: '6'
+lib_peptide_max_length: '30'
+lib_precursor_charge_min: '1'
+lib_precursor_charge_max: '3'
+lib_precursor_mz_min: '350'
+lib_precursor_mz_max: '1500'
+lib_fragment_mz_min: '200'
+lib_fragment_mz_max: '1800'
+lib_digestion_cut: K*,R*
+lib_digestion_missed_cleavages: '1'
+search_mass_acc_ms1: AUTO
+search_mass_acc_ms2: AUTO
+search_scoring_qvalue: '0.01'
+search_protein_pg_level: 1_protein_names
+quant_reanalyse: 'true'
+quant_no_norm: 'false'
+advanced_freestyle: 'None'
+pipeline_raw_converter: thermoraw
+advanced_verbose: '1'
 dataRoot: /srv/gstore/projects

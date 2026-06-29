@@ -2,7 +2,7 @@
 build matrix must all agree.
 
 The bfabric XML executable is the single source of truth for the
-``01_diann_version`` dropdown. Every version offered there must have a
+``pipeline_diann_version`` dropdown. Every version offered there must have a
 matching entry in ``images.docker.diann_images`` (and ``images.apptainer``)
 of both shipped defaults files, and the deploy build matrix must cover exactly
 those versions. This test fails loudly if any of them drift apart.
@@ -22,13 +22,13 @@ DEFAULTS_FILES = ("defaults_local.yml", "defaults_server.yml")
 
 
 def xml_version_enumerations() -> set[str]:
-    """Versions offered by the 01_diann_version dropdown in the XML executable."""
+    """Versions offered by the pipeline_diann_version dropdown in the XML executable."""
     tree = ET.parse(XML_PATH)
     for parameter in tree.getroot().iter("parameter"):
         key = parameter.findtext("key")
-        if key == "01_diann_version":
+        if key == "pipeline_diann_version":
             return {e.text for e in parameter.findall("enumeration")}
-    raise AssertionError("No '01_diann_version' parameter found in XML executable")
+    raise AssertionError("No 'pipeline_diann_version' parameter found in XML executable")
 
 
 def diann_image_keys(defaults_filename: str, runtime: str) -> set[str]:
@@ -76,7 +76,7 @@ class TestVersionConsistency(unittest.TestCase):
                     diann_image_keys(defaults_filename, runtime),
                     xml_versions,
                     f"{defaults_filename} images.{runtime}.diann_images keys "
-                    f"must match the 01_diann_version XML enumerations",
+                    f"must match the pipeline_diann_version XML enumerations",
                 )
 
     def test_build_matrix_covers_all_dropdown_versions(self):

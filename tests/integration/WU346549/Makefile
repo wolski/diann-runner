@@ -41,7 +41,7 @@ run: test ## back-compat alias for `test`
 # (params.yml, input/raw/dataset.parquet) + downloads (input/*.fasta,
 # input/raw/*.raw). We don't call `diann-cleanup` — it runs `snakemake
 # --delete-all-output`, which eagerly evaluates every rule's input function and
-# trips resolve_raw_converter_image() when 97_raw_converter resolves to False.
+# trips resolve_raw_converter_image() when pipeline_raw_converter resolves to False.
 clean: ## remove generated outputs; keep raws/FASTA/fixtures
 	rm -rf .snakemake logs qc_result pmultiqc_input pmultiqc_result \
 	       out-DIANN_libA out-DIANN_quantB out-DIANN_quantC \

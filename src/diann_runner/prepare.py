@@ -76,14 +76,14 @@ def _copy_if_needed(src: Path, dst: Path) -> None:
 def _stage_fastas(request: DiannRunRequest, input_dir: Path) -> None:
     """Copy FASTA files into ``input/`` where the Snakefile resolves them.
 
-    The database FASTA is copied to ``input/<database_path name>`` (matching
-    ``resolve_fasta_path``); the optional custom FASTA, when use_custom_fasta is
+    The database FASTA is copied to ``input/<fasta_databases[0] name>`` (matching
+    ``resolve_fasta_path``); the optional custom FASTA, when fasta_use_custom is
     set, is copied to ``input/order.fasta`` (matching ``get_fasta_paths``).
     """
-    fasta = request.params.fasta
-    db_name = Path(fasta.database_path).name
+    inputs = request.params.inputs
+    db_name = Path(inputs.fasta_databases[0]).name
     _copy_if_needed(request.database_fasta[0], input_dir / db_name)
-    if fasta.use_custom_fasta and len(request.database_fasta) > 1:
+    if inputs.fasta_use_custom and len(request.database_fasta) > 1:
         _copy_if_needed(request.database_fasta[1], input_dir / "order.fasta")
 
 

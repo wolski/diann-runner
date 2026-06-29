@@ -1,10 +1,10 @@
 """SUSHI input adapters for ``run-diann sushi``.
 
-SUSHI's ``DIANNApp.rb`` emits **readable** param names (``mods_variable``,
-``peptide_min_length``, ``fasta_databases``, ``order_fasta``, …) and an
-``input_dataset.tsv`` with a ``Thermo RAW [File]`` column. Both differ from the
-AppRunner side (B-Fabric XML keys ``06a_diann_*`` and ``dataset.parquet``), so
-the SUSHI path needs its **own** adapters.
+SUSHI's ``DIANNApp.rb`` emits the unified param keys (``lib_mods_variable``,
+``lib_peptide_min_length``, ``input_fasta_databases``, ``input_fasta_use_custom``,
+…) and an ``input_dataset.tsv`` with a ``Thermo RAW [File]`` column. The dataset
+shape differs from the AppRunner side (``dataset.parquet``), so the SUSHI path
+needs its **own** adapters even though both frontends now share one key vocabulary.
 
 This is the ``SUSHI_TO_DRUNNER`` adapter: it maps the SUSHI readable keys
 **directly** onto diann_runner's canonical internal field names (never via the
@@ -38,42 +38,46 @@ from diann_runner.request import (
 # the fields build_internal_params consumes are listed; SUSHI-framework params
 # (cores, mail, name, …) and the FASTA keys are ignored.
 SUSHI_TO_DRUNNER: dict[str, str] = {
-    "diann_version": "diann_version",
-    "workflow_mode": "workflow_mode",
+    "pipeline_diann_version": "diann_version",
+    "pipeline_workflow_mode": "workflow_mode",
+    "pipeline_is_dda": "is_dda",
+    "pipeline_raw_converter": "raw_converter",
+    "lib_digestion_cut": "digestion_cut",
+    "lib_digestion_missed_cleavages": "digestion_missed_cleavages",
+    "lib_peptide_min_length": "peptide_min_length",
+    "lib_peptide_max_length": "peptide_max_length",
+    "lib_precursor_charge_min": "precursor_charge_min",
+    "lib_precursor_charge_max": "precursor_charge_max",
+    "lib_precursor_mz_min": "precursor_mz_min",
+    "lib_precursor_mz_max": "precursor_mz_max",
+    "lib_fragment_mz_min": "fragment_mz_min",
+    "lib_fragment_mz_max": "fragment_mz_max",
+    "lib_mods_variable": "mods_variable",
+    "lib_mods_unimod4": "mods_unimod4",
+    "lib_mods_met_excision": "mods_met_excision",
+    "lib_mods_no_peptidoforms": "mods_no_peptidoforms",
+    "search_mass_acc_ms1": "mass_acc_ms1",
+    "search_mass_acc_ms2": "mass_acc_ms2",
+    "search_mass_acc_unrelated_runs": "mass_acc_unrelated_runs",
+    "search_scoring_qvalue": "scoring_qvalue",
+    "search_protein_pg_level": "protein_pg_level",
+    "search_protein_ids_to_names": "protein_ids_to_names",
+    "quant_scan_window": "scan_window",
+    "quant_reanalyse": "reanalyse",
+    "quant_no_norm": "no_norm",
+    "output_fragment_quant": "fragment_quant",
+    "output_include_libs": "include_libs",
+    "output_pmultiqc": "pmultiqc",
+    "advanced_freestyle": "freestyle",
+    "advanced_verbose": "verbose",
+    # workflow control (no DIA-NN GUI param; not category-prefixed)
     "enable_step_c": "enable_step_c",
-    "is_dda": "is_dda",
-    "scan_window": "scan_window",
-    "unrelated_runs": "unrelated_runs",
-    "freestyle": "freestyle",
-    "mods_variable": "var_mods",
-    "mods_no_peptidoforms": "no_peptidoforms",
-    "mods_unimod4": "unimod4",
-    "mods_met_excision": "met_excision",
-    "peptide_min_length": "min_pep_len",
-    "peptide_max_length": "max_pep_len",
-    "peptide_precursor_charge_min": "min_pr_charge",
-    "peptide_precursor_charge_max": "max_pr_charge",
-    "peptide_precursor_mz_min": "min_pr_mz",
-    "peptide_precursor_mz_max": "max_pr_mz",
-    "peptide_fragment_mz_min": "min_fr_mz",
-    "peptide_fragment_mz_max": "max_fr_mz",
-    "digestion_cut": "cut",
-    "digestion_missed_cleavages": "missed_cleavages",
-    "mass_acc_ms1": "mass_acc_ms1",
-    "mass_acc_ms2": "mass_acc",
-    "scoring_qvalue": "qvalue",
-    "protein_pg_level": "pg_level",
-    "quantification_reanalyse": "reanalyse",
-    "quantification_no_norm": "no_norm",
-    "quantification_export_quant": "export_quant",
-    "raw_converter": "raw_converter",
-    "verbose": "verbose",
 }
 
-# SUSHI selects FASTA out-of-band via `fasta_databases` (-> fasta_paths_from_sushi,
-# the request's fasta list), so the nested `fasta` sub-dict is a placeholder that
-# run_diann_cli._apply_fasta overwrites with the real path before validation.
-_SUSHI_FASTA_PLACEHOLDER = {"database_path": "NONE", "use_custom_fasta": False}
+# SUSHI selects FASTA out-of-band via `input_fasta_databases` (-> fasta_paths_from_sushi,
+# the request's fasta list), so the `inputs` FASTA fields are a placeholder that
+# run_diann_cli._apply_fasta overwrites with the real path list before validation.
+_SUSHI_FASTA_PLACEHOLDER = {"fasta_databases": [], "fasta_use_custom": False}
 
 # SUSHI raw-file column candidates (FGCZ tags + un-suffixed fallbacks), in order.
 SUSHI_RAW_COLUMNS = ("Thermo RAW [File]", "Thermo RAW", "RAW [File]", "RAW")
@@ -99,10 +103,10 @@ def _load_flat(params_file: str | Path) -> dict[str, Any]:
 def fasta_paths_from_sushi(flat: dict[str, Any]) -> list[Path]:
     """Extract the FASTA paths the run should use, from the SUSHI params.
 
-    ``fasta_databases`` is a comma-joined list of paths (the DIANNApp multi-select).
-    ``order_fasta`` is a checkbox today (no path) and is ignored until wired.
+    ``input_fasta_databases`` is a comma-joined list of paths (the DIANNApp multi-select).
+    ``input_fasta_use_custom`` is a checkbox today (no path) and is ignored until wired.
     """
-    raw = flat.get("fasta_databases", "")
+    raw = flat.get("input_fasta_databases", "")
     if _is_unset(raw):
         return []
     return [Path(p.strip()) for p in str(raw).split(",") if not _is_unset(p)]

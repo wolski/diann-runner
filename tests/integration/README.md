@@ -25,7 +25,7 @@ case ships a local `.gitignore` that tracks only those sources.
 The root `dataset.csv` is **not** committed: snakemake's `dataset_csv` rule
 generates it from the committed `dataset.parquet` at run time, so the test
 exercises that rule. (`order.fasta` and `inputs.yml` appear in `tree.txt` but the
-workflow doesn't use them — `03_fasta_use_custom=false`, and `inputs.yml` is an
+workflow doesn't use them — `input_fasta_use_custom=false`, and `inputs.yml` is an
 app-runner artifact — so they aren't committed.)
 
 ```bash

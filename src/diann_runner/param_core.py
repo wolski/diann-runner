@@ -68,14 +68,22 @@ def _pg_level(value: Any) -> int:
     return int(str(value).split("_")[0])
 
 
+def _parse_var_mods(value: Any) -> list[tuple[str, str, str]]:
+    """Variable-modifications string -> list of ``(unimod_id, mass, residues)`` tuples."""
+    return [tuple(m) for m in parse_var_mods_string(value)]
+
+
 @dataclass(frozen=True)
 class FieldSpec:
     """How one canonical field is built: its section, value transform, and default.
 
-    ``section`` is ``"diann"`` (lands in the nested ``diann`` sub-dict) or ``"top"``
-    (a top-level workflow control). ``default`` is the FINAL typed value used when
-    the caller omits the field; ``_MISSING`` means the field is required and a
-    missing value raises ``KeyError`` (fail-fast, per AGENTS.md).
+    ``section`` is the category sub-model the field lands in — one of
+    ``"pipeline" | "inputs" | "lib" | "search" | "quant" | "output" | "advanced"`` —
+    or ``"_internal"`` for the no-GUI bookkeeping fields (``library_predictor``,
+    ``enable_step_c``) that stay top-level on ``DIANNRunnerParams``. ``default`` is
+    the FINAL typed value used when the caller omits the field; ``_MISSING`` means
+    the field is required and a missing value raises ``KeyError`` (fail-fast, per
+    AGENTS.md).
     """
 
     section: str
@@ -83,92 +91,105 @@ class FieldSpec:
     default: Any = _MISSING
 
 
-# Canonical internal field name -> FieldSpec. `default` presence mirrors the
-# historical parse_flat_params behavior exactly: fields it read via flat[...] are
-# REQUIRED here (no default); fields it read via flat.get(..., d) carry default d
-# (as the final typed value). `var_mods` is handled explicitly in
-# build_internal_params (mutable default + top-level mirror), not via this table.
+# Canonical internal field name -> FieldSpec. The canonical name equals the new
+# GUI key with its category prefix stripped (GUI ``lib_precursor_charge_min`` ->
+# canonical ``precursor_charge_min``); ``FieldSpec.section`` carries the category so
+# build_internal_params can route it into the right sub-model. `default` presence
+# mirrors the historical parse_flat_params behavior exactly: required fields have
+# none; optional fields carry the final typed default.
 DIANN_FIELDS: dict[str, FieldSpec] = {
-    # modifications
-    "no_peptidoforms":  FieldSpec("diann", _to_bool),
-    "unimod4":          FieldSpec("diann", _to_bool),
-    "met_excision":     FieldSpec("diann", _to_bool),
-    # peptide constraints
-    "min_pep_len":      FieldSpec("diann", int),
-    "max_pep_len":      FieldSpec("diann", int),
-    "min_pr_charge":    FieldSpec("diann", int),
-    "max_pr_charge":    FieldSpec("diann", int),
-    "min_pr_mz":        FieldSpec("diann", int),
-    "max_pr_mz":        FieldSpec("diann", int),
-    "min_fr_mz":        FieldSpec("diann", int),
-    "max_fr_mz":        FieldSpec("diann", int),
-    # digestion
-    "cut":              FieldSpec("diann", str),
-    "missed_cleavages": FieldSpec("diann", int),
-    # mass accuracy (AUTO sentinel or int ppm)
-    "mass_acc":         FieldSpec("diann", _int_or_auto),
-    "mass_acc_ms1":     FieldSpec("diann", _int_or_auto),
-    "scan_window":      FieldSpec("diann", _int_or_auto, default="AUTO"),
-    # scoring + protein inference
-    "qvalue":           FieldSpec("diann", float),
-    "pg_level":         FieldSpec("diann", _pg_level),
-    "ids_to_names":     FieldSpec("diann", _to_bool, default=False),
+    # pipeline / run setup
+    "diann_version":    FieldSpec("pipeline", str, default="2.3.2"),
+    "workflow_mode":    FieldSpec("pipeline", str, default="two_step"),
+    "is_dda":           FieldSpec("pipeline", _to_bool),
+    "raw_converter":    FieldSpec("pipeline", str, default="thermoraw"),
+    # library generation: digestion
+    "digestion_cut":              FieldSpec("lib", str),
+    "digestion_missed_cleavages": FieldSpec("lib", int),
+    # library generation: peptide / precursor / fragment ranges
+    "peptide_min_length":  FieldSpec("lib", int),
+    "peptide_max_length":  FieldSpec("lib", int),
+    "precursor_charge_min": FieldSpec("lib", int),
+    "precursor_charge_max": FieldSpec("lib", int),
+    "precursor_mz_min":     FieldSpec("lib", int),
+    "precursor_mz_max":     FieldSpec("lib", int),
+    "fragment_mz_min":      FieldSpec("lib", int),
+    "fragment_mz_max":      FieldSpec("lib", int),
+    # library generation: modifications
+    "mods_variable":        FieldSpec("lib", _parse_var_mods, default=[]),
+    "mods_unimod4":         FieldSpec("lib", _to_bool),
+    "mods_met_excision":    FieldSpec("lib", _to_bool),
+    "mods_no_peptidoforms": FieldSpec("lib", _to_bool),
+    # search & scoring: mass accuracy (AUTO sentinel or int ppm) + per-run calibration
+    "mass_acc_ms1":            FieldSpec("search", _int_or_auto),
+    "mass_acc_ms2":            FieldSpec("search", _int_or_auto),
+    # GUI "Unrelated runs" = --individual-mass-acc --individual-windows
+    "mass_acc_unrelated_runs": FieldSpec("search", _to_bool, default=False),
+    # search & scoring: FDR + protein inference
+    "scoring_qvalue":       FieldSpec("search", float),
+    "protein_pg_level":     FieldSpec("search", _pg_level),
+    "protein_ids_to_names": FieldSpec("search", _to_bool, default=False),
     # quantification
-    "reanalyse":        FieldSpec("diann", _to_bool),
-    "no_norm":          FieldSpec("diann", _to_bool),
-    "export_quant":     FieldSpec("diann", _to_bool, default=False),
-    # per-run calibration: GUI "Unrelated runs" = --individual-mass-acc --individual-windows
-    "unrelated_runs":   FieldSpec("diann", _to_bool, default=False),
-    # freestyle passthrough (arbitrary DIA-NN flags, applied to quant steps B/C only)
-    "freestyle":        FieldSpec("diann", _freestyle, default=[]),
-    # other
-    "verbose":          FieldSpec("diann", int),
-    "is_dda":           FieldSpec("diann", _to_bool),
-    "diann_version":    FieldSpec("diann", str, default="2.3.2"),
-    # top-level workflow controls
-    "workflow_mode":     FieldSpec("top", str, default="two_step"),
-    "raw_converter":     FieldSpec("top", str, default="thermoraw"),
-    "library_predictor": FieldSpec("top", str, default="diann"),
-    "enable_step_c":     FieldSpec("top", _to_bool, default=False),
-    "include_libs":      FieldSpec("top", _to_bool, default=False),
-    "generate_pmultiqc": FieldSpec("top", _to_bool, default=True),
+    "scan_window": FieldSpec("quant", _int_or_auto, default="AUTO"),
+    "reanalyse":   FieldSpec("quant", _to_bool),
+    "no_norm":     FieldSpec("quant", _to_bool),
+    # output artifacts
+    "fragment_quant": FieldSpec("output", _to_bool, default=False),
+    "include_libs":   FieldSpec("output", _to_bool, default=False),
+    "pmultiqc":       FieldSpec("output", _to_bool, default=True),
+    # advanced / diagnostic (freestyle = arbitrary DIA-NN flags, quant steps B/C only)
+    "freestyle": FieldSpec("advanced", _freestyle, default=[]),
+    "verbose":   FieldSpec("advanced", int),
+    # internal-only bookkeeping (no GUI key)
+    "library_predictor": FieldSpec("_internal", str, default="diann"),
+    "enable_step_c":     FieldSpec("_internal", _to_bool, default=False),
 }
 
 
 def build_internal_params(canonical: dict[str, Any], *, fasta: dict[str, Any]) -> dict[str, Any]:
-    """Assemble the nested ``parse_flat_params``-shaped param dict from canonical input.
+    """Assemble the seven-category nested ``DIANNRunnerParams`` shape from canonical input.
 
-    ``canonical`` maps canonical internal field names -> raw (string) values; the
-    caller adapter has already translated its own keys onto these names. Each
-    field is transformed per :data:`DIANN_FIELDS`; an omitted field falls back to
-    its default, or raises ``KeyError`` when it has none. ``fasta`` is the
-    caller-resolved ``{database_path, use_custom_fasta}`` sub-dict (FASTA selection
-    is caller-specific, so it is not part of the field table).
+    ``canonical`` maps canonical internal field names (e.g. ``digestion_cut``,
+    ``mass_acc_ms2``) -> raw (string) values; the caller adapter has already
+    translated its own GUI keys onto these names. Each field is transformed per
+    :data:`DIANN_FIELDS` and routed to its category sub-dict; an omitted field
+    falls back to its default, or raises ``KeyError`` when it has none. ``fasta`` is
+    the caller-resolved ``{fasta_databases, fasta_use_custom}`` sub-dict (FASTA
+    selection is caller-specific, so it is not part of the field table) and lands
+    under ``inputs``.
     """
-    diann: dict[str, Any] = {"diann_bin": DIANN_BIN}
-    top: dict[str, Any] = {}
+    categories: dict[str, dict[str, Any]] = {
+        "pipeline": {},
+        "inputs": {},
+        "lib": {},
+        "search": {},
+        "quant": {},
+        "output": {},
+        "advanced": {},
+    }
+    internal: dict[str, Any] = {}
     for name, spec in DIANN_FIELDS.items():
         if name in canonical:
             value = spec.transform(canonical[name])
         elif spec.default is not _MISSING:
-            value = spec.default
+            # Copy mutable (list) defaults so callers never share one object.
+            value = list(spec.default) if isinstance(spec.default, list) else spec.default
         else:
             raise KeyError(f"missing required DIA-NN parameter: {name!r}")
-        (diann if spec.section == "diann" else top)[name] = value
+        if spec.section == "_internal":
+            internal[name] = value
+        else:
+            categories[spec.section][name] = value
 
-    # var_mods: a list of tuples, mirrored at the top level (kept distinct so the
-    # default is a fresh list, never a shared mutable).
-    var_mods = [tuple(m) for m in parse_var_mods_string(canonical.get("var_mods", ""))]
-    diann["var_mods"] = var_mods
+    # FASTA is caller-resolved (B-Fabric single pick + optional additional, SUSHI
+    # multi-select); each frontend hands us a list (length >= 1 in practice).
+    categories["inputs"]["fasta_databases"] = list(fasta["fasta_databases"])
+    categories["inputs"]["fasta_use_custom"] = fasta["fasta_use_custom"]
 
     return {
-        "diann": diann,
-        "fasta": fasta,
-        "var_mods": list(var_mods),
-        "library_predictor": top["library_predictor"],
-        "enable_step_c": top["enable_step_c"],
-        "workflow_mode": top["workflow_mode"],
-        "raw_converter": top["raw_converter"],
-        "include_libs": top["include_libs"],
-        "generate_pmultiqc": top["generate_pmultiqc"],
+        **categories,
+        # internal-only top-level fields (no GUI key)
+        "diann_bin": DIANN_BIN,
+        "library_predictor": internal["library_predictor"],
+        "enable_step_c": internal["enable_step_c"],
     }
