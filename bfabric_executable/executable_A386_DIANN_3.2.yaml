@@ -1,0 +1,527 @@
+executable:
+  name: A386_DIANN_v2.3.0
+  description: Updated executable configuration for DIANN with improved parameter organization and readability. Derived from params.yml structure.
+  program: /home/bfabric/slurmworker/config/A386_DIANN_23/app.yml
+  context: APPLICATION
+  enabled: 'true'
+  parameter:
+  - description: DIA-NN version to use. 2.3.2 is the current production default; 2.6.0 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.
+    context: APPLICATION
+    enumeration:
+    - 2.3.2
+    - 2.5.0
+    - 2.5.1
+    - 2.6.0
+    key: pipeline_diann_version
+    label: DIA-NN Version
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: 2.3.2
+  - description: 'Workflow mode. two_step: separate library prediction (Step A) then quantification (Step B) — standard mode. single_step: combined library prediction + quantification in one DIA-NN invocation — faster for small-to-medium datasets.'
+    context: APPLICATION
+    enumeration:
+    - two_step
+    - single_step
+    key: pipeline_workflow_mode
+    label: Workflow Mode
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: two_step
+  - description: Data acquisition type. Set to true for DDA (Data-Dependent Acquisition), false for DIA (Data-Independent Acquisition).
+    context: APPLICATION
+    key: pipeline_is_dda
+    label: DDA Mode
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: 'Thermo RAW handling. native: no conversion — DIA-NN reads .raw natively (default, fastest). thermoraw: convert to mzML via ThermoRawFileParser. msconvert: standard mzML conversion. msconvert-demultiplex: mzML conversion with demultiplexing for overlapping DIA windows (multiplexed acquisition).'
+    context: APPLICATION
+    enumeration:
+    - native
+    - thermoraw
+    - msconvert
+    - msconvert-demultiplex
+    key: pipeline_raw_converter
+    label: RAW File Converter
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: native
+  - description: FASTA database file for protein inference and library generation. Only forward sequences and contaminants included.
+    context: APPLICATION
+    enumeration:
+    - /misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta
+    - /misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta
+    - /misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta
+    - /misc/fasta/fgcz_9606_reviewed_cnl_20230330.fasta
+    - /misc/fasta/fgcz_9606_UP000005640_20230824.fasta
+    - /misc/fasta/fgcz_9606_1spg_20230330.fasta
+    - /misc/fasta/fgcz_10090_1spg_20230405.fasta
+    - /misc/fasta/fgcz_10090_UP000000589_Musm_1spg_20241112.fasta
+    - /misc/fasta/fgcz_10090_UP000000589_20240130.fasta
+    - /misc/fasta/fgcz_7227_1spg_20230515.fasta
+    - /misc/fasta/fgcz_7955_1spg_20230515.fasta
+    - /misc/fasta/fgcz_83333_EcoliK12_20230516.fasta
+    - /misc/fasta/fgcz_208964_PAO1_UP000002438_20240627.fasta
+    - /misc/fasta/fgcz_8355_UP000186698_Xenopus_20240502.fasta
+    - /misc/fasta/fgcz_4932_UP000002311_yeast_20250325.fasta
+    - /misc/fasta/fgcz_4932_ensembl_R64_1_1_20171115.fasta
+    - /misc/fasta/fgcz_5076_UP000076449_Penicillium_20240320.fasta
+    - /misc/fasta/fgcz_6239_1spg_20230516.fasta
+    - /misc/fasta/fgcz_6239_UP000001940_20230516.fasta
+    - /misc/fasta/fgcz_3702_AraUniprot_1spg_20230811.fasta
+    - /misc/fasta/fgcz_3702_AraUniprot_cnl_20230811.fasta
+    - /misc/fasta/fgcz_9031_UP000000539_gallus_1spg_20231130.fasta
+    - /misc/fasta/fgcz_9986_1spg_rabbit_20230615.fasta
+    - /misc/fasta/fgcz_10116_1spg_rat_20240418.fasta
+    - /misc/fasta/fgcz_246196_UP000000757_20230921.fasta
+    - /misc/fasta/fgcz_9913_UP000009136_bos_taurus_spg_20240711.fasta
+    - /misc/fasta/fgcz_swissprot_20230328.fasta
+    - /misc/fasta/fgcz_tripleProteome_HYC_1SpG_20230609.fasta
+    - /misc/fasta/fgcz_twoProteome_HY_1SpG_20230609.fasta
+    - /misc/fasta/fgcz_507601_UP000005641_ToxoplGond_20241112.fasta
+    - /misc/fasta/fgcz_9823_UP000008227_1spg_pig_20231017.fasta
+    - /misc/fasta/fgcz_9823_UP000008227_susScorfa_1spg_20241113.fasta
+    - /misc/fasta/fgcz_60711_UP000029965_greenMonkey_20251203.fasta
+    - /misc/fasta/Homo_sapiens.GRCh38.pep.all.fasta
+    - /misc/fasta/p1511_db3_20180323.fasta
+    - /misc/fasta/p3000_tripleProt_HYE_large_20230714.fasta
+    - /misc/fasta/p3000_tripleProt_HYE_large_20230714.fasta
+    - /misc/fasta/p3000_UP000005640_9606_I2L_entrapment.fasta
+    - /misc/fasta/p3000_UP000005640_9606_1-fold_peptide-level_entrapment.fasta
+    - /misc/fasta/p3404_db5_SA_JE2_modNmoreTranslations_20221124.fasta
+    - /misc/fasta/p3404_db5_SA_6850_modNmoreTranslations_20221124.fasta
+    - /misc/fasta/p3404_SA6850_2024_Genbank_20240816.fasta
+    - /misc/fasta/p3404_SA6850_2024_REFSEQ_20240816.fasta
+    - /misc/fasta/p3404_SAreference_UP000008816_93061_20240830.fasta
+    - /misc/fasta/p3234_db1_ensemblPlants_20230426.fasta
+    - /misc/fasta/p23580_db3_CCCannotated_20230405.fasta
+    - /misc/fasta/p24227_canislupus_UP000002254_9615_20230511.fasta
+    - /misc/fasta/p27160_eHOMD2022_9606_cont_20220131.fasta
+    - /misc/fasta/p27865_db1_threeColis_20230831.fasta
+    - /misc/fasta/p28488_db1_orcaNdwnSzdUniref100_20220610.fasta
+    - /misc/fasta/p30301_db2_ZE04MAR21_20230927.fasta
+    - /misc/fasta/p30301_db3_ZE04JUN21_20230927.fasta
+    - /misc/fasta/p30301_db4_concatDB2nDB3.fasta
+    - /misc/fasta/o30380_db_1_UP000031872_UP000001811_cont_IDs_43743.fasta
+    - /misc/fasta/p30335_db1_PfalciNhuman_20230329.fasta
+    - /misc/fasta/p30383_db1_Pfalciparum3D7_20230112.fasta
+    - /misc/fasta/p30604_dbUP29799nUP268571_nr_20241120.fasta
+    - /misc/fasta/p31434_db2_20230706.fasta
+    - /misc/fasta/p31434_db2_20230706.fasta
+    - /misc/fasta/p31540_db1_NCBI_20230622.fasta
+    - /misc/fasta/p31540_db2_Uniref100_n_NCBI_noDubs_20231025.fasta
+    - /misc/fasta/p31540_db3_Uniref100_n_NCBI_wDescriptionNoDubsCut60_20231031.fasta
+    - /misc/fasta/p31573_db2_IsoF_20240605.fasta
+    - /misc/fasta/p32331_fgcz_9606_1spg_20230330_n_taxId_364106_20230814.fasta
+    - /misc/fasta/p32624_UP000009136_UP000002032_db1_20230905.fasta
+    - /misc/fasta/p32750_db1_MEcoli_ref_1_proteome_fixed_20231004.fasta
+    - /misc/fasta/p32750_db2_MEcoli_ref_2_proteome_fixed_20231004.fasta
+    - /misc/fasta/p32750_db3_MEvo1_0_proteome_fixed_20231004.fasta
+    - /misc/fasta/p32808_db1_HaloBor_20230914.fasta
+    - /misc/fasta/p33333_db1_UP001300_20231207.fasta
+    - /misc/fasta/p33430_db1_UP000001014_SalmonellaTyphimurium_20240322.fasta
+    - /misc/fasta/p34124_UP000002296_Trypanosoma_20240207.fasta
+    - /misc/fasta/o34326_db1_20240229.fasta
+    - /misc/fasta/p34435_db1_UPkb_taxID_388413_20240405.fasta
+    - /misc/fasta/p35159_UP000008524_Trypanosomabb_db1_20240517.fasta
+    - /misc/fasta/o34855_96061spg_n_83333EcoliK12_20240613.fasta
+    - /misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta
+    - /misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta
+    - /misc/fasta/p35425_db1_Falocis_20240816.fasta
+    - /misc/fasta/p35425_db2_Falocis_UP000007468_546269_20240816.fasta
+    - /misc/fasta/p34548_SpringBloom2021_95MagSpeciesDB_15JUL24_20240726.fasta
+    - /misc/fasta/p33688_db1_UP000005640_9606_20241015.fasta
+    - /misc/fasta/p33688_db2_uniprotkb_UP000005640_20241015.fasta
+    - /misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta
+    - /misc/fasta/p35134_db1_TripleProteome_HYE_20240918.fasta
+    - /misc/fasta/p35134_db1_TripleProteome_HYE_20241112.fasta
+    - /misc/fasta/p35425_db3_Falocis_db1n2_20241023.fasta
+    - /misc/fasta/p36020_db2_MultispeciesNWheat_20240823.fasta
+    - /misc/fasta/p36096_SA6850_db1_wPseudogenes_20241114.fasta
+    - /misc/fasta/p36156_db1_UP000002204_RhodococcusE_20240903.fasta
+    - /misc/fasta/p36156_db2_UP000197050_BrevundimonasV_20240903.fasta
+    - /misc/fasta/p36156_db3_ncbi_RhodococcusE_20241018.fasta
+    - /misc/fasta/p36156_db4_ncbi_BrevundimonasV_20241018.fasta
+    - /misc/fasta/p36156_db4_ncbi_BrevundimonasV_20241018.fasta
+    - /misc/fasta/p36249_db1_pioneer_20250224.fasta
+    - /misc/fasta/o36989_humanbgsNmetaPrXDB_Colon_epicXS_20250521.fasta
+    - /misc/fasta/p37616_db1_Tenacibaculum_UP000231564_20250305.fasta
+    - /misc/fasta/p38815_db6_DAFplusFernDB_upLike_20260130.fasta
+    - /misc/fasta/p38902_db3_BoaNReptaVir_20251209.fasta
+    - /misc/fasta/p39218_db1_20260127.fasta
+    - NONE
+    key: input_fasta_databases
+    label: FASTA Database
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: /misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta
+  - description: fasta path from storage folder (FASTA Database parameter must be NONE)
+    context: APPLICATION
+    key: input_fasta_additional
+    label: Freestyle FastaPath
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: None
+  - description: 'If true, inject additional FASTA sequences from order.fasta in working directory (custom sequences for specific experiments). Safe to leave on: when the order has no custom sequences the (empty) order.fasta is skipped and only the database FASTA is used.'
+    context: APPLICATION
+    key: input_fasta_use_custom
+    label: Add Custom Sequences
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'true'
+  - description: 'Enzyme cleavage specificity. Default: K*,R* (Trypsin). Format: [residue]*,[residue]* where * indicates cleavage after residue. DIA-NN command: --cut'
+    context: APPLICATION
+    enumeration:
+    - K*,R*
+    - K*,R*,!*P
+    key: lib_digestion_cut
+    label: Enzyme Cut Sites
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: K*,R*
+  - description: 'Maximum number of missed cleavages allowed during in silico digestion. DIA-NN command: --missed-cleavages'
+    context: APPLICATION
+    enumeration:
+    - '0'
+    - '1'
+    - '2'
+    key: lib_digestion_missed_cleavages
+    label: Missed Cleavages
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '1'
+  - description: 'Minimum peptide length (amino acids) for library generation and search. DIA-NN command: --min-pep-len'
+    context: APPLICATION
+    enumeration:
+    - '6'
+    - '7'
+    key: lib_peptide_min_length
+    label: Min Peptide Length
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '6'
+  - description: 'Maximum peptide length (amino acids) for library generation and search. DIA-NN command: --max-pep-len'
+    context: APPLICATION
+    enumeration:
+    - '30'
+    - '40'
+    key: lib_peptide_max_length
+    label: Max Peptide Length
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '30'
+  - description: 'Minimum precursor charge for in silico library generation or library-free search. DIA-NN command: --min-pr-charge'
+    context: APPLICATION
+    enumeration:
+    - '1'
+    - '2'
+    key: lib_precursor_charge_min
+    label: Min Precursor Charge
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '1'
+  - description: 'Maximum precursor charge for in silico library generation or library-free search. DIA-NN command: --max-pr-charge'
+    context: APPLICATION
+    enumeration:
+    - '3'
+    - '4'
+    - '5'
+    key: lib_precursor_charge_max
+    label: Max Precursor Charge
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '4'
+  - description: 'Minimum precursor m/z for in silico library generation or library-free search. DIA-NN command: --min-pr-mz'
+    context: APPLICATION
+    enumeration:
+    - '350'
+    - '400'
+    key: lib_precursor_mz_min
+    label: Min Precursor m/z
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '400'
+  - description: 'Maximum precursor m/z for in silico library generation or library-free search. DIA-NN command: --max-pr-mz'
+    context: APPLICATION
+    enumeration:
+    - '1050'
+    - '1500'
+    key: lib_precursor_mz_max
+    label: Max Precursor m/z
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '1500'
+  - description: 'Minimum fragment m/z for spectral library and search. DIA-NN command: --min-fr-mz'
+    context: APPLICATION
+    enumeration:
+    - '100'
+    - '150'
+    - '200'
+    key: lib_fragment_mz_min
+    label: Min Fragment m/z
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '200'
+  - description: 'Maximum fragment m/z for spectral library and search. DIA-NN command: --max-fr-mz'
+    context: APPLICATION
+    enumeration:
+    - '1500'
+    - '1800'
+    - '2000'
+    key: lib_fragment_mz_max
+    label: Max Fragment m/z
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '1800'
+  - description: 'Variable modifications: format is --var-mods [count] --var-mod UniMod:[id],[mass],[sites]. Note: UniMod:21 (Phospho), UniMod:1 (Acetyl), UniMod:121 (DiGly) have PTM scoring enabled by default. Use --monitor-mod for other PTMs. DIA-NN commands: --var-mods, --var-mod, --monitor-mod'
+    context: APPLICATION
+    enumeration:
+    - --var-mods 1 --var-mod UniMod:35,15.994915,M
+    - --var-mods 2 --var-mod UniMod:35,15.994915,M
+    - --var-mods 1 --var-mod UniMod:21,79.966331,STY
+    - --var-mods 2 --var-mod UniMod:21,79.966331,STY
+    - --var-mods 3 --var-mod UniMod:21,79.966331,STY
+    - --var-mods 2 --var-mod UniMod:21,79.966331,STY --var-mod UniMod:35,15.994915,M
+    - --var-mods 1 --var-mod UniMod:121,114.042927,K
+    - --var-mods 2 --var-mod UniMod:35,15.994915,M --var-mod UniMod:121,114.042927,K
+    - --var-mods 1 --var-mod UniMod:7,0.984016,NQ --monitor-mod UniMod:7
+    - None
+    key: lib_mods_variable
+    label: Variable Modifications
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: --var-mods 1 --var-mod UniMod:35,15.994915,M
+  - description: 'Enable UniMod:4 (Carbamidomethyl on Cysteine) as fixed modification. Standard for alkylated samples. DIA-NN command: --unimod4'
+    context: APPLICATION
+    key: lib_mods_unimod4
+    label: Carbamidomethyl (C)
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'true'
+  - description: 'Enable methionine excision (N-terminal Met removal). Common post-translational modification. DIA-NN command: --met-excision'
+    context: APPLICATION
+    key: lib_mods_met_excision
+    label: Met Excision
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'true'
+  - description: 'Disable peptidoform scoring (modification localization). Set to true to disable for faster but less accurate modification site assignment. DIA-NN command: --no-peptidoforms'
+    context: APPLICATION
+    key: lib_mods_no_peptidoforms
+    label: Disable Peptidoforms
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: 'Recommended DIA-NN mass accuracy for Bruker timsTOF (read-only). Source: github.com/vdemichev/DiaNN'
+    context: APPLICATION
+    key: search_mass_acc_hint_timstof
+    label: Rec. mass acc - timsTOF
+    modifiable: 'false'
+    required: 'true'
+    type: STRING
+    value: MS1 = 15, MS2 = 15
+  - description: 'Recommended DIA-NN mass accuracy for Orbitrap / Astral (read-only). Source: github.com/vdemichev/DiaNN'
+    context: APPLICATION
+    key: search_mass_acc_hint_orbitrap
+    label: Rec. mass acc - Orbitrap
+    modifiable: 'false'
+    required: 'true'
+    type: STRING
+    value: 'By MS2 resolution: 240k=4, 120k=7, 60k=10, 30k=15. Astral: MS1=4, MS2=10. Set MS1 similar or tighter.'
+  - description: 'Recommended DIA-NN mass accuracy for SCIEX TripleTOF 6600 / ZenoTOF (read-only). Source: github.com/vdemichev/DiaNN'
+    context: APPLICATION
+    key: search_mass_acc_hint_tof
+    label: Rec. mass acc - TripleTOF/ZenoTOF
+    modifiable: 'false'
+    required: 'true'
+    type: STRING
+    value: MS1 = 20, MS2 = 20
+  - description: 'When to leave MS1/MS2 = AUTO (read-only). Source: github.com/vdemichev/DiaNN'
+    context: APPLICATION
+    key: search_mass_acc_hint_auto
+    label: Rec. mass acc - use AUTO when
+    modifiable: 'false'
+    required: 'true'
+    type: STRING
+    value: Exploratory/unknown instrument only. DIA-NN tunes from the FIRST run (noisy, order-dependent). Fix MS1/MS2 to the values above for final/large studies.
+  - description: 'MS1 (precursor) mass accuracy in ppm. Lower values are more stringent. DIA-NN command: --mass-acc-ms1'
+    context: APPLICATION
+    enumeration:
+    - '4'
+    - '5'
+    - '7'
+    - '10'
+    - '15'
+    - '20'
+    - AUTO
+    key: search_mass_acc_ms1
+    label: MS1 Mass Accuracy (ppm)
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: AUTO
+  - description: 'MS2 (fragment) mass accuracy in ppm. Lower values are more stringent. DIA-NN command: --mass-acc'
+    context: APPLICATION
+    enumeration:
+    - '4'
+    - '5'
+    - '7'
+    - '10'
+    - '15'
+    - '20'
+    - AUTO
+    key: search_mass_acc_ms2
+    label: MS2 Mass Accuracy (ppm)
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: AUTO
+  - description: 'Treat runs as unrelated: mass accuracy (when automatic) and the retention time scan window are determined separately for each run, instead of being taken from the first run. Meaningful mainly when MS1/MS2 Mass Accuracy and Scan Window are AUTO; fixed values override the automatic tuning. If Reanalyse (MBR) is enabled, the runner also emits --mbr-fix-settings to keep the second MBR pass on shared settings. DIA-NN command: --individual-mass-acc --individual-windows'
+    context: APPLICATION
+    key: search_mass_acc_unrelated_runs
+    label: Unrelated Runs
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: 'False Discovery Rate (FDR) threshold (q-value). Lower values are more stringent. Typical: 0.01 (1%). DIA-NN command: --qvalue'
+    context: APPLICATION
+    enumeration:
+    - '0.001'
+    - '0.01'
+    - '0.05'
+    key: search_scoring_qvalue
+    label: FDR Q-value
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '0.01'
+  - description: 'Protein grouping level (DIA-NN --pg-level): 0=isoform IDs, 1=protein names, 2=genes (default). Sets the protein inference / proteotypicity level.'
+    context: APPLICATION
+    enumeration:
+    - 0_isoform_IDs
+    - 1_protein_names
+    - 2_genes
+    key: search_protein_pg_level
+    label: Protein Grouping Level
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: 2_genes
+  - description: 'Use protein IDs as gene names when FASTA lacks GN= annotations. Useful for non-model organisms or custom databases without gene name fields. DIA-NN command: --ids-to-names'
+    context: APPLICATION
+    key: search_protein_ids_to_names
+    label: IDs to Names
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: 'Scan window radius (in scans). Set to AUTO for automatic determination. DIA-NN command: --window'
+    context: APPLICATION
+    enumeration:
+    - AUTO
+    - '3'
+    - '5'
+    - '8'
+    - '12'
+    - '17'
+    - '23'
+    - '30'
+    key: quant_scan_window
+    label: Scan Window
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: AUTO
+  - description: 'Enable match-between-runs (MBR) and library refinement. DIA-NN command: --reanalyse'
+    context: APPLICATION
+    key: quant_reanalyse
+    label: Enable Reanalyse (MBR)
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'true'
+  - description: 'Disable cross-run normalization. DIA-NN command: --no-norm'
+    context: APPLICATION
+    key: quant_no_norm
+    label: Disable Normalization
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: 'Export fragment-level per-run quantities in the DIA-NN report. Adds fragment quantity and correlation columns needed by downstream fragment-level converters. This can substantially increase report size. DIA-NN command: --export-quant'
+    context: APPLICATION
+    key: output_fragment_quant
+    label: Export Fragment Quantities
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: Include spectral library files (predicted and refined) as a separate zip in staged output. Libraries are large files; enable only if needed for downstream reuse.
+    context: APPLICATION
+    key: output_include_libs
+    label: Include Spectral Libraries
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'false'
+  - description: Generate a pmultiqc HTML report from the DIA-NN report as an extra QC artifact (alongside diann-qc and prolfqua QC). Report-derived sections populate; experimental-design and MS1-level metrics are not shown.
+    context: APPLICATION
+    key: output_pmultiqc
+    label: Generate pmultiqc HTML report
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'true'
+  - description: 'Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --no-prot-inf --rt-profiling'
+    context: APPLICATION
+    key: advanced_freestyle
+    label: Freestyle Parameters
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: None
+  - description: 'Verbosity level for DIA-NN output. 0=minimal, 1=normal, 2=detailed, 3=debug. DIA-NN command: --verbose'
+    context: APPLICATION
+    enumeration:
+    - '0'
+    - '1'
+    - '2'
+    - '3'
+    key: advanced_verbose
+    label: Verbose Level
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '1'
+  - description: The version of the DIA-NN application to use
+    context: APPLICATION
+    enumeration:
+    - '2.3'
+    key: application_version
+    label: Application Version
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '2.3'
