@@ -27,46 +27,54 @@ git add pylock.toml && git commit -m "update pylock" && git push
 cd /home/bfabric/slurmworker && git pull
 ```
 
-## Register / Update the Executable in B-Fabric
+## Register the Executable in B-Fabric
 
 The executable XML
-(`diann_runner/bfabric_executable/executable_A386_DIANN_3.2.xml`, mirrored
-byte-for-byte into
-`slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.xml`) is the
-**source of truth** for the B-Fabric GUI parameters (keys, order, enums,
-defaults). After editing it, push it to B-Fabric programmatically with the
-bfabricPy CLI — no manual web-GUI paste:
+(`diann_runner/bfabric_executable/executable_A386_DIANN_3.2.xml`) is the
+source of truth for the B-Fabric GUI parameters. Two constraints (verified
+against the bfabricPy `cli/executable/upload.py` source) govern pushing it back:
+
+**1. Format — the committed file is NOT uploadable as-is.** It is a *web-GUI
+"XML Export"*: root `<executable classname="executable" id="26960">` and every
+`<parameter>` carries a `<executable .../>` back-reference. `bfabric-cli
+executable upload` parses XML with `xmltodict`, which turns every XML attribute
+into an `@`-prefixed key (`@classname`, `@id`); the SUDS SOAP marshaller then
+aborts with `suds.TypeNotFound: Type not found: '@classname'`. The uploadable
+shape is the one `bfabric-cli executable dump` produces — a clean `<executable>`
+with **no attributes**, **no** parameter back-references, and only definition
+fields (`name`, `description`, `program`, `context`, `enabled`, and per-parameter
+`key/label/description/context/type/value/required/modifiable/enumeration`).
+
+**2. `upload` only CREATES — it cannot UPDATE.** `upload` explicitly rejects an
+`id` (`"Executable data must not contain an 'id' key."`) and calls
+`client.save("executable", data)` with no id, so B-Fabric always makes a **new**
+executable. It will not modify executable 26960.
 
 ```bash
-# Needs ~/.bfabricpy.yml (web-service password, not the login password).
-# Defaults to PRODUCTION; prepend BFABRICPY_CONFIG_ENV=TEST to hit the test instance.
+# ~/.bfabricpy.yml = web-service password (not login). Prepend BFABRICPY_CONFIG_ENV=TEST first.
 
-# 0. (optional) back up the live definition first
-bfabric-cli executable dump 26960 /tmp/exec_26960_before.xml --format xml
+# Back up / get a known-good clean (uploadable) file:
+bfabric-cli executable dump 26960 /tmp/exec_26960.xml --format xml
 
-# 1. TEST first
-BFABRICPY_CONFIG_ENV=TEST bfabric-cli executable upload \
-  bfabric_executable/executable_A386_DIANN_3.2.xml
-
-# 2. promote to PRODUCTION
-bfabric-cli executable upload bfabric_executable/executable_A386_DIANN_3.2.xml
-
-# 3. verify the live definition round-trips back to the committed file
-bfabric-cli executable dump 26960 /tmp/exec_26960_after.xml --format xml
-diff <(sed -n '18,$p' bfabric_executable/executable_A386_DIANN_3.2.xml) \
-     <(sed -n '18,$p' /tmp/exec_26960_after.xml)
+# Create a NEW executable from a clean-format file (prints the new id):
+bfabric-cli executable upload <clean-format>.xml
 ```
 
-The XML's `id` (26960) identifies the executable, so `upload` targets that
-record (the same id the repo XML and the slurmworker mirror share). Because
-B-Fabric now renders parameters in **document order**, the live GUI ordering
-becomes exactly the committed XML's order. The companion `bfabric-cli executable
-dump <id> <path>` is how the repo XML is produced/refreshed from B-Fabric.
+**To UPDATE an existing executable in place** (e.g. 26960, already wired to the
+DIANN application) keep using the web GUI **Edit**, or the bfabricPy Python API
+with the id present (`save` with an `id` updates that record):
 
-> The two A386 XMLs are byte-identical (guarded by
-> `tests/test_executable_contract.py::test_slurmworker_mirror_body_identical`), so
-> uploading either is equivalent; upload the `diann_runner` copy as the canonical
-> source.
+```python
+from bfabric import Bfabric
+client = Bfabric.connect()              # BFABRICPY_CONFIG_ENV=TEST first
+client.save("executable", {"id": 26960, "name": "A386_DIANN_v2.3.0",
+                           "program": "/home/bfabric/slurmworker/config/A386_DIANN_23/app.yml",
+                           "parameter": [ {"key": "pipeline_diann_version", ...}, ... ]})
+```
+
+Verify nested-parameter replacement semantics on a TEST instance before
+PRODUCTION. `bfabric-cli executable dump <id>` is how the repo XML is
+produced/refreshed from B-Fabric.
 
 ## Local Testing
 
