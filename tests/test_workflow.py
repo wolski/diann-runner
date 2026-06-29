@@ -520,7 +520,7 @@ class TestDiannWorkflow(unittest.TestCase):
             script_name='test_sw_explicit_auto.sh'
         )
         content_explicit_auto = self.read_script(script_explicit_auto)
-        self.assertNotIn('--scan-window', content_explicit_auto)
+        self.assertNotIn('--window', content_explicit_auto)
         
         # Case 3: scan_window = 8 -> SHOULD be in script
         workflow_set = DiannWorkflow(
@@ -532,7 +532,7 @@ class TestDiannWorkflow(unittest.TestCase):
             script_name='test_sw_set.sh'
         )
         content_set = self.read_script(script_set)
-        self.assertIn('--scan-window 8', content_set)
+        self.assertIn('--window 8', content_set)
 
     def test_ids_to_names_parameter(self):
         """Test that --ids-to-names flag is added only when enabled."""

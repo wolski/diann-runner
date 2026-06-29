@@ -139,7 +139,7 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 - **Usage**: Use when processing samples that don't share common peptides / calibration.
 - **Interaction with fixed settings**: This is meaningful mainly when MS1/MS2 mass
   accuracy and/or scan window are automatic (`AUTO`). If `--mass-acc-ms1`,
-  `--mass-acc`, and `--scan-window` are fixed to concrete values, there is little
+  `--mass-acc`, and `--window` are fixed to concrete values, there is little
   or no automatic tuning left for this option to change.
 - **Interaction with MBR**: When this runner combines Unrelated Runs with
   `--reanalyse`, it also emits `--mbr-fix-settings` so the second MBR pass uses
@@ -429,11 +429,11 @@ Parameters use double-dash format (`--option`) and are processed in the order su
 
 ### Data Processing Windows
 
-**`--scan-window <N>`**
-- **Purpose**: Set approximate DIA cycles during average peptide elution
+**`--window <N>`**
+- **Purpose**: Set the scan window radius to a specific value. Ideally, should be approximately equal to the average number of MS/MS data points per peak.
 - **Typical values**: `6-10` for most instruments
-- **Example**: `--scan-window 8`
-- **Note**: Affects how many scans are considered during peptide detection. Can be set via Bfabric parameter `05b_diann_scan_window` (AUTO, 3, 5, 8, 12, 17, 23, 30).
+- **Example**: `--window 8`
+- **Note**: Affects how many scans are considered during peptide detection. Can be set via Bfabric parameter `05b_diann_scan_window` (AUTO, 3, 5, 8, 12, 17, 23, 30). DIA-NN's CLI flag is `--window`; there is no `--scan-window` option.
 
 **`--im-window <value>`**
 - **Purpose**: Configure ion mobility filtering window width

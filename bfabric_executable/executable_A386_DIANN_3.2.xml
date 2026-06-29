@@ -36,27 +36,6 @@
         <value>2.3.2</value>
     </parameter>
 
-    <!-- 97: RAW File Converter Configuration -->
-    <parameter classname="parameter" id="171595">
-        <deletable>false</deletable>
-        <updatable>false</updatable>
-        <description>Thermo RAW handling. native: no conversion — DIA-NN reads .raw natively (default, fastest). thermoraw: convert to mzML via ThermoRawFileParser. msconvert: standard mzML conversion. msconvert-demultiplex: mzML conversion with demultiplexing for overlapping DIA windows (multiplexed acquisition).</description>
-        <context>APPLICATION</context>
-        <enumeration>native</enumeration>
-        <enumeration>thermoraw</enumeration>
-        <enumeration>msconvert</enumeration>
-        <enumeration>msconvert-demultiplex</enumeration>
-        <executable classname="executable" id="26960"/>
-        <inUse>true</inUse>
-        <key>97_raw_converter</key>
-        <label>RAW File Converter</label>
-        <modifiable>true</modifiable>
-        <parentAllowsModification>true</parentAllowsModification>
-        <required>true</required>
-        <type>STRING</type>
-        <value>native</value>
-    </parameter>
-
     <!-- 02: Workflow Control -->
     <parameter>
         <deletable>false</deletable>
@@ -190,21 +169,6 @@
         <value>/misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta</value>
     </parameter>
 
-<!-- 13: Freestyle Parameters -->
-    <parameter>
-        <description>fasta path from storage folder (FASTA Database parameter must be NONE)</description>
-        <context>APPLICATION</context>
-        <executable classname="executable" id="26960"/>
-        <inUse>true</inUse>
-        <key>03b_additional_fasta_database_path</key>
-        <label>Freestyle FastaPath</label>
-        <modifiable>true</modifiable>
-        <parentAllowsModification>true</parentAllowsModification>
-        <required>true</required>
-        <type>STRING</type>
-        <value>None</value>
-    </parameter>
-
 
     <parameter>
         <deletable>false</deletable>
@@ -220,6 +184,20 @@
         <required>true</required>
         <type>BOOLEAN</type>
         <value>true</value>
+    </parameter>
+
+    <parameter>
+        <description>fasta path from storage folder (FASTA Database parameter must be NONE)</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>03b_additional_fasta_database_path</key>
+        <label>Freestyle FastaPath</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>None</value>
     </parameter>
 
     <!-- 05: Data Type Configuration -->
@@ -242,7 +220,7 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
-        <description>Scan window radius (in scans). Set to AUTO for automatic determination. DIA-NN command: --scan-window</description>
+        <description>Scan window radius (in scans). Set to AUTO for automatic determination. DIA-NN command: --window</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
         <inUse>true</inUse>
@@ -309,6 +287,22 @@
     <parameter>
         <deletable>false</deletable>
         <updatable>false</updatable>
+        <description>Disable peptidoform scoring (modification localization). Set to true to disable for faster but less accurate modification site assignment. DIA-NN command: --no-peptidoforms</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>06b_diann_mods_no_peptidoforms</key>
+        <label>Disable Peptidoforms</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>BOOLEAN</type>
+        <value>false</value>
+    </parameter>
+
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
         <description>Enable UniMod:4 (Carbamidomethyl on Cysteine) as fixed modification. Standard for alkylated samples. DIA-NN command: --unimod4</description>
         <context>APPLICATION</context>
         <executable classname="executable" id="26960"/>
@@ -336,22 +330,6 @@
         <required>true</required>
         <type>BOOLEAN</type>
         <value>true</value>
-    </parameter>
-
-    <parameter>
-        <deletable>false</deletable>
-        <updatable>false</updatable>
-        <description>Disable peptidoform scoring (modification localization). Set to true to disable for faster but less accurate modification site assignment. DIA-NN command: --no-peptidoforms</description>
-        <context>APPLICATION</context>
-        <executable classname="executable" id="26960"/>
-        <inUse>true</inUse>
-        <key>06b_diann_mods_no_peptidoforms</key>
-        <label>Disable Peptidoforms</label>
-        <modifiable>true</modifiable>
-        <parentAllowsModification>true</parentAllowsModification>
-        <required>true</required>
-        <type>BOOLEAN</type>
-        <value>false</value>
     </parameter>
 
     <!-- 07: Peptide Constraints -->
@@ -758,6 +736,23 @@
         <value>false</value>
     </parameter>
 
+    <!-- 13: Freestyle Parameters -->
+    <parameter>
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --no-prot-inf --rt-profiling</description>
+        <context>APPLICATION</context>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>13_diann_freestyle</key>
+        <label>Freestyle Parameters</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>None</value>
+    </parameter>
+
     <!-- 14: Output Options -->
     <parameter>
         <deletable>false</deletable>
@@ -791,6 +786,27 @@
         <value>true</value>
     </parameter>
 
+    <!-- 97: RAW File Converter Configuration -->
+    <parameter classname="parameter" id="171595">
+        <deletable>false</deletable>
+        <updatable>false</updatable>
+        <description>Thermo RAW handling. native: no conversion — DIA-NN reads .raw natively (default, fastest). thermoraw: convert to mzML via ThermoRawFileParser. msconvert: standard mzML conversion. msconvert-demultiplex: mzML conversion with demultiplexing for overlapping DIA windows (multiplexed acquisition).</description>
+        <context>APPLICATION</context>
+        <enumeration>native</enumeration>
+        <enumeration>thermoraw</enumeration>
+        <enumeration>msconvert</enumeration>
+        <enumeration>msconvert-demultiplex</enumeration>
+        <executable classname="executable" id="26960"/>
+        <inUse>true</inUse>
+        <key>97_raw_converter</key>
+        <label>RAW File Converter</label>
+        <modifiable>true</modifiable>
+        <parentAllowsModification>true</parentAllowsModification>
+        <required>true</required>
+        <type>STRING</type>
+        <value>native</value>
+    </parameter>
+
     <!-- 99: Other Settings -->
     <parameter>
         <deletable>false</deletable>
@@ -810,23 +826,6 @@
         <required>true</required>
         <type>STRING</type>
         <value>1</value>
-    </parameter>
-
-    <!-- 13: Freestyle Parameters -->
-    <parameter>
-        <deletable>false</deletable>
-        <updatable>false</updatable>
-        <description>Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --no-prot-inf --rt-profiling</description>
-        <context>APPLICATION</context>
-        <executable classname="executable" id="26960"/>
-        <inUse>true</inUse>
-        <key>13_diann_freestyle</key>
-        <label>Freestyle Parameters</label>
-        <modifiable>true</modifiable>
-        <parentAllowsModification>true</parentAllowsModification>
-        <required>true</required>
-        <type>STRING</type>
-        <value>None</value>
     </parameter>
 
     <!-- Application Version -->
