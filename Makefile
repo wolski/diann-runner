@@ -8,8 +8,11 @@
 #   make integration            # dry-run the WU346549 end-to-end workflow
 #   make integration RUN=1      # execute it (downloads ~9 GB raws, ~2 h)
 #   make integration CORES=64   # override core count
+#   make register               # upload the B-Fabric executable YAML (CREATES new)
+#   make register ENV=TEST      # ... to the TEST instance
 
 CORES ?= 32
+ENV   ?= PRODUCTION
 
 # deploy: docker by default; `SIF=1` switches to the apptainer SIF build.
 ifdef SIF
@@ -25,7 +28,7 @@ else
 INTEGRATION_TARGET := dry
 endif
 
-.PHONY: help deploy deploy_sif integration
+.PHONY: help deploy deploy_sif integration register
 
 help: ## Show this help
 	@echo "diann-runner — make <target>:"
@@ -40,3 +43,6 @@ deploy_sif: ## build apptainer SIFs (native builder, no docker needed)
 
 integration: ## run the WU346549 end-to-end test (RUN=1 to execute, CORES=N)
 	$(MAKE) -C tests/integration/WU346549 $(INTEGRATION_TARGET) CORES=$(CORES)
+
+register: ## upload the B-Fabric executable YAML — always CREATES a new one (ENV=TEST)
+	$(MAKE) -C bfabric_executable upload ENV=$(ENV)

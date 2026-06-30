@@ -333,10 +333,18 @@ executable:
     required: 'true'
     type: BOOLEAN
     value: 'false'
+  - description: 'Recommended DIA-NN mass accuracy Source: github.com/vdemichev/DiaNN'
+    context: APPLICATION
+    key: search_mass_acc_hint_general
+    label: Recommended
+    modifiable: 'false'
+    required: 'true'
+    type: STRING
+    value: 'DIA-NN mass accuracy Source: github.com/vdemichev/DiaNN'
   - description: 'Recommended DIA-NN mass accuracy for Bruker timsTOF (read-only). Source: github.com/vdemichev/DiaNN'
     context: APPLICATION
     key: search_mass_acc_hint_timstof
-    label: Rec. mass acc - timsTOF
+    label: timsTOF
     modifiable: 'false'
     required: 'true'
     type: STRING
@@ -344,7 +352,7 @@ executable:
   - description: 'Recommended DIA-NN mass accuracy for Orbitrap / Astral (read-only). Source: github.com/vdemichev/DiaNN'
     context: APPLICATION
     key: search_mass_acc_hint_orbitrap
-    label: Rec. mass acc - Orbitrap
+    label: Orbitrap
     modifiable: 'false'
     required: 'true'
     type: STRING
@@ -352,7 +360,7 @@ executable:
   - description: 'Recommended DIA-NN mass accuracy for SCIEX TripleTOF 6600 / ZenoTOF (read-only). Source: github.com/vdemichev/DiaNN'
     context: APPLICATION
     key: search_mass_acc_hint_tof
-    label: Rec. mass acc - TripleTOF/ZenoTOF
+    label: TripleTOF/ZenoTOF
     modifiable: 'false'
     required: 'true'
     type: STRING
@@ -360,7 +368,7 @@ executable:
   - description: 'When to leave MS1/MS2 = AUTO (read-only). Source: github.com/vdemichev/DiaNN'
     context: APPLICATION
     key: search_mass_acc_hint_auto
-    label: Rec. mass acc - use AUTO when
+    label: use AUTO when
     modifiable: 'false'
     required: 'true'
     type: STRING
