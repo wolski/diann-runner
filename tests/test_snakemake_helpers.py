@@ -137,18 +137,84 @@ class TestSnakemakeHelpers(unittest.TestCase):
 
             markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
             html = (tmp_path / "index.html").read_text(encoding="utf-8")
-            self.assertIn("[prolfqua QC overview](qc_result/index.html)", markdown)
             self.assertIn(
-                "[pmultiqc DIA-NN report](pmultiqc_result/pmultiqc_diann_report.html)",
+                "[Quality control overview (prolfqua)](qc_result/index.html)", markdown
+            )
+            self.assertIn(
+                "[Interactive QC report (pmultiqc)]"
+                "(pmultiqc_result/pmultiqc_diann_report.html)",
                 markdown,
             )
             self.assertIn(
-                "[Native DIA-NN report parquet](out-DIANN_quantC/WU347812_report.parquet)",
+                "[DIA-NN report, native (parquet)]"
+                "(out-DIANN_quantC/WU347812_report.parquet)",
                 markdown,
             )
-            self.assertIn("[Dataset](out-DIANN_quantC/dataset.csv)", markdown)
-            self.assertIn("[FASTA: db.fasta](out-DIANN_quantC/db.fasta)", markdown)
+            # The DIA-NN QC PDF is grouped under QC Reports, not Data Files.
+            self.assertIn("## QC Reports", markdown)
+            self.assertIn(
+                "[DIA-NN quality control report (PDF)]"
+                "(out-DIANN_quantC/WU347812_qc_report.pdf)",
+                markdown,
+            )
+            self.assertIn(
+                "[Sample annotation table (CSV)](out-DIANN_quantC/dataset.csv)", markdown
+            )
+            self.assertIn(
+                "[FASTA database: db.fasta](out-DIANN_quantC/db.fasta)", markdown
+            )
             self.assertIn("pmultiqc_result/pmultiqc_diann_report.html", html)
+
+            # Both sections are present, in order, in the markdown.
+            self.assertIn("## QC Reports", markdown)
+            self.assertIn("## Data Files", markdown)
+            self.assertLess(
+                markdown.index("## QC Reports"), markdown.index("## Data Files")
+            )
+            # Descriptions are emitted alongside the link.
+            self.assertIn(
+                "(qc_result/index.html) - Landing page linking all prolfqua",
+                markdown,
+            )
+
+            # The HTML carries the section headers, description spans and charset.
+            self.assertIn("<meta charset='UTF-8'>", html)
+            self.assertIn("<h2>QC Reports</h2>", html)
+            self.assertIn("<h2>Data Files</h2>", html)
+            self.assertIn("<span class='desc'>", html)
+
+    def test_write_result_index_renders_all_data_files_with_relative_quant_dir(self):
+        """A relative quant_dir is used as-is, and every Data Files entry renders."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            final_outputs = get_final_quantification_outputs(
+                "out-DIANN", "347812", enable_step_c=True
+            )
+
+            write_result_index(
+                tmp_path / "index.md",
+                tmp_path / "index.html",
+                workunit_id="347812",
+                quant_dir="out-DIANN_quantC",  # relative -> used verbatim
+                final_outputs=final_outputs,
+                fasta_paths=[],
+                include_pmultiqc=False,
+            )
+
+            markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
+            for label in (
+                "DIA-NN report, native (parquet)",
+                "DIA-NN report, protein-inferred (prozor, parquet)",
+                "Protein group abundance matrix (TSV)",
+                "DIA-NN run statistics (TSV)",
+                "DIA-NN run log (text)",
+                "Sample annotation table (CSV)",
+            ):
+                self.assertIn(f"[{label}]", markdown)
+            # Relative quant_dir is used verbatim (not reduced to its basename).
+            self.assertIn(
+                "[Sample annotation table (CSV)](out-DIANN_quantC/dataset.csv)", markdown
+            )
 
     def test_write_result_index_omits_pmultiqc_when_disabled(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -170,7 +236,8 @@ class TestSnakemakeHelpers(unittest.TestCase):
             markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
             self.assertNotIn("pmultiqc", markdown)
             self.assertIn(
-                "[Native DIA-NN report parquet](out-DIANN_quantB/WU347812_report.parquet)",
+                "[DIA-NN report, native (parquet)]"
+                "(out-DIANN_quantB/WU347812_report.parquet)",
                 markdown,
             )
 

@@ -517,6 +517,20 @@ def get_final_quantification_outputs(
     }
 
 
+_INDEX_STYLE = """  <style>
+    body { font-family: Arial, sans-serif; }
+    h1 { text-align: center; }
+    h2 {
+      text-align: left;
+      margin-top: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #ecf0f1;
+      color: #2c3e50;
+    }
+    .desc { color: #7f8c8d; font-size: 0.9em; }
+  </style>"""
+
+
 def write_result_index(
     index_md: str | Path,
     index_html: str | Path,
@@ -527,64 +541,130 @@ def write_result_index(
     fasta_paths: list[str | Path],
     include_pmultiqc: bool = False,
 ) -> None:
-    """Write top-level Markdown and HTML indexes for the result zip."""
+    """Write top-level Markdown and HTML indexes for the result zip.
+
+    Links are grouped into a "QC Reports" section (the rendered HTML QC
+    reports) and a "Data Files" section (the downloadable parquet/TSV/PDF/log
+    and the dataset and FASTA databases). Each entry carries a one-line
+    description shown alongside the link.
+    """
     quant_path = Path(quant_dir)
     quant_archive_path = Path(quant_path.name) if quant_path.is_absolute() else quant_path
     prozor = final_outputs["report_parquet"].replace(".parquet", "_prozor.parquet")
     qc_pdf = final_outputs["stats"].replace("_report.stats.tsv", "_qc_report.pdf")
-    links = [
-        ("prolfqua QC overview", "qc_result/index.html"),
-        ("Protein abundance QC", "qc_result/proteinAbundances.html"),
-        ("Sample size QC", "qc_result/QC_sampleSizeEstimation.html"),
+
+    # (label, target, description) entries per section.
+    qc_reports: list[tuple[str, str, str]] = [
+        (
+            "Quality control overview (prolfqua)",
+            "qc_result/index.html",
+            "Landing page linking all prolfqua QC reports and tables.",
+        ),
+        (
+            "Protein abundance QC report (prolfqua)",
+            "qc_result/proteinAbundances.html",
+            "Interactive QC: abundance distributions, missing values, "
+            "coefficient of variation, sample correlation and clustering.",
+        ),
+        (
+            "Sample size and power estimation (prolfqua)",
+            "qc_result/QC_sampleSizeEstimation.html",
+            "Variance-based sample-size and power estimation for follow-up "
+            "experiments.",
+        ),
+        (
+            "DIA-NN quality control report (PDF)",
+            qc_pdf,
+            "DIA-NN's own QC plots (precursor/protein counts, mass accuracy, "
+            "retention time) rendered as a PDF.",
+        ),
     ]
     if include_pmultiqc:
-        links.append((
-            "pmultiqc DIA-NN report",
+        qc_reports.append((
+            "Interactive QC report (pmultiqc)",
             "pmultiqc_result/pmultiqc_diann_report.html",
+            "MultiQC-style interactive summary of the DIA-NN run.",
         ))
-    links.extend([
-        ("Native DIA-NN report parquet", final_outputs["report_parquet"]),
-        ("Prozor-inferred report parquet", prozor),
-        ("Protein-group matrix", final_outputs["pg_matrix"]),
-        ("DIA-NN stats", final_outputs["stats"]),
-        ("DIA-NN QC PDF", qc_pdf),
-        ("DIA-NN run log", final_outputs["runlog"]),
-        ("Dataset", str(quant_archive_path / "dataset.csv")),
-    ])
+
+    data_files: list[tuple[str, str, str]] = [
+        (
+            "DIA-NN report, native (parquet)",
+            final_outputs["report_parquet"],
+            "Unmodified DIA-NN precursor/protein report in parquet format.",
+        ),
+        (
+            "DIA-NN report, protein-inferred (prozor, parquet)",
+            prozor,
+            "DIA-NN report re-annotated with parsimonious protein inference "
+            "(prozor).",
+        ),
+        (
+            "Protein group abundance matrix (TSV)",
+            final_outputs["pg_matrix"],
+            "Protein-group abundances, proteins by sample.",
+        ),
+        (
+            "DIA-NN run statistics (TSV)",
+            final_outputs["stats"],
+            "Per-run summary statistics.",
+        ),
+        (
+            "DIA-NN run log (text)",
+            final_outputs["runlog"],
+            "Full DIA-NN console log for the final quantification.",
+        ),
+        (
+            "Sample annotation table (CSV)",
+            str(quant_archive_path / "dataset.csv"),
+            "Sample annotation / experimental design.",
+        ),
+    ]
     for fasta_path in fasta_paths:
         staged_fasta = quant_path / Path(fasta_path).name
         if staged_fasta.is_file():
-            links.append((
-                f"FASTA: {staged_fasta.name}",
+            data_files.append((
+                f"FASTA database: {staged_fasta.name}",
                 str(quant_archive_path / staged_fasta.name),
+                "Protein sequence database used for the search.",
             ))
 
+    sections: list[tuple[str, list[tuple[str, str, str]]]] = [
+        ("QC Reports", qc_reports),
+        ("Data Files", data_files),
+    ]
+
     title = f"DIA-NN Results for WU : {workunit_id}"
-    markdown = [f"# {title}", "", "## Reports and Key Files", ""]
-    markdown.extend(f"- [{label}]({target})" for label, target in links)
-    markdown.append("")
+    markdown = [f"# {title}", ""]
+    for section_title, entries in sections:
+        markdown.extend([f"## {section_title}", ""])
+        markdown.extend(
+            f"- [{label}]({target}) - {description}"
+            for label, target, description in entries
+        )
+        markdown.append("")
     Path(index_md).write_text("\n".join(markdown), encoding="utf-8")
 
-    items = "\n".join(
-        f"<li><a href='{escape(target, quote=True)}'>{escape(label)}</a></li>"
-        for label, target in links
-    )
-    html = "\n".join([
+    html_lines = [
         "<!DOCTYPE html>",
         "<html>",
         "<head>",
+        "<meta charset='UTF-8'>",
         f"<title>{escape(title)}</title>",
+        _INDEX_STYLE,
         "</head>",
         "<body>",
         f"<h1>{escape(title)}</h1>",
-        "<ul>",
-        items,
-        "</ul>",
-        "</body>",
-        "</html>",
-        "",
-    ])
-    Path(index_html).write_text(html, encoding="utf-8")
+    ]
+    for section_title, entries in sections:
+        html_lines.extend([f"<h2>{escape(section_title)}</h2>", "<ul>"])
+        html_lines.extend(
+            f"<li><a href='{escape(target, quote=True)}'>{escape(label)}</a>"
+            f"<br><span class='desc'>{escape(description)}</span></li>"
+            for label, target, description in entries
+        )
+        html_lines.append("</ul>")
+    html_lines.extend(["</body>", "</html>", ""])
+    Path(index_html).write_text("\n".join(html_lines), encoding="utf-8")
 
 
 def zip_diann_results(
