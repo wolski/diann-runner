@@ -20,6 +20,9 @@ validate:
 upload: validate
 	BFABRICPY_CONFIG_ENV=$(ENV) bfabric-cli executable upload $(YAML)
 
+# Writes a SCRATCH file dumped_<ID>.xml (never a source *.yaml) and refuses to
+# overwrite an existing one. For reference / diffing only.
 dump:
 	@test -n "$(ID)" || { echo "usage: make dump ID=<executable-id>"; exit 1; }
+	@test ! -e dumped_$(ID).xml || { echo "refusing to overwrite existing dumped_$(ID).xml"; exit 1; }
 	bfabric-cli executable dump $(ID) dumped_$(ID).xml --format xml
