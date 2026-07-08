@@ -51,9 +51,8 @@ make sweep CORES=64 VERSIONS="2.5.1"  # narrow the matrix
 
 Or drive `run.sh` directly: `VERSION=2.3.2 MODS=metox ./run.sh run`.
 
-The same verbs are exposed from the package root (no `cd` needed):
-`make entrapment-setup` / `make entrapment-run` / `make entrapment-sweep`
-(with `VERSION=`/`MODS=`/`CORES=` overrides).
+Everything for this case lives here (self-contained) — run it from this
+directory, not the package root.
 
 ## What's committed vs generated
 
