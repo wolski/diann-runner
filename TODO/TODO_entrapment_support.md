@@ -214,9 +214,9 @@ driven by `run-diann sushi` (readable keys, `register_outputs=False` — no B-Fa
   `Result_WU<version>_<mods>.zip`). Raws read natively (`.raw`, no msconvert),
   shared read-only across combos.
 - `make sweep` runs every VERSIONS(`2.3.2 2.5.0 2.5.1`) × MODS(`nomods metox`) combo;
-  `make integration-entrapment [RUN=1]` from the package root wraps it (dry / full).
-  Verified: all 6 combos build the DAG, version+mods propagate to outputs, and
-  prozor is bypassed.
+  the same verbs are exposed from the package root as `make entrapment-setup` /
+  `make entrapment-run` / `make entrapment-sweep`. Verified: all 6 combos build the
+  DAG, version+mods propagate to outputs, and prozor is bypassed.
 
 **Remaining (manual, from the collected `runs/` outputs):**
 - Run the sweep on an FGCZ node with the container runtime + scratch for ~21 GB raws.
@@ -238,7 +238,7 @@ driven by `run-diann sushi` (readable keys, `register_outputs=False` — no B-Fa
    tests.
 3. ✅ Prozor bypass for no-digestion runs (Snakefile + `write_result_index` + DAG test).
 4. ✅ Part 2 harness — `tests/integration/entrapment/` (version × mods sweep, `make
-   integration-entrapment`). Remaining: run it on an FGCZ node + ProteoBench submission.
+   entrapment-setup`/`-run`/`-sweep`). Remaining: run it on an FGCZ node + ProteoBench submission.
 
 > Pre-existing, out of scope: `test_slurmworker_mirror_identical` fails on the
 > `input_fasta_databases` drift between the two YAML copies (unrelated to this
