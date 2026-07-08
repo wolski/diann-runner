@@ -124,7 +124,9 @@ class DiannWorkflow:
             min_fr_mz: Minimum fragment m/z
             max_fr_mz: Maximum fragment m/z
             missed_cleavages: Maximum number of missed cleavages
-            cut: Protease specificity (e.g., 'K*,R*' for trypsin)
+            cut: Protease specificity (e.g., 'K*,R*' for trypsin). Empty string
+                disables digestion (pre-digested / peptide-list FASTA): emits
+                --cut '' and forces --missed-cleavages 0.
             mass_acc: MS2 mass accuracy in ppm ('AUTO' = omit flag, let DIA-NN auto-determine)
             mass_acc_ms1: MS1 mass accuracy in ppm ('AUTO' = omit flag, let DIA-NN auto-determine)
             scan_window: Scan window radius ('AUTO' = omit flag, let DIA-NN auto-determine)
@@ -330,7 +332,10 @@ class DiannWorkflow:
         params.append(f"--max-pr-mz {self.max_pr_mz}")
         params.append(f"--min-fr-mz {self.min_fr_mz}")
         params.append(f"--max-fr-mz {self.max_fr_mz}")
-        params.append(f"--missed-cleavages {self.missed_cleavages}")
+        # An empty cut disables digestion (pre-digested / peptide-list FASTA):
+        # missed-cleavages is meaningless, so pin it to 0 regardless of config.
+        missed_cleavages = 0 if self.cut == '' else self.missed_cleavages
+        params.append(f"--missed-cleavages {missed_cleavages}")
         if self.mass_acc != 'AUTO':
             params.append(f"--mass-acc {self.mass_acc}")
         if self.mass_acc_ms1 != 'AUTO':

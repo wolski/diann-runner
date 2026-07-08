@@ -241,6 +241,34 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 markdown,
             )
 
+    def test_write_result_index_omits_prozor_when_no_digestion(self):
+        """No-digestion runs bypass prozor: the prozor link must not appear, while
+        the native report and other data files still do."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            final_outputs = get_final_quantification_outputs(
+                "out-DIANN", "347812", enable_step_c=False
+            )
+
+            write_result_index(
+                tmp_path / "index.md",
+                tmp_path / "index.html",
+                workunit_id="347812",
+                quant_dir=tmp_path / "out-DIANN_quantB",
+                final_outputs=final_outputs,
+                fasta_paths=[],
+                include_pmultiqc=False,
+                include_prozor=False,
+            )
+
+            markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
+            self.assertNotIn("prozor", markdown)
+            self.assertNotIn("protein-inferred", markdown)
+            # The native report and other data files are still present.
+            self.assertIn("[DIA-NN report, native (parquet)]", markdown)
+            self.assertIn("[Protein group abundance matrix (TSV)]", markdown)
+            self.assertIn("[DIA-NN run statistics (TSV)]", markdown)
+
     def test_get_fasta_paths_skips_missing_or_empty_order_fasta(self):
         """Custom sequences default ON: a missing/empty order.fasta is skipped, not fatal."""
         original_dir = os.getcwd()
@@ -412,6 +440,12 @@ class TestSnakemakeHelpers(unittest.TestCase):
             'enable_step_c': False,
         }
         self.assertEqual(parse_flat_params(dict(BASE_FLAT_PARAMS)), expected)
+
+    def test_parse_flat_params_no_digestion_sentinel(self):
+        """AppRunner path: 'no digestion' -> empty digestion_cut (digestion off)."""
+        flat = dict(BASE_FLAT_PARAMS, lib_digestion_cut='no digestion')
+        parsed = parse_flat_params(flat)
+        self.assertEqual(parsed['lib']['digestion_cut'], '')
 
     def test_resolve_diann_docker_image_uses_version_map(self):
         deploy = {

@@ -374,6 +374,45 @@ class TestDiannWorkflow(unittest.TestCase):
             # --ids-to-names should NOT appear by default
             self.assertNotIn('--ids-to-names', content)
     
+    def test_no_digestion_emits_empty_cut_and_zero_missed_cleavages(self):
+        """cut='' (no digestion) -> --cut '' AND forced --missed-cleavages 0.
+
+        Pins the shared _build_common_params() contract on both the Step A and
+        single-step paths, so a pre-digested / peptide-list FASTA is taken verbatim.
+        """
+        wf = DiannWorkflow(
+            workunit_id='TEST_NODIG',
+            output_base_dir='test-out',
+            cut='',
+            missed_cleavages=2,  # configured value must be overridden to 0
+        )
+        script_a = wf.generate_step_a_library(
+            fasta_paths=self.fasta_path, script_name='nodig_a.sh'
+        )
+        script_single = wf.generate_single_step(
+            fasta_paths=self.fasta_path, raw_files=self.raw_files,
+            script_name='nodig_single.sh'
+        )
+        for script in (script_a, script_single):
+            content = self.read_script(script)
+            self.assertIn("--cut ''", content)
+            self.assertIn('--missed-cleavages 0', content)
+            self.assertNotIn('--missed-cleavages 2', content)
+
+    def test_normal_cut_keeps_configured_missed_cleavages(self):
+        """Negative control: a real cut leaves missed-cleavages untouched."""
+        wf = DiannWorkflow(
+            workunit_id='TEST_CUT',
+            output_base_dir='test-out',
+            cut='K*,R*',
+            missed_cleavages=2,
+        )
+        content = self.read_script(
+            wf.generate_step_a_library(fasta_paths=self.fasta_path, script_name='cut_a.sh')
+        )
+        self.assertIn("--cut 'K*,R*'", content)
+        self.assertIn('--missed-cleavages 2', content)
+
     def test_output_directories_created(self):
         """Test that output directory declarations are in scripts."""
         script_a = self.workflow.generate_step_a_library(

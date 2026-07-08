@@ -147,6 +147,12 @@ class TestParseSushiParams(unittest.TestCase):
             ):
                 self.assertEqual(su_wf[key], ar_wf[key])
 
+    def test_no_digestion_sentinel_maps_to_empty_cut(self):
+        """SUSHI path: 'no digestion' -> empty digestion_cut (digestion off)."""
+        with tempfile.TemporaryDirectory() as t:
+            wf, _, _ = parse_sushi_params(self._write(Path(t), lib_digestion_cut="no digestion"))
+            self.assertEqual(wf["lib"]["digestion_cut"], "")
+
     def test_defaults_for_optional_keys(self):
         with tempfile.TemporaryDirectory() as t:
             wf, _, _ = parse_sushi_params(self._write(Path(t)))

@@ -1,0 +1,54 @@
+# ProteoBench DIA-Astral entrapment (no-digestion) integration test driver.
+# Run from this directory (`tests/integration/entrapment/`).
+#
+# The DIA-NN version and mods arm are parameters so the same downloaded data can
+# be re-run per version; each combo lands in runs/diann-<version>-<mods>/.
+#
+#   make setup                          # download FASTA + 6 Astral raws (~21 GB)
+#   make dry                            # dry-run one combo (VERSION/MODS below)
+#   make run                            # execute one combo
+#   make run VERSION=2.5.0 MODS=nomods  # pick version + mods arm
+#   make sweep                          # execute every VERSIONS x MODS_ARMS combo
+#   make sweep-dry                      # dry-run the full sweep (DAG only)
+#   make ... CORES=64
+
+CORES   ?= 32
+VERSION ?= 2.5.1
+MODS    ?= metox
+# Full sweep matrix (override on the command line, e.g. VERSIONS="2.5.1").
+VERSIONS  ?= 2.3.2 2.5.0 2.5.1
+MODS_ARMS ?= nomods metox
+
+.PHONY: help setup dry run sweep sweep-dry clean distclean
+
+help: ## Show this help
+	@echo "entrapment integration test — make <target> (VERSION=, MODS=, CORES=):"
+	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
+	  | awk 'BEGIN{FS=":.*## "}{printf "  %-12s %s\n", $$1, $$2}'
+
+setup: ## download entrapment FASTA + 6 DIA-Astral raws (~21 GB, idempotent)
+	./setup_integration_test.py
+
+dry: ## dry-run one combo (VERSION=$(VERSION) MODS=$(MODS)); build DAG only
+	VERSION=$(VERSION) MODS=$(MODS) CORES=$(CORES) ./run.sh dry
+
+run: setup ## setup + execute one combo (VERSION=$(VERSION) MODS=$(MODS))
+	VERSION=$(VERSION) MODS=$(MODS) CORES=$(CORES) ./run.sh run
+
+sweep: setup ## execute every VERSIONS x MODS_ARMS combo, each in its own folder
+	@for v in $(VERSIONS); do for m in $(MODS_ARMS); do \
+	  echo "=== diann-$$v-$$m ==="; \
+	  VERSION=$$v MODS=$$m CORES=$(CORES) ./run.sh run || exit $$?; \
+	done; done
+
+sweep-dry: ## dry-run every VERSIONS x MODS_ARMS combo (no downloads needed if input/ present)
+	@for v in $(VERSIONS); do for m in $(MODS_ARMS); do \
+	  echo "=== diann-$$v-$$m (dry) ==="; \
+	  VERSION=$$v MODS=$$m CORES=$(CORES) ./run.sh dry || exit $$?; \
+	done; done
+
+clean: ## remove all run outputs (keeps downloaded input/)
+	rm -rf runs
+
+distclean: clean ## also remove downloaded FASTA + raws
+	rm -rf input

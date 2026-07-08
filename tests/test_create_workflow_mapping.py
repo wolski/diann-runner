@@ -106,6 +106,16 @@ class TestCreateWorkflowMapping(unittest.TestCase):
         self.assertIn("--mass-acc 10", content)
         self.assertIn("--window 5", content)
 
+    def test_no_digestion_reaches_workflow_and_command(self):
+        """'no digestion' -> wf.cut='' and the Step A command shows --cut '' + 0 MC."""
+        wf = _make(dict(FLAT, lib_digestion_cut="no digestion", lib_digestion_missed_cleavages="2"))
+        self.assertEqual(wf.cut, "")
+        content = Path(
+            wf.generate_step_a_library(fasta_paths=FLAT["input_fasta_databases"], script_name="nodig.sh")
+        ).read_text()
+        self.assertIn("--cut ''", content)
+        self.assertIn("--missed-cleavages 0", content)
+
     def test_no_peptidoforms_off_omits_flag(self):
         """Negative control: the flag is conditional, not always emitted."""
         wf = _make(dict(FLAT, lib_mods_no_peptidoforms="false"))

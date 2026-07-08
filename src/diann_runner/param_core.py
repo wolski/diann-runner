@@ -68,6 +68,20 @@ def _pg_level(value: Any) -> int:
     return int(str(value).split("_")[0])
 
 
+def _digestion_cut(value: Any) -> str:
+    """Map the ``"no digestion"`` GUI sentinel to an empty cut string.
+
+    An empty cut (``--cut ''``) disables DIA-NN's in-silico digestion, so a
+    pre-digested / peptide-list FASTA (e.g. the ProteoBench entrapment FASTA) is
+    taken verbatim — each record becomes one precursor candidate, and
+    ``--missed-cleavages`` is forced to 0 downstream. ``"none"`` and empty are
+    accepted defensively as the same "off" value; any real cut spec (``K*,R*``)
+    passes through unchanged.
+    """
+    s = str(value).strip()
+    return "" if s.lower() in ("no digestion", "none", "") else s
+
+
 def _parse_var_mods(value: Any) -> list[tuple[str, str, str]]:
     """Variable-modifications string -> list of ``(unimod_id, mass, residues)`` tuples."""
     return [tuple(m) for m in parse_var_mods_string(value)]
@@ -104,7 +118,7 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     "is_dda":           FieldSpec("pipeline", _to_bool),
     "raw_converter":    FieldSpec("pipeline", str, default="thermoraw"),
     # library generation: digestion
-    "digestion_cut":              FieldSpec("lib", str),
+    "digestion_cut":              FieldSpec("lib", _digestion_cut),
     "digestion_missed_cleavages": FieldSpec("lib", int),
     # library generation: peptide / precursor / fragment ranges
     "peptide_min_length":  FieldSpec("lib", int),

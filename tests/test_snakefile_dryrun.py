@@ -95,6 +95,42 @@ class TestSnakefileDryRun(unittest.TestCase):
         finally:
             shutil.rmtree(wd, ignore_errors=True)
 
+    def _dryrun_zip_dag(self, cut: str) -> str:
+        """Dry-run the Result zip target for a given digestion cut; return the plan."""
+        wd = Path(tempfile.mkdtemp(prefix="diann_prozor_"))
+        try:
+            flat = dict(FLAT, lib_digestion_cut=cut, input_fasta_databases="input/db.fasta")
+            DIANNRunnerParams.from_parsed(parse_flat_params(flat)).to_toml(
+                wd / "diann_runner_params.toml"
+            )
+            (wd / "input" / "raw").mkdir(parents=True)
+            (wd / "input" / "raw" / "sample1.mzML").touch()
+            (wd / "input" / "db.fasta").write_text(">x\nPEPTIDEK\n")
+            (wd / "dataset.csv").write_text("Name,Relative Path\nsample1,input/raw/sample1.mzML\n")
+            proc = subprocess.run(
+                [
+                    sys.executable, "-m", "snakemake",
+                    "-s", str(SNAKEFILE), "-d", str(wd),
+                    "-n", "-c1", "Result_WU0.zip",
+                    "--config", "container_runtime=docker", "workunit_id=0",
+                    "container_id=0", "register_outputs=false",
+                ],
+                capture_output=True, text=True, timeout=300,
+            )
+            out = proc.stdout + proc.stderr
+            self.assertEqual(proc.returncode, 0, f"dry-run failed:\n{out}")
+            return out
+        finally:
+            shutil.rmtree(wd, ignore_errors=True)
+
+    def test_prozor_runs_with_normal_cut(self):
+        """A normal enzymatic cut keeps prozor inference in the DAG."""
+        self.assertIn("run_prozor_inference", self._dryrun_zip_dag("K*,R*"))
+
+    def test_prozor_bypassed_for_no_digestion(self):
+        """No-digestion (peptide-list FASTA) drops prozor from the DAG entirely."""
+        self.assertNotIn("run_prozor_inference", self._dryrun_zip_dag("no digestion"))
+
 
 if __name__ == "__main__":
     unittest.main()

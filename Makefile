@@ -8,6 +8,8 @@
 #   make integration            # dry-run the WU346549 end-to-end workflow
 #   make integration RUN=1      # execute it (downloads ~9 GB raws, ~2 h)
 #   make integration CORES=64   # override core count
+#   make integration-entrapment # dry-run the DIA-Astral no-digestion sweep
+#   make integration-entrapment RUN=1  # execute the full version x mods sweep (~21 GB)
 #   make register               # upload the B-Fabric executable YAML (CREATES new)
 #   make register ENV=TEST      # ... to the TEST instance
 
@@ -24,11 +26,13 @@ endif
 # integration: dry-run by default; `RUN=1` executes the full workflow.
 ifdef RUN
 INTEGRATION_TARGET := test
+ENTRAPMENT_TARGET := sweep
 else
 INTEGRATION_TARGET := dry
+ENTRAPMENT_TARGET := sweep-dry
 endif
 
-.PHONY: help deploy deploy_sif integration register
+.PHONY: help deploy deploy_sif integration integration-entrapment register
 
 help: ## Show this help
 	@echo "diann-runner — make <target>:"
@@ -43,6 +47,9 @@ deploy_sif: ## build apptainer SIFs (native builder, no docker needed)
 
 integration: ## run the WU346549 end-to-end test (RUN=1 to execute, CORES=N)
 	$(MAKE) -C tests/integration/WU346549 $(INTEGRATION_TARGET) CORES=$(CORES)
+
+integration-entrapment: ## DIA-Astral no-digestion sweep (RUN=1 to execute, CORES=N)
+	$(MAKE) -C tests/integration/entrapment $(ENTRAPMENT_TARGET) CORES=$(CORES)
 
 register: ## upload the B-Fabric executable YAML — always CREATES a new one (ENV=TEST)
 	$(MAKE) -C bfabric_executable upload ENV=$(ENV)

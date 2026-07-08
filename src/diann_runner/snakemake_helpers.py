@@ -540,13 +540,16 @@ def write_result_index(
     final_outputs: dict[str, str],
     fasta_paths: list[str | Path],
     include_pmultiqc: bool = False,
+    include_prozor: bool = True,
 ) -> None:
     """Write top-level Markdown and HTML indexes for the result zip.
 
     Links are grouped into a "QC Reports" section (the rendered HTML QC
     reports) and a "Data Files" section (the downloadable parquet/TSV/PDF/log
     and the dataset and FASTA databases). Each entry carries a one-line
-    description shown alongside the link.
+    description shown alongside the link. ``include_prozor`` is False for
+    no-digestion runs (peptide-list FASTA), where prozor inference is bypassed
+    and no ``_prozor.parquet`` is produced.
     """
     quant_path = Path(quant_dir)
     quant_archive_path = Path(quant_path.name) if quant_path.is_absolute() else quant_path
@@ -592,12 +595,16 @@ def write_result_index(
             final_outputs["report_parquet"],
             "Unmodified DIA-NN precursor/protein report in parquet format.",
         ),
-        (
+    ]
+    # Prozor re-annotation is skipped for no-digestion (peptide-list FASTA) runs.
+    if include_prozor:
+        data_files.append((
             "DIA-NN report, protein-inferred (prozor, parquet)",
             prozor,
             "DIA-NN report re-annotated with parsimonious protein inference "
             "(prozor).",
-        ),
+        ))
+    data_files += [
         (
             "Protein group abundance matrix (TSV)",
             final_outputs["pg_matrix"],

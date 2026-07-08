@@ -89,6 +89,10 @@ FINAL_QUANT_OUTPUTS = get_final_quantification_outputs(OUTPUT_PREFIX, WORKUNITID
 WORKFLOW_MODE = WORKFLOW_PARAMS["pipeline"]["workflow_mode"]
 INCLUDE_LIBS = WORKFLOW_PARAMS["output"]["include_libs"]
 GENERATE_PMULTIQC = WORKFLOW_PARAMS["output"]["pmultiqc"]
+# No-digestion (empty --cut) means a pre-digested / peptide-list FASTA: protein
+# grouping is degenerate, so prozor re-annotation is bypassed. Demand-driven —
+# nothing downstream requires the prozor parquet, so the rule drops out of the DAG.
+NO_DIGESTION = WORKFLOW_PARAMS["lib"]["digestion_cut"] == ""
 PMULTIQC_HTML = "pmultiqc_result/pmultiqc_diann_report.html"
 RESULT_INDEX_MD = "index.md"
 RESULT_INDEX_HTML = "index.html"
@@ -397,7 +401,7 @@ rule diannqc:
 rule zip_diann_result:
     input:
         pdf = rules.diannqc.output.pdf,
-        prozor = rules.run_prozor_inference.output.prozor_parquet,
+        prozor = [] if NO_DIGESTION else rules.run_prozor_inference.output.prozor_parquet,
         dataset = DATASET_CSV,
         qc_dir = "qc_result",
         index_md = RESULT_INDEX_MD,
@@ -477,7 +481,7 @@ rule result_index:
     input:
         unpack(final_quant_outputs),
         pdf = rules.diannqc.output.pdf,
-        prozor = rules.run_prozor_inference.output.prozor_parquet,
+        prozor = [] if NO_DIGESTION else rules.run_prozor_inference.output.prozor_parquet,
         qc_dir = "qc_result",
         pmultiqc = PMULTIQC_HTML if GENERATE_PMULTIQC else []
     output:
@@ -492,6 +496,7 @@ rule result_index:
             final_outputs=FINAL_QUANT_OUTPUTS,
             fasta_paths=[str(path) for path in FASTA_PATHS],
             include_pmultiqc=GENERATE_PMULTIQC,
+            include_prozor=not NO_DIGESTION,
         )
 
 rule pmultiqc_diann_report:

@@ -1,0 +1,9 @@
+# Downloaded inputs (FASTA + Astral raws, ~21 GB) and all generated run outputs.
+# Only the driver scripts + input_dataset.tsv are tracked.
+input/
+runs/
+*.log
+
+# The repo-root .gitignore ignores *.tsv — but input_dataset.tsv IS the committed
+# dataset for this case, so un-ignore it.
+!input_dataset.tsv

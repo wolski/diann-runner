@@ -13,6 +13,11 @@ for the full plan, rationale, and open questions.
 | Directory | Workunit | Dataset | Notes |
 |-----------|----------|---------|-------|
 | [`WU346549/`](WU346549/) | WU346549 | ProteoBench DIA Orbitrap AIF (triple-proteome HYE) | DIA-NN 2.5.0, `two_step`, `enable_step_c=false` |
+| [`entrapment/`](entrapment/) | — (synthetic) | ProteoBench DIA-Astral entrapment (pre-digested peptide-list FASTA) | **no-digestion** mode; `run-diann sushi`, `register_outputs=false`; version × mods sweep, one folder per combo |
+
+The `sushi/` directory is a fully-committed `run-diann sushi` dry-run companion to
+`WU346549/` (no downloads). `entrapment/` is a download-based case (like
+`WU346549/`) that exercises the no-digestion path across DIA-NN versions.
 
 ## How a case works
 

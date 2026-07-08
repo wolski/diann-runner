@@ -176,11 +176,12 @@ executable:
     required: 'true'
     type: BOOLEAN
     value: 'true'
-  - description: 'Enzyme cleavage specificity. Default: K*,R* (Trypsin). Format: [residue]*,[residue]* where * indicates cleavage after residue. DIA-NN command: --cut'
+  - description: 'Enzyme cleavage specificity. Default: K*,R* (Trypsin). Format: [residue]*,[residue]* where * indicates cleavage after residue. Select "no digestion" for a pre-digested / peptide-list FASTA (e.g. entrapment FASTA): digestion is turned off (--cut '''') and each FASTA record is taken verbatim as a precursor candidate. DIA-NN command: --cut'
     context: APPLICATION
     enumeration:
     - K*,R*
     - K*,R*,!*P
+    - no digestion
     key: lib_digestion_cut
     label: Enzyme Cut Sites
     modifiable: 'true'

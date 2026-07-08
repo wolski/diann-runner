@@ -6,6 +6,7 @@ from diann_runner.param_core import (
     _MISSING,
     DIANN_BIN,
     DIANN_FIELDS,
+    _digestion_cut,
     _freestyle,
     _int_or_auto,
     _pg_level,
@@ -60,6 +61,23 @@ class TestLeafTransforms(unittest.TestCase):
         self.assertEqual(_pg_level("0_isoform_IDs"), 0)
         self.assertEqual(_pg_level("1_protein_names"), 1)
         self.assertEqual(_pg_level("2_genes"), 2)
+
+    def test_digestion_cut(self):
+        # "no digestion" sentinel (and defensive none/empty) -> "" (digestion off).
+        self.assertEqual(_digestion_cut("no digestion"), "")
+        self.assertEqual(_digestion_cut("No Digestion"), "")
+        self.assertEqual(_digestion_cut("none"), "")
+        self.assertEqual(_digestion_cut(""), "")
+        self.assertEqual(_digestion_cut("  "), "")
+        # A real cut spec passes through unchanged (whitespace-trimmed).
+        self.assertEqual(_digestion_cut("K*,R*"), "K*,R*")
+        self.assertEqual(_digestion_cut("K*,R*,!*P"), "K*,R*,!*P")
+
+    def test_digestion_cut_sentinel_flows_through_build(self):
+        # The sentinel maps to "" in the assembled nested params (lib.digestion_cut).
+        canon = dict(CANON, digestion_cut="no digestion")
+        wf = build_internal_params(canon, fasta=dict(FASTA))
+        self.assertEqual(wf["lib"]["digestion_cut"], "")
 
     def test_parse_var_mods_string(self):
         self.assertEqual(
