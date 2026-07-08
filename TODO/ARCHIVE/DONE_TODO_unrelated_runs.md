@@ -1,4 +1,4 @@
-# TODO: Wire the DIA-NN "freestyle" parameter through the pipeline (`13_diann_freestyle`)
+# TODO: Validate WU347617 after freestyle / unrelated-runs wiring
 
 Reported by Tobi (2026-06-22), workunit **WU347617**
 ("DIA-NN 2.6.0 QC search vs UP000005640 1-spg, unrelated runs available").
@@ -8,16 +8,20 @@ the generated `step_*.sh` scripts or the DIA-NN log**.
 There are **two independent problems**. Both must be addressed.
 
 > **STATUS 2026-06-22 — IMPLEMENTED.** Freestyle is now wired to steps B/C only, and a
-> dedicated `Unrelated Runs` checkbox (`05c_diann_unrelated_runs` → `--individual-mass-acc
-> --individual-windows`) was added to both XML executables. Files changed: `param_core.py`
-> (`_freestyle` transform + `freestyle`/`unrelated_runs` FieldSpecs), `snakemake_helpers.py`
-> (BFABRIC map + `create_diann_workflow`), `sushi_adapter.py` (SUSHI map), `workflow.py`
-> (ctor + `to_config_dict` + B/C builders), `request.py` (`DiannParams` fields),
-> `docs/DIANN_PARAMETERS.md` (doc fix), both `executable_*.xml`. Tests: 210 passed,
-> 6 skipped. Verified WU347617's real `params.yml` now yields
-> `freestyle=['--unrelated-runs']`. **Still TODO: tell Tobi `--unrelated-runs` is not a
-> real DIA-NN flag — re-run with the new checkbox (or freestyle
-> `--individual-mass-acc --individual-windows`).**
+> dedicated `Unrelated Runs` checkbox (`search_mass_acc_unrelated_runs` →
+> `--individual-mass-acc --individual-windows`) was added to the executable YAML
+> source and SUSHI parameter surface. Files changed: `param_core.py`
+> (`_freestyle` transform + `freestyle`/`mass_acc_unrelated_runs` FieldSpecs),
+> `snakemake_helpers.py` (BFABRIC map + `create_diann_workflow`),
+> `sushi_adapter.py` (SUSHI map), `workflow.py` (ctor + `to_config_dict` + B/C
+> builders), `request.py` (nested param model), `docs/DIANN_PARAMETERS.md` (doc
+> fix), and executable YAML. Tests: 210 passed, 6 skipped. Verified WU347617's
+> real `params.yml` now yields `freestyle=['--unrelated-runs']`.
+>
+> **Remaining open items:** regenerate/check WU347617-shaped scripts, then tell
+> Tobi `--unrelated-runs` is not a real DIA-NN flag — re-run with the new checkbox
+> (or freestyle `--individual-mass-acc --individual-windows`). All repo-local
+> code, docs, and tests below are implemented.
 
 ---
 
@@ -110,19 +114,19 @@ correct value.
       after their `_build_common_params()` call.
       Note: the GUI runs DIA-NN as one invocation; our 3-step split means B+C scoping
       reproduces the GUI's effective behaviour exactly (step A has no runs to calibrate).
-- [ ] **Placement in command:** append freestyle tokens **last** in the step B/C command
+- [x] **Placement in command:** append freestyle tokens **last** in the step B/C command
       (after common params + step-specific flags) so a user can override earlier
       auto-generated flags if DIA-NN honours last-wins.
-- [ ] **Canonical field name:** `freestyle` (keep the bfabric/sushi vocabulary word).
+- [x] **Canonical field name:** `freestyle` (keep the bfabric/sushi vocabulary word).
       Internal representation: `list[str]` of tokens.
-- [ ] **Sentinel handling:** `None` / empty string → `[]` (matches existing fixtures
+- [x] **Sentinel handling:** `None` / empty string → `[]` (matches existing fixtures
       `freestyle: 'None'`).
-- [ ] **Tokenisation:** use `shlex.split()` so quoted args survive, not naive `.split()`.
+- [x] **Tokenisation:** use `shlex.split()` so quoted args survive, not naive `.split()`.
 
 ### B. Wire it through (4 layers + config + sushi)
-1. [ ] `snakemake_helpers.py` `BFABRIC_TO_DRUNNER`: add
+1. [x] `snakemake_helpers.py` `BFABRIC_TO_DRUNNER`: add
        `"13_diann_freestyle": "freestyle"`.
-2. [ ] `param_core.py`:
+2. [x] `param_core.py`:
    - add a `_freestyle(value)` transform → `[] if str(value) in {"", "None"} else shlex.split(value)`.
    - add `"freestyle": FieldSpec("diann", _freestyle, default=[])` to `DIANN_FIELDS`
      (note: default is a fresh `[]` per call — FieldSpec default is a shared object, so
@@ -130,33 +134,33 @@ correct value.
      `var_mods` handling which builds a fresh list).
    - surface it in `build_internal_params()` output (it already flows via the `diann`
      sub-dict since section="diann"; verify `create_diann_workflow` can read it).
-3. [ ] `sushi_adapter.py` `SUSHI_TO_DRUNNER`: map the SUSHI `freestyle` key →
+3. [x] `sushi_adapter.py` `SUSHI_TO_DRUNNER`: map the SUSHI `freestyle` key →
        `freestyle` so both callers converge (remove the "unwired downstream" note).
-4. [ ] `workflow.py` `DiannWorkflow.__init__`: add `freestyle: list[str] | tuple = ()`,
+4. [x] `workflow.py` `DiannWorkflow.__init__`: add `freestyle: list[str] | tuple = ()`,
        store `self.freestyle = list(freestyle)`; add to `to_config_dict()` and confirm
        `from_config_file()` round-trips (it uses `cls(**config)`).
-5. [ ] `workflow.py` — **B and C only** (NOT `_build_common_params`): in the step-B and
+5. [x] `workflow.py` — **B and C only** (NOT `_build_common_params`): in the step-B and
        step-C command builders, after `cmd.extend(self._build_common_params())`, append
        `cmd.extend(self.freestyle)` (tokens already shlex-split, no extra quoting).
        Leave `generate_step_a_library` untouched.
-6. [ ] `snakemake_helpers.py` `create_diann_workflow()`: pass
+6. [x] `snakemake_helpers.py` `create_diann_workflow()`: pass
        `freestyle=diann_params.get("freestyle", [])` (or required-key per fail-fast policy
        once the default is guaranteed by `build_internal_params`).
 
 ### C. Docs
-7. [ ] Fix `docs/DIANN_PARAMETERS.md:136-139`: `--unrelated-runs` is the **GUI label**, the
+7. [x] Fix `docs/DIANN_PARAMETERS.md:136-139`: `--unrelated-runs` is the **GUI label**, the
        real flags are `--individual-mass-acc --individual-windows`.
 
 ### D. Tests
-8. [ ] `param_core`: `13_diann_freestyle: "--individual-mass-acc --individual-windows"`
+8. [x] `param_core`: `13_diann_freestyle: "--individual-mass-acc --individual-windows"`
        → canonical `freestyle == ["--individual-mass-acc", "--individual-windows"]`;
        `None` → `[]`; quoted arg survives shlex.
-9. [ ] `workflow`: with `freestyle=["--individual-mass-acc","--individual-windows"]`, both
+9. [x] `workflow`: with `freestyle=["--individual-mass-acc","--individual-windows"]`, both
        flags appear in the generated **step B and step C** command strings and are
        **absent from step A**; empty freestyle adds nothing anywhere.
-10. [ ] End-to-end-ish: feed a `params.yml`-shaped dict through
+10. [x] End-to-end-ish: feed a `params.yml`-shaped dict through
         `parse_flat_params` → `create_diann_workflow` → assert flags in `step_*.sh`.
-11. [ ] Keep baseline green: `uv run python -m pytest tests/` (176 passed, 6 skipped on
+11. [x] Keep baseline green: `uv run python -m pytest tests/` (176 passed, 6 skipped on
         this branch — see workspace CLAUDE.md host gotchas re: `defaults_server.yml`).
 
 ### E. Validate against the real workunit
@@ -169,20 +173,20 @@ correct value.
 
 ### F. (Recommended) Dedicated "Unrelated runs" checkbox — first-class parameter
 Rather than asking users to type `--individual-mass-acc --individual-windows` into
-freestyle, add a proper boolean, following the project's "XML is source of truth" flow.
+freestyle, add a proper boolean, following the project's executable source-of-truth flow.
 Treat the two CLI flags as one inseparable toggle (the GUI does).
-- [ ] **XML** (`bfabric_executable/executable_A386_DIANN_3.2.xml` +
-      `slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.xml`): add a boolean,
-      e.g. `05c_diann_unrelated_runs` (near scan-window / mass-acc params), **default
-      `false`** to match DIA-NN. Reuse the official tooltip text.
-- [ ] **`BFABRIC_TO_DRUNNER`**: `"05c_diann_unrelated_runs": "unrelated_runs"`.
-- [ ] **`SUSHI_TO_DRUNNER`**: add the matching SUSHI key → `unrelated_runs`.
-- [ ] **`param_core.DIANN_FIELDS`**: `"unrelated_runs": FieldSpec("diann", _to_bool, default=False)`.
-- [ ] **`DiannWorkflow`**: `unrelated_runs: bool = False`; in **step B and C** builders,
+- [x] **Executable YAML** (`bfabric_executable/executable_A386_DIANN_3.2.yaml` +
+      the slurmworker mirror): add boolean `search_mass_acc_unrelated_runs`
+      (near scan-window / mass-acc params), **default `false`** to match
+      DIA-NN. Reuse the official tooltip text.
+- [x] **`BFABRIC_TO_DRUNNER`**: `"search_mass_acc_unrelated_runs": "mass_acc_unrelated_runs"`.
+- [x] **`SUSHI_TO_DRUNNER`**: add the matching SUSHI key → `mass_acc_unrelated_runs`.
+- [x] **`param_core.DIANN_FIELDS`**: `"mass_acc_unrelated_runs": FieldSpec("search", _to_bool, default=False)`.
+- [x] **`DiannWorkflow`**: `unrelated_runs: bool = False`; in **step B and C** builders,
       `if self.unrelated_runs: cmd += ["--individual-mass-acc", "--individual-windows"]`.
       Add to `to_config_dict()`.
-- [ ] **Tests**: checkbox true → both flags on B and C, none on A; false → none.
-- Decision needed: ship BOTH (freestyle passthrough *and* the checkbox), or checkbox
+- [x] **Tests**: checkbox true → both flags on B and C, none on A; false → none.
+- [x] Decision needed: ship BOTH (freestyle passthrough *and* the checkbox), or checkbox
   only? Recommend BOTH — freestyle is the general escape hatch; the checkbox is the
   discoverable, mistake-proof path for this specific, common option.
 

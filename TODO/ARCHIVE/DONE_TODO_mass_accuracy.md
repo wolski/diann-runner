@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-22
 **Status:** Decided — keep `AUTO` default + show read-only guidance. Implemented in
-the A386 executable XML (source + deployed slurmworker copy); see action items.
+the A386 executable YAML source and slurmworker mirror; see action items.
 
 ## Why this came up
 
@@ -13,7 +13,7 @@ The older **A366_DIANN** executable ships fixed mass-accuracy defaults
 - MS1: `--mass-acc-ms1 15` (default `--mass-acc-ms1 15`, enums 10/15/20)
 
 The current **A386_DIANN_3.2** executable instead defaults both to `AUTO`
-(`executable_A386_DIANN_3.2.xml:561,581`; SUSHI `DIANNApp.rb` enums
+(`bfabric_executable/executable_A386_DIANN_3.2.yaml`; SUSHI `DIANNApp.rb` enums
 `['AUTO','5','10','15','20']`). The question raised: **20 ppm (MS2) / 15 ppm
 (MS1) look large — are they?** And: is `AUTO` the right default?
 
@@ -116,38 +116,40 @@ final / large / publishable run:
 ## Action items
 
 - [x] **Keep `AUTO` as the default** in A386; do not copy A366's fixed 20/15.
-- [x] **Add read-only recommendation fields** to the A386 executable XML — both the
-      source (`bfabric_executable/executable_A386_DIANN_3.2.xml`) and the deployed
-      copy (`slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.xml`).
+- [x] **Add read-only recommendation fields** to the A386 executable YAML — both the
+      source (`bfabric_executable/executable_A386_DIANN_3.2.yaml`) and the
+      slurmworker mirror.
       **B-Fabric caps each `<value>` at 256 chars** (`InvalidDataException: value
       size must be between 0 and 256`), so a single long paragraph is rejected — the
       guidance is split into 4 short `modifiable=false` STRING rows, one per
       instrument class. Keys are not in `BFABRIC_TO_DRUNNER`, so `parse_flat_params`
       ignores them (display-only, cannot affect a run).
 - [x] **Order rows before MS1/MS2.** B-Fabric lays the form out by sorting
-      parameters **alphabetically by `<key>`** (not XML order). To place the rows
+      parameters **alphabetically by `<key>`** (not source-file order). To place the rows
       above the inputs, keys are `09_diann_mass_acc_hint{1..4}_{timstof,orbitrap,
       tof,auto}` ('hint' < 'ms', so they precede `09_diann_mass_acc_ms1/ms2`).
-- [x] **Add `4/5/7` ppm to the MS1/MS2 enumerations** in both A386 executable XMLs
+- [x] **Add `4/5/7` ppm to the MS1/MS2 enumerations** in both A386 executable definitions
       (now `4/5/7/10/15/20/AUTO`), so the recommended high-res Orbitrap/Astral
       values are selectable.
 - [x] **Resolved the 256-char value limit** by splitting into 4 short rows (above);
       no newlines needed — each instrument is its own labeled row.
-- [ ] **Heads-up:** 3 pre-existing `<description>` fields exceed 256 chars
-      (`unrelated_runs` ~467, raw-converter ~294, var-mods ~280). The 256 cap is on
-      `<value>`, not `<description>`, so these should be fine — but trim them if a
-      re-upload errors on description size.
+- [ ] **Heads-up:** 3 current `<description>` fields exceed 256 chars
+      (`search_mass_acc_unrelated_runs` ~467, `pipeline_raw_converter` ~294,
+      `lib_mods_variable` ~280). The 256 cap is on `<value>`, not
+      `<description>`, so these should be fine — but trim them if a re-upload
+      errors on description size.
 - [ ] **Re-upload / re-register** the updated A386 executable in B-Fabric for the new
-      field + dropdown values to appear (XML edits alone don't change the live app).
+      field + dropdown values to appear (YAML/source edits alone don't change the live app).
 - [ ] **Confirm the FGCZ instrument fleet** for this app (Orbitrap Exploris /
       Fusion Lumos / Astral, Bruker timsTOF, …) to sanity-check the quoted numbers.
 - [x] **SUSHI enums aligned:** `DIANNApp.rb` MS1/MS2 now
       `['AUTO','4','5','7','10','15','20']`, matching the A386 executable. (SUSHI
       still has no clean read-only guidance field — the recommendation text lives
       only in the B-Fabric executable.)
-- [ ] **Document the calibrate-then-fix workflow** in `docs/DIANN_PARAMETERS.md`
-      / app help (the "don't rely on auto" note at line 634 is blunt and could be
-      read as "always fix to 20/15", which is wrong).
+- [x] **Document the calibrate-then-fix workflow** in `docs/DIANN_PARAMETERS.md`
+      / app help. The docs now describe `--individual-mass-acc
+      --individual-windows`, the `AUTO` interaction, `--mbr-fix-settings`, and
+      the preference for fixed values in final runs.
 - [ ] **(C)** Extract "Averaged recommended settings for this experiment" from the
       DIA-NN log into the QC report (parse in `qc_report.py` / `snakemake_helpers`).
 - [ ] **(B, optional)** Instrument-preset dropdown once metadata is confirmed.
