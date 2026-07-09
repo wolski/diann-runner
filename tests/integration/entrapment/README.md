@@ -48,6 +48,8 @@ make run                              # execute that combo
 make run VERSION=2.5.0 MODS=nomods    # a different combo
 make sweep                            # every VERSIONS x MODS_ARMS combo
 make sweep CORES=64 VERSIONS="2.5.1"  # narrow the matrix
+make clean VERSION=2.3.2 MODS=nomods  # wipe one combo's outputs (see Notes -> Re-running)
+make clean-runs                       # wipe ALL run outputs (keeps input/)
 ```
 
 Or drive `run.sh` directly: `VERSION=2.3.2 MODS=metox ./run.sh run`.
@@ -68,6 +70,13 @@ filenames — do **not** rename) + a `Condition [Factor]` column (A/B).
 
 ## Notes
 
+- **Re-running / staleness:** the per-step `step_*.sh` scripts are snakemake
+  rule outputs, so once a combo has run, snakemake will **not** regenerate them —
+  a re-run reuses the old scripts (with whatever container runtime was baked in
+  the first time). After changing `RUNTIME` (or any param), run `make clean
+  VERSION=.. MODS=..` first — it runs `snakemake --delete-all-output` for that
+  combo so the next run regenerates the scripts. `make clean-runs` nukes every
+  combo's outputs at once.
 - **Runtime:** the harness defaults to `RUNTIME=docker` and passes `run-diann
   --docker`, so it uses the docker images built by `make deploy`. This is
   because `run-diann`'s CLI otherwise defaults to **apptainer**, which resolves

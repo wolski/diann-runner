@@ -12,6 +12,7 @@
 #   make sweep-dry                      # dry-run the full sweep (DAG only)
 #   make ... CORES=64
 #   make run RUNTIME=apptainer          # use the shared SIF cache (default: docker)
+#   make clean run VERSION=2.3.2 MODS=nomods   # force-regenerate a combo, then run
 
 CORES   ?= 32
 VERSION ?= 2.5.1
@@ -23,7 +24,7 @@ RUNTIME ?= docker
 VERSIONS  ?= 2.3.2 2.5.0 2.5.1
 MODS_ARMS ?= nomods metox
 
-.PHONY: help setup dry run sweep sweep-dry clean distclean
+.PHONY: help setup dry run sweep sweep-dry clean clean-runs distclean
 
 help: ## Show this help
 	@echo "entrapment integration test — make <target> (VERSION=, MODS=, CORES=, RUNTIME=):"
@@ -51,8 +52,11 @@ sweep-dry: ## dry-run every VERSIONS x MODS_ARMS combo (no downloads needed if i
 	  VERSION=$$v MODS=$$m CORES=$(CORES) RUNTIME=$(RUNTIME) ./run.sh dry || exit $$?; \
 	done; done
 
-clean: ## remove all run outputs (keeps downloaded input/)
+clean: ## snakemake --delete-all-output for ONE combo (VERSION/MODS) so scripts regenerate
+	VERSION=$(VERSION) MODS=$(MODS) CORES=$(CORES) RUNTIME=$(RUNTIME) ./run.sh clean
+
+clean-runs: ## remove ALL run outputs, every combo (keeps downloaded input/)
 	rm -rf runs
 
-distclean: clean ## also remove downloaded FASTA + raws
+distclean: clean-runs ## also remove downloaded FASTA + raws
 	rm -rf input

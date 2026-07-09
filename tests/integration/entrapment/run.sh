@@ -15,9 +15,15 @@
 # Usage:
 #   ./run.sh                             # dry-run, VERSION=2.5.1 MODS=metox
 #   ./run.sh run                         # execute
+#   ./run.sh clean                       # snakemake --delete-all-output for this combo
 #   VERSION=2.5.0 MODS=nomods ./run.sh run
 #   CORES=64 VERSION=2.3.2 ./run.sh run
 #   RUNTIME=apptainer ./run.sh run       # use the shared SIF cache instead
+#
+# The generated step_*.sh scripts are snakemake rule outputs, so once they exist
+# snakemake will NOT regenerate them — a re-run reuses the old scripts (e.g. with
+# a stale container runtime baked in). `./run.sh clean` deletes them (and all
+# other tracked outputs) for this combo so the next run regenerates from scratch.
 #
 #   VERSION  DIA-NN version -> pipeline_diann_version (container image tag).
 #            Known-good: 2.3.2, 2.5.0, 2.5.1.
@@ -47,12 +53,23 @@ case "$MODS" in
   *) echo "MODS must be 'metox' or 'nomods' (got: '$MODS')" >&2; exit 2 ;;
 esac
 case "$RUNTIME" in docker|apptainer) ;; *) echo "RUNTIME must be 'docker' or 'apptainer' (got: '$RUNTIME')" >&2; exit 2 ;; esac
-case "$MODE" in dry|run) ;; *) echo "usage: $0 [dry|run]" >&2; exit 2 ;; esac
+case "$MODE" in dry|run|clean) ;; *) echo "usage: $0 [dry|run|clean]" >&2; exit 2 ;; esac
 
 FASTA="$HERE/input/ProteoBenchFASTA_Entrapment_Human_with_contaminants_entrapment_pep.fasta"
 RAWDIR="$HERE/input/raw"
 COMBO="diann-${VERSION}-${MODS}"
 OUT="$HERE/runs/$COMBO"
+
+# clean: snakemake --delete-all-output for this combo. Run inside $OUT so
+# diann-cleanup's unlock + delete both target this combo's work dir; it reads
+# the persisted diann_runner_params.toml there to know the tracked outputs.
+if [ "$MODE" = clean ]; then
+  if [ ! -d "$OUT" ]; then echo "[$COMBO] nothing to clean ($OUT absent)"; exit 0; fi
+  echo "[$COMBO] diann-cleanup (snakemake --delete-all-output) in $OUT"
+  ( cd "$OUT" && diann-cleanup --config raw_file_dir="$RAWDIR" container_runtime="$RUNTIME" )
+  exit $?
+fi
+
 mkdir -p "$OUT"
 
 # Generate the per-combo SUSHI-readable params. Only the DIA-NN version and the
