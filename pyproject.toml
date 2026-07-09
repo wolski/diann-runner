@@ -44,6 +44,16 @@ test = ["pytest>=7.0.0"]
 # Install with: uv pip install -e ".[fast]" for faster Aho-Corasick
 fast = ["ahocorasick_rs>=1.0.0"]
 
+[tool.uv]
+# Dependency conflict: bfabric (via bfabric-app-runner) requires the regular
+# `polars` distribution, while multiqc (via pmultiqc) requires `polars-lts-cpu`.
+# Both own the top-level `polars/` package at different versions, so installing
+# both clobbers the install and breaks `import polars` (POLARS_STORAGE_CONFIG_KEYS
+# ImportError). multiqc runs fine against the regular `polars` module, and polars
+# 1.41+ auto-selects a CPU-safe runtime, so drop `polars-lts-cpu` entirely (the
+# always-false marker excludes it from resolution).
+override-dependencies = ["polars-lts-cpu ; sys_platform == 'never'"]
+
 [tool.setuptools.package-data]
 diann_runner = ["Snakefile.DIANN3step.smk", "config/*.yml"]
 
