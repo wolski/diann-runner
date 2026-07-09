@@ -34,6 +34,7 @@ runs/diann-<version>-<mods>/
 | `VERSION` | `2.3.2`, `2.5.0`, `2.5.1` | `pipeline_diann_version` (container image tag) |
 | `MODS` | `metox`, `nomods` | Met-oxidation only, or no variable mods (both allowed by the brief) |
 | `CORES` | int (default 32) | thread count |
+| `RUNTIME` | `docker` (default), `apptainer` | container runtime (see Notes → *Runtime*) |
 
 ## Run
 
@@ -67,6 +68,13 @@ filenames — do **not** rename) + a `Condition [Factor]` column (A/B).
 
 ## Notes
 
+- **Runtime:** the harness defaults to `RUNTIME=docker` and passes `run-diann
+  --docker`, so it uses the docker images built by `make deploy`. This is
+  because `run-diann`'s CLI otherwise defaults to **apptainer**, which resolves
+  DIA-NN to SIF images under the shared `/misc/fgcz01/nextflow_apptainer_cache/`
+  — a cache that is not mounted on every FGCZ host (e.g. fgcz-r-038, where
+  apptainer fails with `lstat /misc/fgcz01: no such file or directory`). Use
+  `RUNTIME=apptainer` only on a node that mounts that cache.
 - **Raw reading:** `pipeline_raw_converter: native` — DIA-NN reads the Thermo
   `.raw` directly (no msconvert), and the shared `input/raw` is mounted read-only
   into each combo's container, so the 6 raws are read in place, not re-copied or

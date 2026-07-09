@@ -17,16 +17,20 @@
 #   ./run.sh run                         # execute
 #   VERSION=2.5.0 MODS=nomods ./run.sh run
 #   CORES=64 VERSION=2.3.2 ./run.sh run
+#   RUNTIME=apptainer ./run.sh run       # use the shared SIF cache instead
 #
 #   VERSION  DIA-NN version -> pipeline_diann_version (container image tag).
 #            Known-good: 2.3.2, 2.5.0, 2.5.1.
 #   MODS     'metox'  -> --var-mods 1 --var-mod UniMod:35,15.994915,M (Met-ox)
 #            'nomods' -> no variable modifications
 #   CORES    thread count (default 32).
+#   RUNTIME  container runtime: 'docker' (default) or 'apptainer'.
 #
-# run-diann auto-detects the container runtime (apptainer wins over docker); pass
-# nothing special — the same command works on the docker dev box and the
-# apptainer host.
+# run-diann does NOT auto-detect the runtime here — its CLI defaults to apptainer,
+# which reads SIF images from the shared /misc/fgcz01 cache. That cache is not
+# mounted on every host (e.g. fgcz-r-038), so this harness defaults to
+# RUNTIME=docker and passes --docker, using the docker images built by
+# `make deploy`. Set RUNTIME=apptainer on a node where the SIF cache is present.
 set -euo pipefail
 cd "$(dirname "$0")"
 HERE="$(pwd)"
@@ -34,6 +38,7 @@ HERE="$(pwd)"
 VERSION="${VERSION:-2.5.1}"
 MODS="${MODS:-metox}"
 CORES="${CORES:-32}"
+RUNTIME="${RUNTIME:-docker}"
 MODE="${1:-dry}"
 
 case "$MODS" in
@@ -41,6 +46,7 @@ case "$MODS" in
   nomods) VARMODS="None" ;;
   *) echo "MODS must be 'metox' or 'nomods' (got: '$MODS')" >&2; exit 2 ;;
 esac
+case "$RUNTIME" in docker|apptainer) ;; *) echo "RUNTIME must be 'docker' or 'apptainer' (got: '$RUNTIME')" >&2; exit 2 ;; esac
 case "$MODE" in dry|run) ;; *) echo "usage: $0 [dry|run]" >&2; exit 2 ;; esac
 
 FASTA="$HERE/input/ProteoBenchFASTA_Entrapment_Human_with_contaminants_entrapment_pep.fasta"
@@ -92,6 +98,8 @@ ARGS=(sushi
   --work-dir "$OUT" --output-dir "$OUT"
   --workunit-id "${VERSION}_${MODS}"
   --cores "$CORES")
+# CLI default is apptainer (shared SIF cache); opt into docker explicitly.
+[ "$RUNTIME" = docker ] && ARGS+=(--docker)
 [ "$MODE" = run ] || ARGS+=(-n)
 
 echo "[$COMBO] run-diann ${ARGS[*]}"
