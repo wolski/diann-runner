@@ -60,7 +60,7 @@ class TestDiannWorkflow(unittest.TestCase):
     def test_init_defaults(self):
         """Test initialization with default values."""
         workflow = DiannWorkflow(workunit_id='TEST002')
-        self.assertEqual(workflow.threads, 64)
+        self.assertEqual(workflow.threads, 24)
         self.assertEqual(workflow.qvalue, 0.01)
         self.assertEqual(workflow.var_mods, ())
         self.assertEqual(workflow.is_dda, False)

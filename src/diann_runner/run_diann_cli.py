@@ -107,21 +107,22 @@ def _build_request(
     fastas: list[Path],
     work_dir: Path,
     output_dir: Path | None,
-    cores: int,
+    cores: int | None,
     workunit_id: str,
     container_id: str,
     register_outputs: bool,
     runtime: str | None = None,
 ) -> DiannRunRequest:
     database_fasta = _apply_fasta(workflow_params, fastas, work_dir)
+    params_obj = DIANNRunnerParams.from_parsed(workflow_params)
     return DiannRunRequest(
-        params=DIANNRunnerParams.from_parsed(workflow_params),
+        params=params_obj,
         raw_file_dir=raw_dir,
         dataset=dataset,
         database_fasta=database_fasta,
         work_dir=work_dir,
         output_dir=output_dir if output_dir is not None else work_dir,
-        cores=cores,
+        cores=params_obj.cores if cores is None else cores,
         workunit_id=str(workunit_id),
         container_id=str(container_id),
         register_outputs=register_outputs,
@@ -138,7 +139,7 @@ def apprunner(
     fasta: Annotated[tuple[Path, ...], cyclopts.Parameter(name=["--fasta"])] = (),
     work_dir: Annotated[Path, cyclopts.Parameter(name=["--work-dir"])] = Path("."),
     output_dir: Annotated[Path | None, cyclopts.Parameter(name=["--output-dir"])] = None,
-    cores: int = 64,
+    cores: int | None = None,
     docker: Annotated[bool, cyclopts.Parameter(name=["--docker"])] = False,
     dry_run: Annotated[bool, cyclopts.Parameter(name=["--dry-run", "-n"])] = False,
 ) -> int:
@@ -186,7 +187,7 @@ def sushi(
     fasta: Annotated[tuple[Path, ...], cyclopts.Parameter(name=["--fasta"])] = (),
     work_dir: Annotated[Path, cyclopts.Parameter(name=["--work-dir"])] = Path("."),
     output_dir: Annotated[Path | None, cyclopts.Parameter(name=["--output-dir"])] = None,
-    cores: int = 64,
+    cores: int | None = None,
     workunit_id: Annotated[str, cyclopts.Parameter(name=["--workunit-id"])] = "0",
     container_id: Annotated[str, cyclopts.Parameter(name=["--container-id"])] = "0",
     docker: Annotated[bool, cyclopts.Parameter(name=["--docker"])] = False,

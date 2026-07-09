@@ -84,6 +84,15 @@ class TestExecutableContract(unittest.TestCase):
                 return
         self.fail("search_protein_pg_level not found in the executable YAML")
 
+    def test_cores_enum_and_default(self):
+        """CPU core choices stay intentionally small and default to the old server value."""
+        for p in _parameters():
+            if p["key"] == "cores":
+                self.assertEqual(p.get("enumeration"), ["12", "24", "48", "96"])
+                self.assertEqual(p["value"], "24")
+                return
+        self.fail("cores not found in the executable YAML")
+
     def test_bfabric_and_sushi_agree_on_shared_keys(self):
         """Both frontends must map a shared GUI key to the same canonical field."""
         for k in set(BFABRIC_TO_DRUNNER) & set(SUSHI_TO_DRUNNER):

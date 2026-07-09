@@ -1,7 +1,7 @@
 # Snakemake workflow for DIA-NN 3-stage analysis
 # Usage:
-#   snakemake -s Snakefile.DIANN3step --cores 64 all
-#   snakemake -s Snakefile.DIANN3step --cores 64 -n  # dry run
+#   snakemake -s Snakefile.DIANN3step --cores 24 all
+#   snakemake -s Snakefile.DIANN3step --cores 24 -n  # dry run
 
 import sys
 import shutil
@@ -49,7 +49,7 @@ RAW_MOUNT = (
 # Detect input files in the source directory
 SAMPLES, INPUT_TYPE, _ = detect_input_files(RAW_SOURCE_DIR)
 
-# Deploy config (docker images, threads, etc.). An explicit container_runtime
+# Deploy config (docker images, container runtime, etc.). An explicit container_runtime
 # (run-diann --runtime / snakemake --config container_runtime=...) overrides the
 # config key and host auto-detection.
 deploy_dict = load_deploy_config(".", runtime_override=config.get("container_runtime"))

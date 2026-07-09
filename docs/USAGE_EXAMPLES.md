@@ -28,7 +28,7 @@ run-diann sushi \
   --params sushi_params.yml \
   --fasta /srv/.../database.fasta --fasta /srv/.../order.fasta \
   --work-dir /scratch/work --output-dir /scratch/work \
-  --workunit-id 112148 --container-id 34486 --cores 64   # no B-Fabric registration
+  --workunit-id 112148 --container-id 34486 --cores 24   # no B-Fabric registration
 ```
 
 Use `-n` / `--dry-run` to print the Snakemake plan without executing DIA-NN.
@@ -45,7 +45,7 @@ from diann_runner.workflow import DiannWorkflow
 workflow = DiannWorkflow(
     workunit_id='WU123',
     var_mods=[('35', '15.994915', 'M')],  # Oxidation
-    threads=64,
+    threads=24,
     qvalue=0.01,
     scan_window=0, # 0 or AUTO
 )
@@ -143,7 +143,7 @@ workflow = DiannWorkflow(
     workunit_id='WU336182',
     output_base_dir='out-DIANN',
     var_mods=[('35', '15.994915', 'M')],  # Oxidation
-    threads=64,
+    threads=24,
     qvalue=0.01,
 )
 
@@ -315,7 +315,7 @@ workflow.generate_step_c_final_quantification(
 
 **Optional (with defaults):**
 - `var_mods` - Variable modifications list (default: `[]`)
-- `threads` - CPU threads (default: `64`)
+- `threads` - CPU threads (default: `24`)
 - `qvalue` - FDR threshold (default: `0.01`)
 - `is_dda` - Set `True` for DDA data (default: `False`)
 - `pg_level` - Protein grouping (DIA-NN --pg-level): `0`=isoform IDs, `1`=protein names, `2`=genes (default: `2`)

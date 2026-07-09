@@ -91,6 +91,13 @@ class TestParamsRoundTrip(unittest.TestCase):
         self.assertEqual(restored.lib.mods_variable, [("35", "15.994915", "M")])
         self.assertIsInstance(restored.lib.mods_variable[0], tuple)
 
+    def test_cores_default_and_explicit_value_round_trip(self):
+        self.assertEqual(DIANNRunnerParams.from_parsed(self.parsed).cores, 24)
+        parsed = parse_flat_params(dict(BASE_FLAT_PARAMS, cores="96"))
+        params = DIANNRunnerParams.from_parsed(parsed)
+        restored = DIANNRunnerParams.from_toml_dict(params.to_toml_dict())
+        self.assertEqual(restored.cores, 96)
+
 
 class TestParamsValidation(unittest.TestCase):
     """The Pydantic model fails fast on a malformed parse_flat_params contract."""
@@ -172,7 +179,7 @@ class TestValidateRequest(unittest.TestCase):
             database_fasta=fastas,
             work_dir=tmp / "work",
             output_dir=tmp / "work",
-            cores=8,
+            cores=24,
         )
 
     def test_valid_request_passes(self):

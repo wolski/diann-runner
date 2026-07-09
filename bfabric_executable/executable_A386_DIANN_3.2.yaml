@@ -50,28 +50,40 @@ executable:
     required: 'true'
     type: STRING
     value: native
+  - description: Number of CPU cores to request for the job and pass to DIA-NN as --threads.
+    context: APPLICATION
+    enumeration:
+    - '12'
+    - '24'
+    - '48'
+    - '96'
+    key: cores
+    label: CPU Cores
+    modifiable: 'true'
+    required: 'true'
+    type: STRING
+    value: '24'
   - description: FASTA database file for protein inference and library generation. Only forward sequences and contaminants included.
     context: APPLICATION
     enumeration:
     - /misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta
     - /misc/fasta/p34486_ProteoBenchFASTA_DDAQuantification_noecoli.fasta
     - /misc/fasta/p34486_SMALL_Proteobench_TripleProteome_20240614.fasta
-    - /misc/fasta/fgcz_9606_reviewed_cnl_20230330.fasta
-    - /misc/fasta/fgcz_9606_UP000005640_20230824.fasta
-    - /misc/fasta/fgcz_9606_1spg_20230330.fasta
-    - /misc/fasta/fgcz_10090_1spg_20230405.fasta
-    - /misc/fasta/fgcz_10090_UP000000589_Musm_1spg_20241112.fasta
-    - /misc/fasta/fgcz_10090_UP000000589_20240130.fasta
-    - /misc/fasta/fgcz_7227_1spg_20230515.fasta
+    - /misc/fasta/fgcz_contaminants_JPRuniversal_20240411.fasta
+    - /misc/fasta/fgcz_9606_UP000005640_Human_1spg_20260619.fasta
+    - /misc/fasta/fgcz_9606_UP000005640_Human_20260619.fasta
+    - /misc/fasta/fgcz_9606_UP000005640_1spg_biofluids_20260702.fasta
+    - /misc/fasta/fgcz_10090_UP000000589_Musm_1spg_20260206.fasta
+    - /misc/fasta/fgcz_10090_UP000000589_Musm_20260206.fasta
+    - /misc/fasta/fgcz_7227_UP000000803_1spg_20260206.fasta
     - /misc/fasta/fgcz_7955_1spg_20230515.fasta
-    - /misc/fasta/fgcz_83333_EcoliK12_20230516.fasta
-    - /misc/fasta/fgcz_208964_PAO1_UP000002438_20240627.fasta
+    - /misc/fasta/fgcz_83333_UP000000625_EcoliK12_20260206.fasta
     - /misc/fasta/fgcz_8355_UP000186698_Xenopus_20240502.fasta
-    - /misc/fasta/fgcz_4932_UP000002311_yeast_20250325.fasta
+    - /misc/fasta/fgcz_4932_UP000002311_yeast_20260206.fasta
     - /misc/fasta/fgcz_4932_ensembl_R64_1_1_20171115.fasta
     - /misc/fasta/fgcz_5076_UP000076449_Penicillium_20240320.fasta
-    - /misc/fasta/fgcz_6239_1spg_20230516.fasta
-    - /misc/fasta/fgcz_6239_UP000001940_20230516.fasta
+    - /misc/fasta/fgcz_6239_UP000001940_1spg_20260206.fasta
+    - /misc/fasta/fgcz_6239_UP000001940_20260206.fasta
     - /misc/fasta/fgcz_3702_AraUniprot_1spg_20230811.fasta
     - /misc/fasta/fgcz_3702_AraUniprot_cnl_20230811.fasta
     - /misc/fasta/fgcz_9031_UP000000539_gallus_1spg_20231130.fasta
@@ -79,7 +91,8 @@ executable:
     - /misc/fasta/fgcz_10116_1spg_rat_20240418.fasta
     - /misc/fasta/fgcz_246196_UP000000757_20230921.fasta
     - /misc/fasta/fgcz_9913_UP000009136_bos_taurus_spg_20240711.fasta
-    - /misc/fasta/fgcz_swissprot_20230328.fasta
+    - /misc/fasta/fgcz_swissprot202602_20260206.fasta
+    - /misc/fasta/fgcz_swissprot202606_20260619.fasta
     - /misc/fasta/fgcz_tripleProteome_HYC_1SpG_20230609.fasta
     - /misc/fasta/fgcz_twoProteome_HY_1SpG_20230609.fasta
     - /misc/fasta/fgcz_507601_UP000005641_ToxoplGond_20241112.fasta
@@ -92,29 +105,15 @@ executable:
     - /misc/fasta/p3000_tripleProt_HYE_large_20230714.fasta
     - /misc/fasta/p3000_UP000005640_9606_I2L_entrapment.fasta
     - /misc/fasta/p3000_UP000005640_9606_1-fold_peptide-level_entrapment.fasta
-    - /misc/fasta/p3404_db5_SA_JE2_modNmoreTranslations_20221124.fasta
-    - /misc/fasta/p3404_db5_SA_6850_modNmoreTranslations_20221124.fasta
-    - /misc/fasta/p3404_SA6850_2024_Genbank_20240816.fasta
-    - /misc/fasta/p3404_SA6850_2024_REFSEQ_20240816.fasta
-    - /misc/fasta/p3404_SAreference_UP000008816_93061_20240830.fasta
-    - /misc/fasta/p3234_db1_ensemblPlants_20230426.fasta
     - /misc/fasta/p23580_db3_CCCannotated_20230405.fasta
     - /misc/fasta/p24227_canislupus_UP000002254_9615_20230511.fasta
     - /misc/fasta/p27160_eHOMD2022_9606_cont_20220131.fasta
     - /misc/fasta/p27865_db1_threeColis_20230831.fasta
-    - /misc/fasta/p28488_db1_orcaNdwnSzdUniref100_20220610.fasta
-    - /misc/fasta/p30301_db2_ZE04MAR21_20230927.fasta
-    - /misc/fasta/p30301_db3_ZE04JUN21_20230927.fasta
     - /misc/fasta/p30301_db4_concatDB2nDB3.fasta
     - /misc/fasta/o30380_db_1_UP000031872_UP000001811_cont_IDs_43743.fasta
     - /misc/fasta/p30335_db1_PfalciNhuman_20230329.fasta
     - /misc/fasta/p30383_db1_Pfalciparum3D7_20230112.fasta
     - /misc/fasta/p30604_dbUP29799nUP268571_nr_20241120.fasta
-    - /misc/fasta/p31434_db2_20230706.fasta
-    - /misc/fasta/p31434_db2_20230706.fasta
-    - /misc/fasta/p31540_db1_NCBI_20230622.fasta
-    - /misc/fasta/p31540_db2_Uniref100_n_NCBI_noDubs_20231025.fasta
-    - /misc/fasta/p31540_db3_Uniref100_n_NCBI_wDescriptionNoDubsCut60_20231031.fasta
     - /misc/fasta/p31573_db2_IsoF_20240605.fasta
     - /misc/fasta/p32331_fgcz_9606_1spg_20230330_n_taxId_364106_20230814.fasta
     - /misc/fasta/p32624_UP000009136_UP000002032_db1_20230905.fasta
@@ -150,9 +149,9 @@ executable:
     - /misc/fasta/p36249_db1_pioneer_20250224.fasta
     - /misc/fasta/o36989_humanbgsNmetaPrXDB_Colon_epicXS_20250521.fasta
     - /misc/fasta/p37616_db1_Tenacibaculum_UP000231564_20250305.fasta
-    - /misc/fasta/p38815_db6_DAFplusFernDB_upLike_20260130.fasta
     - /misc/fasta/p38902_db3_BoaNReptaVir_20251209.fasta
     - /misc/fasta/p39218_db1_20260127.fasta
+    - /misc/fasta/o42445_db1_MarchPoly_20260702.fasta
     - NONE
     key: input_fasta_databases
     label: FASTA Database

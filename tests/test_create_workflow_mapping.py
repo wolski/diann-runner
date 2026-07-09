@@ -21,6 +21,7 @@ FLAT = {
     "pipeline_workflow_mode": "two_step",
     "pipeline_is_dda": "false",
     "pipeline_raw_converter": "native",
+    "cores": "48",
     "input_fasta_databases": "/data/db.fasta",
     "input_fasta_additional": "None",
     "input_fasta_use_custom": "false",
@@ -53,7 +54,7 @@ FLAT = {
     "advanced_freestyle": "None",
     "advanced_verbose": "1",
 }
-DEPLOY = {"threads": 8, "diann_docker_image": "diann:test"}
+DEPLOY = {"diann_docker_image": "diann:test"}
 
 
 def _make(flat):
@@ -87,6 +88,7 @@ class TestCreateWorkflowMapping(unittest.TestCase):
         self.assertEqual(wf.is_dda, False)           # pipeline.is_dda
         self.assertEqual(wf.reanalyse, True)         # quant.reanalyse
         self.assertEqual(wf.no_norm, False)          # quant.no_norm
+        self.assertEqual(wf.threads, 48)             # top-level cores -> --threads
         self.assertEqual(wf.ids_to_names, False)     # search.protein_ids_to_names
         self.assertEqual(wf.unrelated_runs, False)   # search.mass_acc_unrelated_runs
         self.assertEqual(wf.cut, "K*,R*")            # lib.digestion_cut

@@ -73,7 +73,7 @@ def load_config(raw_dir: Path) -> dict:
 
 
 def load_deploy_config(raw_dir: Path, runtime_override: str | None = None) -> dict:
-    """Load deployment config (container images, threads, etc.).
+    """Load deployment config (container images, runtime, etc.).
 
     Loads defaults_server.yml or defaults_local.yml based on environment.
     Search order: raw_dir first, then package config/ dir.
@@ -251,6 +251,7 @@ BFABRIC_TO_DRUNNER: dict[str, str] = {
     "pipeline_workflow_mode": "workflow_mode",
     "pipeline_is_dda": "is_dda",
     "pipeline_raw_converter": "raw_converter",
+    "cores": "cores",
     "lib_digestion_cut": "digestion_cut",
     "lib_digestion_missed_cleavages": "digestion_missed_cleavages",
     "lib_peptide_min_length": "peptide_min_length",
@@ -312,8 +313,8 @@ def parse_flat_params(flat_params):
     onto canonical internal field names (:data:`BFABRIC_TO_DRUNNER`) and delegates
     the value transforms + defaults to
     :func:`diann_runner.param_core.build_internal_params`. Output shape is
-    unchanged: ``{'diann', 'fasta', 'var_mods', 'library_predictor',
-    'enable_step_c', 'workflow_mode', 'raw_converter', 'include_libs'}``.
+    unchanged: the seven category sub-dicts plus top-level run controls and
+    internal fields consumed by the runner.
     """
     canonical = {
         BFABRIC_TO_DRUNNER[k]: v for k, v in flat_params.items() if k in BFABRIC_TO_DRUNNER
@@ -450,7 +451,7 @@ def create_diann_workflow(
         diann_bin=params["diann_bin"],
         docker_image=resolve_diann_docker_image(params["pipeline"]["diann_version"], deploy_params),
         container_runtime=deploy_params.get("container_runtime", "docker"),
-        threads=deploy_params["threads"],
+        threads=params["cores"],
         qvalue=params["search"]["scoring_qvalue"],
         min_pep_len=params["lib"]["peptide_min_length"],
         max_pep_len=params["lib"]["peptide_max_length"],

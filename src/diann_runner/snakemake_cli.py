@@ -4,8 +4,8 @@ This module provides a command-line interface that locates the bundled
 Snakefile and invokes snakemake with the correct path.
 
 Usage:
-    diann-snakemake --cores 64 -d /path/to/workdir all
-    diann-snakemake --cores 8 all  # run in current directory
+    diann-snakemake --cores 24 -d /path/to/workdir all
+    diann-snakemake --cores 12 all  # run in current directory
 """
 
 import os

@@ -435,11 +435,16 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 'freestyle': [],
                 'verbose': 1,
             },
+            'cores': 24,
             'diann_bin': 'diann-docker',
             'library_predictor': 'diann',
             'enable_step_c': False,
         }
         self.assertEqual(parse_flat_params(dict(BASE_FLAT_PARAMS)), expected)
+
+    def test_parse_flat_params_explicit_cores(self):
+        params = parse_flat_params(dict(BASE_FLAT_PARAMS, cores='48'))
+        self.assertEqual(params['cores'], 48)
 
     def test_parse_flat_params_no_digestion_sentinel(self):
         """AppRunner path: 'no digestion' -> empty digestion_cut (digestion off)."""
@@ -577,7 +582,6 @@ class TestSnakemakeHelpers(unittest.TestCase):
 
 
 CONFIG_WITH_BOTH_BLOCKS = """\
-threads: 8
 app_runner: fgcz_app_runner
 images:
   docker:
@@ -623,7 +627,7 @@ class TestLoadDeployConfig(unittest.TestCase):
         self.assertEqual(deploy_dict["container_runtime"], "docker")
         self.assertEqual(deploy_dict["diann_docker_image"], "diann:2.3.2")
         self.assertEqual(deploy_dict["thermoraw_image"], "thermorawfileparser:2.0.0")
-        self.assertEqual(deploy_dict["threads"], 8)
+        self.assertNotIn("threads", deploy_dict)
         self.assertNotIn("images", deploy_dict)
 
     @patch("diann_runner.container_utils.shutil.which",
@@ -652,7 +656,7 @@ class TestLoadDeployConfig(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             (tmp_path / "defaults_local.yml").write_text(
-                "threads: 4\nimages:\n  apptainer:\n    diann_docker_image: x\n"
+                "images:\n  apptainer:\n    diann_docker_image: x\n"
             )
             with self.assertRaises(KeyError):
                 load_deploy_config(tmp_path)

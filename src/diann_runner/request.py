@@ -154,7 +154,7 @@ class AdvancedParams(BaseModel):
 
 
 class DIANNRunnerParams(BaseModel):
-    """Normalized DIA-NN parameters — seven category sub-models + internal-only fields.
+    """Normalized DIA-NN parameters — seven category sub-models + run controls.
 
     :meth:`to_parsed` reconstructs the exact nested dict the Snakefile and
     ``create_diann_workflow`` consume; :meth:`to_toml`/:meth:`from_toml` persist
@@ -171,6 +171,9 @@ class DIANNRunnerParams(BaseModel):
     quant: QuantParams
     output: OutputParams
     advanced: AdvancedParams
+
+    # Public run resource control. Default keeps old normalized TOMLs valid.
+    cores: int = 24
 
     # Internal-only (no GUI key): the DIA-NN binary, library predictor, optional Step C.
     diann_bin: str

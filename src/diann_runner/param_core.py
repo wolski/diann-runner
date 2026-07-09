@@ -93,8 +93,9 @@ class FieldSpec:
 
     ``section`` is the category sub-model the field lands in — one of
     ``"pipeline" | "inputs" | "lib" | "search" | "quant" | "output" | "advanced"`` —
-    or ``"_internal"`` for the no-GUI bookkeeping fields (``library_predictor``,
-    ``enable_step_c``) that stay top-level on ``DIANNRunnerParams``. ``default`` is
+    ``"_top"`` for public top-level run controls, or ``"_internal"`` for the no-GUI
+    bookkeeping fields (``library_predictor``, ``enable_step_c``) that stay top-level
+    on ``DIANNRunnerParams``. ``default`` is
     the FINAL typed value used when the caller omits the field; ``_MISSING`` means
     the field is required and a missing value raises ``KeyError`` (fail-fast, per
     AGENTS.md).
@@ -117,6 +118,8 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     "workflow_mode":    FieldSpec("pipeline", str, default="two_step"),
     "is_dda":           FieldSpec("pipeline", _to_bool),
     "raw_converter":    FieldSpec("pipeline", str, default="thermoraw"),
+    # run resources
+    "cores": FieldSpec("_top", int, default=24),
     # library generation: digestion
     "digestion_cut":              FieldSpec("lib", _digestion_cut),
     "digestion_missed_cleavages": FieldSpec("lib", int),
@@ -182,6 +185,7 @@ def build_internal_params(canonical: dict[str, Any], *, fasta: dict[str, Any]) -
         "advanced": {},
     }
     internal: dict[str, Any] = {}
+    top_level: dict[str, Any] = {}
     for name, spec in DIANN_FIELDS.items():
         if name in canonical:
             value = spec.transform(canonical[name])
@@ -192,6 +196,8 @@ def build_internal_params(canonical: dict[str, Any], *, fasta: dict[str, Any]) -
             raise KeyError(f"missing required DIA-NN parameter: {name!r}")
         if spec.section == "_internal":
             internal[name] = value
+        elif spec.section == "_top":
+            top_level[name] = value
         else:
             categories[spec.section][name] = value
 
@@ -202,6 +208,7 @@ def build_internal_params(canonical: dict[str, Any], *, fasta: dict[str, Any]) -
 
     return {
         **categories,
+        **top_level,
         # internal-only top-level fields (no GUI key)
         "diann_bin": DIANN_BIN,
         "library_predictor": internal["library_predictor"],

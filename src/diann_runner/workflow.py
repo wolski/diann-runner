@@ -19,7 +19,7 @@ Usage:
         workunit_id='WU12345',
         output_base_dir='out-DIANN',
         var_mods=var_mods,
-        threads=64,
+        threads=24,
         qvalue=0.01,
         is_dda=False  # Set True for DDA data
     )
@@ -72,7 +72,7 @@ class DiannWorkflow:
         docker_image: str | None = None,
         container_runtime: str = 'docker',
         fasta_file: str | list[str] | None = None,
-        threads: int = 64,
+        threads: int = 24,
         qvalue: float = 0.01,
         min_pep_len: int = 6,
         max_pep_len: int = 30,

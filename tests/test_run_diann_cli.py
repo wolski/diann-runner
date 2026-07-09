@@ -356,7 +356,7 @@ class TestRuntimeFlag(unittest.TestCase):
         req = _build_request(
             workflow_params=wf, dataset=Path("d.parquet"), raw_dir=Path("input/raw"),
             fastas=[Path("/abs/db.fasta")], work_dir=Path("w"), output_dir=None,
-            cores=8, workunit_id="0", container_id="0", register_outputs=True,
+            cores=24, workunit_id="0", container_id="0", register_outputs=True,
             runtime="docker",
         )
         self.assertEqual(req.container_runtime, "docker")
@@ -366,9 +366,27 @@ class TestRuntimeFlag(unittest.TestCase):
         req = _build_request(
             workflow_params=wf, dataset=Path("d.parquet"), raw_dir=Path("input/raw"),
             fastas=[Path("/abs/db.fasta")], work_dir=Path("w"), output_dir=None,
-            cores=8, workunit_id="0", container_id="0", register_outputs=True,
+            cores=24, workunit_id="0", container_id="0", register_outputs=True,
         )
         self.assertIsNone(req.container_runtime)
+
+    def test_build_request_uses_param_cores_when_cli_omitted(self):
+        wf = parse_flat_params(dict(FLAT, cores="48"))
+        req = _build_request(
+            workflow_params=wf, dataset=Path("d.parquet"), raw_dir=Path("input/raw"),
+            fastas=[Path("/abs/db.fasta")], work_dir=Path("w"), output_dir=None,
+            cores=None, workunit_id="0", container_id="0", register_outputs=True,
+        )
+        self.assertEqual(req.cores, 48)
+
+    def test_build_request_cli_cores_override_param_cores(self):
+        wf = parse_flat_params(dict(FLAT, cores="12"))
+        req = _build_request(
+            workflow_params=wf, dataset=Path("d.parquet"), raw_dir=Path("input/raw"),
+            fastas=[Path("/abs/db.fasta")], work_dir=Path("w"), output_dir=None,
+            cores=96, workunit_id="0", container_id="0", register_outputs=True,
+        )
+        self.assertEqual(req.cores, 96)
 
     def test_legacy_param_overrides_flag_rejected(self):
         # The mid-stream --param-overrides flag is gone; guard against it.
@@ -408,7 +426,7 @@ def _make_sushi_fixture(root: Path) -> dict:
                 "dataRoot": str(gstore),
                 "input_fasta_databases": str(db),
                 "quant_no_norm": "true",  # readable override
-                "cores": "8",
+                "cores": "24",
             }
         )
     )
@@ -436,7 +454,6 @@ class TestSushiEndToEnd(unittest.TestCase):
                     dataset=fx["dataset"],
                     work_dir=fx["work"],
                     output_dir=fx["work"],
-                    cores=8,
                 )
             self.assertEqual(rc, 0)
 
@@ -454,6 +471,7 @@ class TestSushiEndToEnd(unittest.TestCase):
             # SUSHI must not register outputs.
             argv = run_mock.call_args.args[0]
             self.assertEqual(argv[0], "snakemake")
+            self.assertEqual(argv[argv.index("--cores") + 1], "24")
             # build_snakemake_config resolves the path (symlinks); compare resolved.
             self.assertIn(f"raw_file_dir={(fx['gstore'] / 'p1').resolve()}", argv)
             self.assertIn("raw_mount_target=/raw", argv)

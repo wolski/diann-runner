@@ -35,13 +35,14 @@ from diann_runner.request import (
 )
 
 # SUSHI readable param name -> diann_runner canonical internal field name. Only
-# the fields build_internal_params consumes are listed; SUSHI-framework params
-# (cores, mail, name, …) and the FASTA keys are ignored.
+# the fields build_internal_params consumes are listed; unrelated SUSHI-framework
+# params (mail, name, …) and the FASTA keys are ignored.
 SUSHI_TO_DRUNNER: dict[str, str] = {
     "pipeline_diann_version": "diann_version",
     "pipeline_workflow_mode": "workflow_mode",
     "pipeline_is_dda": "is_dda",
     "pipeline_raw_converter": "raw_converter",
+    "cores": "cores",
     "lib_digestion_cut": "digestion_cut",
     "lib_digestion_missed_cleavages": "digestion_missed_cleavages",
     "lib_peptide_min_length": "peptide_min_length",
@@ -70,7 +71,7 @@ SUSHI_TO_DRUNNER: dict[str, str] = {
     "output_pmultiqc": "pmultiqc",
     "advanced_freestyle": "freestyle",
     "advanced_verbose": "verbose",
-    # workflow control (no DIA-NN GUI param; not category-prefixed)
+    # workflow control (not category-prefixed)
     "enable_step_c": "enable_step_c",
 }
 

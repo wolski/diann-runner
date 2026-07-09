@@ -186,6 +186,7 @@ class TestBuildInternalParams(unittest.TestCase):
                 "freestyle",
                 "workflow_mode",
                 "raw_converter",
+                "cores",
                 "library_predictor",
                 "enable_step_c",
                 "include_libs",

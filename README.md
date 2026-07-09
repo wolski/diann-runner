@@ -29,7 +29,7 @@ Use `<command> --help` for options.
 
 ```bash
 # Run the Snakemake workflow
-diann-snakemake --cores 8 -p all
+diann-snakemake --cores 24 -p all
 ```
 
 Or run DIA-NN directly using the Docker wrapper:
