@@ -126,6 +126,7 @@ def _run_thermoraw_container(
         .with_init()
         .with_platform(force_amd64_on_arm=True)
         .with_uid_gid()
+        .with_memory()
     )
     container_input, container_output = _mount_io(builder, input_file, output_dir)
     cmd = builder.with_workdir("/data").build(
@@ -147,6 +148,7 @@ def _run_msconvert_container(
         ContainerCommandBuilder(image, runtime=runtime)
         .with_cleanup()
         .with_init()
+        .with_memory()
     )
     container_input, container_output = _mount_io(builder, input_file, output_dir)
 
