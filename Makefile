@@ -28,7 +28,7 @@ else
 INTEGRATION_TARGET := dry
 endif
 
-.PHONY: help deploy deploy_sif integration register
+.PHONY: help deploy deploy_sif integration register bump-prolfquapp
 
 help: ## Show this help
 	@echo "diann-runner — make <target>:"
@@ -46,3 +46,6 @@ integration: ## run the WU346549 end-to-end test (RUN=1 to execute, CORES=N)
 
 register: ## upload the B-Fabric executable YAML — always CREATES a new one (ENV=TEST)
 	$(MAKE) -C bfabric_executable upload ENV=$(ENV)
+
+bump-prolfquapp: ## pin the prolfquapp image in the configs to the latest published (VERSION=x.y.z to pin a specific one), then commit
+	python3 scripts/bump_prolfquapp_version.py $(if $(VERSION),--version $(VERSION))
