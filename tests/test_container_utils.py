@@ -7,6 +7,7 @@ from unittest.mock import patch
 from diann_runner.container_utils import (
     ContainerCommandBuilder,
     detect_runtime,
+    slurm_mem_limit_mb,
 )
 
 
@@ -126,6 +127,7 @@ class TestContainerCommandBuilderApptainer(unittest.TestCase):
             .with_platform(force_amd64_on_arm=True)
             .with_uid_gid()
             .with_resource_limits()
+            .with_memory(memory_mb=4096)
             .build(["x"])
         )
         for forbidden in (
@@ -137,6 +139,8 @@ class TestContainerCommandBuilderApptainer(unittest.TestCase):
             "--shm-size",
             "--ulimit",
             "--ipc",
+            "--memory",
+            "--memory-swap",
         ):
             self.assertNotIn(forbidden, cmd, f"Apptainer command must not contain {forbidden!r}")
 
@@ -192,6 +196,62 @@ class TestRejectsUnknownRuntime(unittest.TestCase):
     def test_unknown_runtime_raises(self):
         with self.assertRaises(ValueError):
             ContainerCommandBuilder("img", runtime="podman")  # type: ignore[arg-type]
+
+
+class TestSlurmMemLimit(unittest.TestCase):
+    def test_reads_slurm_mem_per_node_mb(self):
+        with patch.dict(os.environ, {"SLURM_MEM_PER_NODE": "262144"}, clear=True):
+            self.assertEqual(slurm_mem_limit_mb(), 262144)
+
+    def test_none_when_unset(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(slurm_mem_limit_mb())
+
+    def test_none_when_zero(self):
+        with patch.dict(os.environ, {"SLURM_MEM_PER_NODE": "0"}, clear=True):
+            self.assertIsNone(slurm_mem_limit_mb())
+
+    def test_none_when_non_numeric(self):
+        with patch.dict(os.environ, {"SLURM_MEM_PER_NODE": "lots"}, clear=True):
+            self.assertIsNone(slurm_mem_limit_mb())
+
+
+class TestWithMemoryDocker(unittest.TestCase):
+    @patch("diann_runner.container_utils.find_docker_runtime", return_value="docker")
+    def test_memory_from_slurm_env(self, _):
+        with patch.dict(os.environ, {"SLURM_MEM_PER_NODE": "262144"}, clear=True):
+            cmd = (
+                ContainerCommandBuilder("diann:2.3.2", runtime="docker")
+                .with_memory()
+                .build(["x"])
+            )
+        # --memory-swap pinned equal to --memory => swap disabled ("not more").
+        self.assertIn("--memory", cmd)
+        self.assertIn("262144m", cmd)
+        self.assertIn("--memory-swap", cmd)
+        self.assertEqual(cmd.count("262144m"), 2)
+
+    @patch("diann_runner.container_utils.find_docker_runtime", return_value="docker")
+    def test_explicit_memory_overrides_env(self, _):
+        with patch.dict(os.environ, {"SLURM_MEM_PER_NODE": "262144"}, clear=True):
+            cmd = (
+                ContainerCommandBuilder("img", runtime="docker")
+                .with_memory(memory_mb=4096)
+                .build(["x"])
+            )
+        self.assertIn("4096m", cmd)
+        self.assertNotIn("262144m", cmd)
+
+    @patch("diann_runner.container_utils.find_docker_runtime", return_value="docker")
+    def test_no_flag_when_no_limit_known(self, _):
+        with patch.dict(os.environ, {}, clear=True):
+            cmd = (
+                ContainerCommandBuilder("img", runtime="docker")
+                .with_memory()
+                .build(["x"])
+            )
+        self.assertNotIn("--memory", cmd)
+        self.assertNotIn("--memory-swap", cmd)
 
 
 if __name__ == "__main__":

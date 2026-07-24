@@ -43,6 +43,23 @@ def detect_runtime() -> Runtime:
     )
 
 
+def slurm_mem_limit_mb() -> int | None:
+    """Per-node RAM SLURM granted the job, in MB, or None if unknown.
+
+    SLURM exports SLURM_MEM_PER_NODE (MB) when the job requested --mem (the
+    app-runner submitter sets `--mem: 256G`). None => no cap known, so callers
+    preserve the prior unbounded behaviour (e.g. laptop / non-SLURM runs).
+    """
+    raw = os.environ.get("SLURM_MEM_PER_NODE", "").strip()
+    if not raw:
+        return None
+    try:
+        mb = int(raw)
+    except ValueError:
+        return None
+    return mb if mb > 0 else None
+
+
 def find_docker_runtime() -> str:
     """Return `podman` or `docker` (in that order) if either is available."""
     for runtime in ("podman", "docker"):
@@ -183,6 +200,25 @@ class ContainerCommandBuilder:
         self._docker_args.extend(["--ulimit", f"nofile={nofile_limit}:{nofile_limit}"])
         if ipc_host:
             self._docker_args.extend(["--ipc", "host"])
+        return self
+
+    def with_memory(self, memory_mb: int | None = None) -> "ContainerCommandBuilder":
+        """Hard-cap container RAM (docker only).
+
+        Docker containers run in the docker daemon's cgroup, not the SLURM
+        job's, so SLURM's --mem does NOT constrain them — an unbounded DIA-NN
+        run can eat all host RAM. Pass an explicit MB value, or leave None to
+        read SLURM_MEM_PER_NODE. --memory-swap is pinned equal to --memory so
+        the container cannot spill into swap past the cap ("exactly that and
+        not more"); a process that exceeds it is OOM-killed instead of taking
+        down the host. No-op when no limit is known.
+        """
+        if self.runtime != "docker":
+            return self  # apptainer resource limits are out of scope for this fix
+        mb = memory_mb if memory_mb is not None else slurm_mem_limit_mb()
+        if not mb:
+            return self
+        self._docker_args.extend(["--memory", f"{mb}m", "--memory-swap", f"{mb}m"])
         return self
 
     def with_wine_compat(self, wineprefix: str = "/tmp/.wine") -> "ContainerCommandBuilder":

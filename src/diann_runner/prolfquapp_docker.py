@@ -40,6 +40,7 @@ def build_container_cmd(image: str, runtime: Runtime, argv: list[str]) -> list[s
         .with_uid_gid(flag="--user")
         .with_mount(os.getcwd(), "/work", style="bind")
         .with_workdir("/work")
+        .with_memory()
         # Callers pass their own command (e.g. `prolfqua_qc.sh ...`) as argv,
         # so under apptainer use `exec` to override the image runscript rather
         # than `run`, which would pass the command as a runscript argument.

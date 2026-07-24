@@ -70,6 +70,7 @@ def build_container_cmd(
         .with_mount(os.getcwd(), "/work")
         .with_workdir("/work")
         .with_resource_limits()
+        .with_memory()
     )
     for spec in mounts:
         source, target, read_only = _parse_mount_spec(spec)
