@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shlex
 from html import escape
 from pathlib import Path
@@ -531,6 +532,66 @@ _INDEX_STYLE = """  <style>
     .desc { color: #7f8c8d; font-size: 0.9em; }
   </style>"""
 
+# Markdown link line in prolfquapp's own qc_result/index.md, e.g.
+# "- [QC_ABUNDANCES](QC_ProteinAbundances_tabset.html)".
+_PROLFQUA_INDEX_LINK = re.compile(r"^\s*-\s*\[([^\]]+)\]\(([^)]+)\)")
+
+# Friendly label and description per prolfquapp report key. Keys not listed here
+# are linked under their raw key, so a new prolfquapp report shows up unlabelled
+# rather than going missing.
+_PROLFQUA_REPORT_LABELS: dict[str, tuple[str, str]] = {
+    "QC_ABUNDANCES": (
+        "Protein abundance QC report (prolfqua)",
+        "Interactive QC: abundance distributions, missing values, "
+        "coefficient of variation, sample correlation and clustering.",
+    ),
+    "QC_SAMPLE_SIZE": (
+        "Sample size and power estimation (prolfqua)",
+        "Variance-based sample-size and power estimation for follow-up "
+        "experiments.",
+    ),
+}
+
+
+def discover_prolfqua_reports(qc_dir: str | Path) -> list[tuple[str, str, str]]:
+    """Return ``(label, target, description)`` for the prolfqua HTML QC reports.
+
+    prolfquapp renames its report files between releases -- 2.2.8 wrote
+    ``proteinAbundances.html`` and ``QC_sampleSizeEstimation.html``, 2.4.1 writes
+    ``QC_ProteinAbundances_tabset.html`` and ``QCandSSE_tabset.html`` -- so the
+    filenames are not a stable API and must not be hardcoded here. The reports
+    prolfquapp declares in its own ``index.md`` are followed instead, falling
+    back to globbing when that manifest is absent. Targets are relative to the
+    archive root and only existing files are returned, so a report that was not
+    produced yields no link at all rather than a dead one.
+    """
+    qc_path = Path(qc_dir)
+    prefix = Path(qc_path.name) if qc_path.is_absolute() else qc_path
+
+    manifest = qc_path / "index.md"
+    declared: list[tuple[str, str]] = []
+    if manifest.is_file():
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            match = _PROLFQUA_INDEX_LINK.match(line)
+            if match:
+                declared.append((match.group(1), match.group(2)))
+    else:
+        declared = [(p.stem, p.name) for p in sorted(qc_path.glob("*.html"))]
+
+    reports: list[tuple[str, str, str]] = []
+    for key, target in declared:
+        # Non-HTML entries (dataset CSV, abundance XLSX) are data, not reports;
+        # index.html is linked separately as the landing page.
+        if not target.endswith(".html") or target == "index.html":
+            continue
+        if not (qc_path / target).is_file():
+            continue
+        label, description = _PROLFQUA_REPORT_LABELS.get(
+            key, (f"{key} (prolfqua)", "prolfqua QC report.")
+        )
+        reports.append((label, str(prefix / target), description))
+    return reports
+
 
 def write_result_index(
     index_md: str | Path,
@@ -538,6 +599,7 @@ def write_result_index(
     *,
     workunit_id: str,
     quant_dir: str | Path,
+    qc_dir: str | Path,
     final_outputs: dict[str, str],
     fasta_paths: list[str | Path],
     include_pmultiqc: bool = False,
@@ -550,39 +612,32 @@ def write_result_index(
     and the dataset and FASTA databases). Each entry carries a one-line
     description shown alongside the link. ``include_prozor`` is False for
     no-digestion runs (peptide-list FASTA), where prozor inference is bypassed
-    and no ``_prozor.parquet`` is produced.
+    and no ``_prozor.parquet`` is produced. The prolfqua report links are
+    discovered from ``qc_dir`` (see ``discover_prolfqua_reports``) because
+    prolfquapp renames those files between releases.
     """
     quant_path = Path(quant_dir)
     quant_archive_path = Path(quant_path.name) if quant_path.is_absolute() else quant_path
+    qc_path = Path(qc_dir)
+    qc_archive_path = Path(qc_path.name) if qc_path.is_absolute() else qc_path
     prozor = final_outputs["report_parquet"].replace(".parquet", "_prozor.parquet")
     qc_pdf = final_outputs["stats"].replace("_report.stats.tsv", "_qc_report.pdf")
 
     # (label, target, description) entries per section.
-    qc_reports: list[tuple[str, str, str]] = [
-        (
+    qc_reports: list[tuple[str, str, str]] = []
+    if (qc_path / "index.html").is_file():
+        qc_reports.append((
             "Quality control overview (prolfqua)",
-            "qc_result/index.html",
+            str(qc_archive_path / "index.html"),
             "Landing page linking all prolfqua QC reports and tables.",
-        ),
-        (
-            "Protein abundance QC report (prolfqua)",
-            "qc_result/proteinAbundances.html",
-            "Interactive QC: abundance distributions, missing values, "
-            "coefficient of variation, sample correlation and clustering.",
-        ),
-        (
-            "Sample size and power estimation (prolfqua)",
-            "qc_result/QC_sampleSizeEstimation.html",
-            "Variance-based sample-size and power estimation for follow-up "
-            "experiments.",
-        ),
-        (
-            "DIA-NN quality control report (PDF)",
-            qc_pdf,
-            "DIA-NN's own QC plots (precursor/protein counts, mass accuracy, "
-            "retention time) rendered as a PDF.",
-        ),
-    ]
+        ))
+    qc_reports.extend(discover_prolfqua_reports(qc_path))
+    qc_reports.append((
+        "DIA-NN quality control report (PDF)",
+        qc_pdf,
+        "DIA-NN's own QC plots (precursor/protein counts, mass accuracy, "
+        "retention time) rendered as a PDF.",
+    ))
     if include_pmultiqc:
         qc_reports.append((
             "Interactive QC report (pmultiqc)",

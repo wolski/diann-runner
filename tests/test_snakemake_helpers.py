@@ -1,4 +1,5 @@
 
+import re
 import tempfile
 import unittest
 import zipfile
@@ -8,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from diann_runner.snakemake_helpers import (
+    discover_prolfqua_reports,
     get_diann_input_dependency,
     get_diann_input_path,
     get_fasta_paths,
@@ -20,6 +22,37 @@ from diann_runner.snakemake_helpers import (
     write_outputs_yml,
     zip_diann_results,
 )
+
+
+# prolfquapp 2.4.1 report names, as declared in its own qc_result/index.md.
+PROLFQUA_241_REPORTS = {
+    "DATASET": "dataset.csv",
+    "QC_ABUNDANCES": "QC_ProteinAbundances_tabset.html",
+    "QC_SAMPLE_SIZE": "QCandSSE_tabset.html",
+    "QC_XLSX": "proteinAbundances_347812.xlsx",
+}
+
+# prolfquapp 2.2.8 wrote different filenames for the same two reports.
+PROLFQUA_228_REPORTS = {
+    "DATASET": "dataset.csv",
+    "QC_ABUNDANCES": "proteinAbundances.html",
+    "QC_SAMPLE_SIZE": "QC_sampleSizeEstimation.html",
+    "QC_XLSX": "proteinAbundances_347812.xlsx",
+}
+
+
+def make_qc_result(parent: Path, reports: dict[str, str], write_manifest: bool = True) -> Path:
+    """Create a qc_result dir as prolfquapp leaves it (index.md manifest + files)."""
+    qc_dir = parent / "qc_result"
+    qc_dir.mkdir(exist_ok=True)
+    for target in reports.values():
+        (qc_dir / target).write_text("report", encoding="utf-8")
+    (qc_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+    if write_manifest:
+        lines = ["# QC Results", "", "## Available Reports", ""]
+        lines += [f"- [{key}]({target})" for key, target in reports.items()]
+        (qc_dir / "index.md").write_text("\n".join(lines), encoding="utf-8")
+    return qc_dir
 
 
 BASE_FLAT_PARAMS = {
@@ -121,6 +154,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
             quant_dir = tmp_path / "out-DIANN_quantC"
             quant_dir.mkdir()
             (quant_dir / "db.fasta").write_text(">x\nPEPTIDE\n", encoding="utf-8")
+            qc_dir = make_qc_result(tmp_path, PROLFQUA_241_REPORTS)
             final_outputs = get_final_quantification_outputs(
                 "out-DIANN", "347812", enable_step_c=True
             )
@@ -130,6 +164,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 tmp_path / "index.html",
                 workunit_id="347812",
                 quant_dir=quant_dir,
+                qc_dir=qc_dir,
                 final_outputs=final_outputs,
                 fasta_paths=[tmp_path / "input" / "db.fasta"],
                 include_pmultiqc=True,
@@ -196,6 +231,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 tmp_path / "index.html",
                 workunit_id="347812",
                 quant_dir="out-DIANN_quantC",  # relative -> used verbatim
+                qc_dir=make_qc_result(tmp_path, PROLFQUA_241_REPORTS),
                 final_outputs=final_outputs,
                 fasta_paths=[],
                 include_pmultiqc=False,
@@ -228,6 +264,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 tmp_path / "index.html",
                 workunit_id="347812",
                 quant_dir=tmp_path / "out-DIANN_quantB",
+                qc_dir=make_qc_result(tmp_path, PROLFQUA_241_REPORTS),
                 final_outputs=final_outputs,
                 fasta_paths=[],
                 include_pmultiqc=False,
@@ -255,6 +292,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 tmp_path / "index.html",
                 workunit_id="347812",
                 quant_dir=tmp_path / "out-DIANN_quantB",
+                qc_dir=make_qc_result(tmp_path, PROLFQUA_241_REPORTS),
                 final_outputs=final_outputs,
                 fasta_paths=[],
                 include_pmultiqc=False,
@@ -268,6 +306,93 @@ class TestSnakemakeHelpers(unittest.TestCase):
             self.assertIn("[DIA-NN report, native (parquet)]", markdown)
             self.assertIn("[Protein group abundance matrix (TSV)]", markdown)
             self.assertIn("[DIA-NN run statistics (TSV)]", markdown)
+
+    def test_write_result_index_links_prolfqua_reports_by_actual_filename(self):
+        """Every QC Reports link must resolve to a file that exists in qc_result.
+
+        prolfquapp renamed its reports in 2.4.1, which silently left the index
+        pointing at 2.2.8 filenames. Both naming schemes must produce live links.
+        """
+        for label, reports in (
+            ("2.4.1", PROLFQUA_241_REPORTS),
+            ("2.2.8", PROLFQUA_228_REPORTS),
+        ):
+            with self.subTest(prolfquapp=label), tempfile.TemporaryDirectory() as tmpdir:
+                tmp_path = Path(tmpdir)
+                qc_dir = make_qc_result(tmp_path, reports)
+                final_outputs = get_final_quantification_outputs(
+                    "out-DIANN", "347812", enable_step_c=False
+                )
+
+                write_result_index(
+                    tmp_path / "index.md",
+                    tmp_path / "index.html",
+                    workunit_id="347812",
+                    quant_dir=tmp_path / "out-DIANN_quantB",
+                    qc_dir=qc_dir,
+                    final_outputs=final_outputs,
+                    fasta_paths=[],
+                )
+
+                markdown = (tmp_path / "index.md").read_text(encoding="utf-8")
+                self.assertIn(
+                    f"[Protein abundance QC report (prolfqua)](qc_result/{reports['QC_ABUNDANCES']})",
+                    markdown,
+                )
+                self.assertIn(
+                    "[Sample size and power estimation (prolfqua)]"
+                    f"(qc_result/{reports['QC_SAMPLE_SIZE']})",
+                    markdown,
+                )
+                # No link into qc_result may dangle.
+                for target in re.findall(r"\]\((qc_result/[^)]+)\)", markdown):
+                    self.assertTrue(
+                        (tmp_path / target).is_file(), f"dangling link: {target}"
+                    )
+
+    def test_discover_prolfqua_reports_excludes_non_reports(self):
+        """Only existing HTML reports are linked; data files and index.html are not."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            qc_dir = make_qc_result(Path(tmpdir), PROLFQUA_241_REPORTS)
+
+            targets = [target for _, target, _ in discover_prolfqua_reports(qc_dir)]
+
+            self.assertEqual(
+                targets,
+                [
+                    "qc_result/QC_ProteinAbundances_tabset.html",
+                    "qc_result/QCandSSE_tabset.html",
+                ],
+            )
+
+    def test_discover_prolfqua_reports_skips_declared_but_missing_report(self):
+        """A report prolfquapp declared but did not write yields no link."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            qc_dir = make_qc_result(Path(tmpdir), PROLFQUA_241_REPORTS)
+            (qc_dir / PROLFQUA_241_REPORTS["QC_SAMPLE_SIZE"]).unlink()
+
+            targets = [target for _, target, _ in discover_prolfqua_reports(qc_dir)]
+
+            self.assertEqual(targets, ["qc_result/QC_ProteinAbundances_tabset.html"])
+
+    def test_discover_prolfqua_reports_falls_back_to_glob_without_manifest(self):
+        """Without index.md the HTML reports are still found by globbing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            qc_dir = make_qc_result(
+                Path(tmpdir), PROLFQUA_241_REPORTS, write_manifest=False
+            )
+
+            reports = discover_prolfqua_reports(qc_dir)
+
+            self.assertEqual(
+                [target for _, target, _ in reports],
+                [
+                    "qc_result/QC_ProteinAbundances_tabset.html",
+                    "qc_result/QCandSSE_tabset.html",
+                ],
+            )
+            # Unmapped keys fall back to the raw stem rather than being dropped.
+            self.assertIn("QCandSSE_tabset (prolfqua)", [label for label, _, _ in reports])
 
     def test_get_fasta_paths_skips_missing_or_empty_order_fasta(self):
         """Custom sequences default ON: a missing/empty order.fasta is skipped, not fatal."""

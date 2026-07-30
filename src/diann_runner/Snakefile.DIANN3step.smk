@@ -493,6 +493,7 @@ rule result_index:
             index_html=output.html,
             workunit_id=WORKUNITID,
             quant_dir=str(Path(input.pdf).parent),
+            qc_dir=str(input.qc_dir),
             final_outputs=FINAL_QUANT_OUTPUTS,
             fasta_paths=[str(path) for path in FASTA_PATHS],
             include_pmultiqc=GENERATE_PMULTIQC,
