@@ -44,6 +44,7 @@ from deploy import (
     load_deploy_settings,
     load_diann_build_matrix,
     load_msconvert_image,
+    load_prolfquapp_image,
     load_prolfquapp_version,
     load_thermoraw_version,
     print_deployment_complete,
@@ -67,6 +68,7 @@ DEPLOY = load_deploy_settings()
 FORCE_REBUILD = config.get("force_rebuild", DEPLOY["force_rebuild"])
 THERMORAW_VERSION = config.get("thermoraw_version", load_thermoraw_version())
 PROLFQUAPP_VERSION = config.get("prolfquapp_version", load_prolfquapp_version())
+PROLFQUAPP_IMAGE = config.get("prolfquapp_image", load_prolfquapp_image())
 MSCONVERT_IMAGE = config.get("msconvert_image", load_msconvert_image())
 
 # DIA-NN build matrix — one entry per version in the diann_images config map
@@ -283,7 +285,7 @@ rule pull_msconvert_sif:
 
 
 rule pull_prolfquapp_sif:
-    """Pull the upstream prolfquapp image from Docker Hub."""
+    """Pull the upstream prolfquapp image from its configured registry."""
     input:
         prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag"
     output:
@@ -291,7 +293,7 @@ rule pull_prolfquapp_sif:
     log:
         LOGS_DIR / "pull_prolfquapp_sif.log"
     params:
-        ref = f"prolfqua/prolfquapp:{PROLFQUAPP_VERSION}"
+        ref = PROLFQUAPP_IMAGE
     shell:
         """
         mkdir -p "$(dirname {output.sif:q})"

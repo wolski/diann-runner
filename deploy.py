@@ -104,6 +104,15 @@ def load_prolfquapp_version() -> str:
     return _version_from_ref(_load_server_docker_images()["prolfquapp_image"])
 
 
+def load_prolfquapp_image() -> str:
+    """prolfquapp image reference, from ``prolfquapp_image`` in defaults_server.yml.
+
+    Returned whole, registry included, so the SIF pull uses the same registry
+    the docker runtime does instead of reconstructing a Docker Hub reference.
+    """
+    return _load_server_docker_images()["prolfquapp_image"]
+
+
 def load_thermoraw_version() -> str:
     """thermorawfileparser version, derived from ``thermoraw_image`` in defaults_server.yml."""
     return _version_from_ref(_load_server_docker_images()["thermoraw_image"])

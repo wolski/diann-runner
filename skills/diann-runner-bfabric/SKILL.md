@@ -39,8 +39,8 @@ image-drift and `application_version` reasoning.
   `slurmworker` checkouts. Ask; do not clone before confirming none exists.
 - `<deploy-host>` — the machine holding `/home/bfabric/slurmworker`. Take it
   from `compms-infrastructure` or ask. It is **not** necessarily the host that
-  ran the container. The in-repo docs disagree about it (see
-  [Known drift](#known-drift-in-the-repo-docs)), so do not trust either.
+  ran the container, and the in-repo docs do not record it (see
+  [What is still unresolved](#what-is-still-unresolved)).
 
 ## Consent before the first connection
 
@@ -137,7 +137,7 @@ Adding or changing a parameter, in order:
 
 Flat keys use hierarchical numbering or a `pipeline_`/`input_` prefix; order in
 the file drives GUI layout. Current examples: `pipeline_diann_version`
-(enum `2.3.2` / `2.5.0` / `2.5.1` / `2.6.0`, default `2.3.2`),
+(enum `2.3.2` / `2.5.0` / `2.5.1` / `2.6.0` / `2.6.1`, default `2.3.2`),
 `pipeline_workflow_mode` (`two_step` / `single_step`), `pipeline_is_dda`,
 `06a_diann_mods_variable`, `11b_diann_protein_relaxed_prot_inf`,
 `12a_diann_quantification_reanalyse`.

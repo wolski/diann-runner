@@ -22,21 +22,21 @@ The shipped `src/diann_runner/config/defaults_server.yml` carries both runtime b
 ```yaml
 images:
   docker:
-    diann_images: { "2.3.2": "diann:2.3.2", "2.5.0": "diann:2.5.0", "2.5.1": "diann:2.5.1", "2.6.0": "diann:2.6.0" }
+    diann_images: { "2.3.2": "diann:2.3.2", "2.5.0": "diann:2.5.0", "2.5.1": "diann:2.5.1", "2.6.0": "diann:2.6.0", "2.6.1": "diann:2.6.1" }
     diann_docker_image: "diann:2.3.2"     # legacy fallback for params.yml without pipeline_diann_version
     thermoraw_image: "thermorawfileparser:2.0.0"
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
-    prolfquapp_image: "prolfqua/prolfquapp:2.4.1"
+    prolfquapp_image: "ghcr.io/prolfqua/prolfquapp:2.9.0"
   apptainer:
     diann_images: { "2.3.2": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif", ... }
     thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
     msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.4.1.sif"
+    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.9.0.sif"
 ```
 
 The DIA-NN keys are the `pipeline_diann_version` dropdown values from the B-Fabric executable, so the two must be kept in step: adding a version to the GUI enumeration without adding its image here yields a KeyError at runtime.
 
-`prolfquapp_image` must track the DIA-NN output format the runner produces — an image too old for DIA-NN 2.5+ parquet fails QC.
+`prolfquapp_image` must track the DIA-NN output format the runner produces — an image too old for DIA-NN 2.5+ parquet fails QC. It is the single source of truth for the SIF too: `deploy.smk` derives both the pulled reference (registry included) and the SIF filename from it.
 
 Migrating a host from Docker to Apptainer is purely an ops action: install `apptainer`, populate the SIF cache (see below), pull `slurmworker`. No `diann_runner` config change needed.
 
@@ -262,7 +262,7 @@ Remove flags and Docker images:
 snakemake -s deploy.smk clean_all --cores 1
 ```
 
-`clean_all` removes only the tags currently listed in `diann_images` (currently `diann:2.3.2`, `diann:2.5.0`, `diann:2.5.1`, `diann:2.6.0`) plus `thermorawfileparser`. Tags dropped from that list are left behind — remove those by hand.
+`clean_all` removes only the tags currently listed in `diann_images` (currently `diann:2.3.2`, `diann:2.5.0`, `diann:2.5.1`, `diann:2.6.0`, `diann:2.6.1`) plus `thermorawfileparser`. Tags dropped from that list are left behind — remove those by hand.
 
 ### Removing old images after the .NET 8 unification
 
@@ -286,7 +286,7 @@ rm -f /misc/fgcz01/nextflow_apptainer_cache/diann_*-thermo.sif
 ```bash
 snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 # Apptainer: re-pull/rebuild SIFs (delete stale ones first if names are unchanged)
-rm -f /misc/fgcz01/nextflow_apptainer_cache/diann_{2.3.2,2.5.0,2.5.1,2.6.0}.sif
+rm -f /misc/fgcz01/nextflow_apptainer_cache/diann_{2.3.2,2.5.0,2.5.1,2.6.0,2.6.1}.sif
 snakemake -s deploy.smk all_sif --cores 1
 ```
 

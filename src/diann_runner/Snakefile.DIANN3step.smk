@@ -143,6 +143,7 @@ rule convert_d_zip:
     retries: 3
     shell:
         """
+        exec 2> {log.logfile}
         echo "Extracting {input.file:q}"
         unzip -o {input.file:q} -d {params.extract_dir:q}
         test -d {params.folder:q}
@@ -170,6 +171,7 @@ rule convert_raw:
     retries: 3
     shell:
         """
+        exec 2> {log.logfile}
         thermoraw --runtime {params.runtime} --image {params.image:q} -i {input.file:q} -o {output.file:q} --converter {params.converter}
         """
 
@@ -391,6 +393,7 @@ rule diannqc:
         logfile = "logs/diannqc.log"
     shell:
         """
+        exec 2> {log.logfile}
         diann-qc {input.stats:q} {input.report_parquet:q} {output.pdf:q}
         """
 
@@ -469,6 +472,8 @@ rule prolfqua_qc:
         workunit_id = WORKUNITID
     shell:
         """
+        set -o pipefail
+        exec 2> {log.logfile}
         prolfquapp-docker --runtime {params.runtime} --image {params.prolfquapp_image} -- prolfqua_qc.sh \
             --indir {params.indir:q} -s DIANN \
             --dataset {input.dataset:q} \
@@ -519,6 +524,7 @@ rule pmultiqc_diann_report:
         logfile = "logs/pmultiqc_diann_report.log"
     shell:
         """
+        exec 2> {log.logfile}
         rm -rf pmultiqc_input pmultiqc_result
         mkdir -p pmultiqc_input
         cp {input.report:q} pmultiqc_input/report.parquet
@@ -554,6 +560,8 @@ rule stageoutput:
         workunit_id = WORKUNITID
     shell:
         """
+        set -o pipefail
+        exec 2> {log.logfile}
         {params.app_runner} outputs register --outputs-yaml {input.yaml:q} --workunit-ref {params.workunit_id} \
             | tee {output.runlog:q}
         """

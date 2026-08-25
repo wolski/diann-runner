@@ -5,13 +5,14 @@ executable:
   context: APPLICATION
   enabled: 'true'
   parameter:
-  - description: DIA-NN version to use. 2.3.2 is the current production default; 2.6.0 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.
+  - description: DIA-NN version to use. 2.3.2 is the current production default; 2.6.1 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.
     context: APPLICATION
     enumeration:
     - 2.3.2
     - 2.5.0
     - 2.5.1
     - 2.6.0
+    - 2.6.1
     key: pipeline_diann_version
     label: DIA-NN Version
     modifiable: 'true'
