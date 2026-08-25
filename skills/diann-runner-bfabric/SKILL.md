@@ -295,29 +295,29 @@ the work dir. Relative input paths resolve under `--work-dir`, not cwd.
 
 Before deploying any code change: `uv run pytest tests/`.
 
-## Known drift in the repo docs
+## What is still unresolved
 
-Verified 2026-08-24 against the checkouts. Treat the two deployment docs as
-historical until they are corrected.
+`docs/BFABRIC_DEPLOY.md`, `README_DEPLOYMENT.md`, and `AGENTS.md` were corrected
+on 2026-08-25 to match the checkouts (executable YAML rather than XML, the real
+`make_lock.sh` behaviour, the shared apptainer cache path, current image
+versions, the `container_runtime` precedence). They are trustworthy as of that
+date. Two things are still open, and both are traps:
 
-- `docs/BFABRIC_DEPLOY.md` and `AGENTS.md` both call **XML** the source of truth
-  and name `executable_A386_DIANN_3.2.xml` / `executable_new.xml`. Neither file
-  exists; the source of truth is YAML with a Makefile.
-- `docs/BFABRIC_DEPLOY.md` cites executable id `26960`; the Makefile's example
-  is `40588`. Confirm the live id from B-Fabric — do not copy either.
-- `docs/BFABRIC_DEPLOY.md` and `README_DEPLOYMENT.md` list the raw `uv lock`/
-  `uv sync`/`uv export` sequence, omitting the `polars-lts-cpu` strip and the
-  verification venv. Use `make_lock.sh`.
-- `README_DEPLOYMENT.md` documents SIFs at `/opt/sif/`; `defaults_server.yml`
-  uses `/misc/fgcz01/nextflow_apptainer_cache`, and `deploy.sif_output_dir`
-  points there too.
-- `README_DEPLOYMENT.md` shows DIA-NN `2.3.2`/`2.5.0`/`2.5.1` and
-  `prolfqua/prolfquapp:2.0.10`; the config has `2.6.0` as well and prolfquapp
-  `2.4.1`.
-- `README_DEPLOYMENT.md` states there is "no per-host config file, no
-  environment variable and no UI knob" for the runtime. There is now a
-  `container_runtime:` pin in `defaults_server.yml`, and the deployed `app.yml`
-  passes `--docker`.
-- `docs/BFABRIC_DEPLOY.md` names the production server as one host; the
-  `app.yml` comment names a different one. Resolve `<deploy-host>` from
-  `compms-infrastructure` or ask the user.
+- **The executable YAML is duplicated.**
+  `diann_runner/bfabric_executable/executable_A386_DIANN_3.2.yaml` and
+  `slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.yaml` were
+  byte-identical, in different repos, with no sync mechanism. Diff them before
+  trusting either, and copy across after editing one.
+- **The deploy host is not recorded consistently.** The old
+  `docs/BFABRIC_DEPLOY.md` named one host; the `app.yml` comments name another.
+  Neither was verifiable from the checkouts, so the docs now say "the deploy
+  host" without naming it. Resolve `<deploy-host>` from `compms-infrastructure`
+  or ask the user.
+
+Also unverifiable from the repo: the **live executable id**. The old doc cited
+`26960`, the Makefile's example is `40588`. Read it from B-Fabric; do not copy
+either number.
+
+When a doc and the code disagree, the code wins — `defaults_server.yml`,
+`deploy.smk`, `app.yml`, and `make_lock.sh` are the ground truth, and these docs
+have drifted from them once already.
