@@ -38,6 +38,21 @@ The DIA-NN keys are the `pipeline_diann_version` dropdown values from the B-Fabr
 
 `prolfquapp_image` must track the DIA-NN output format the runner produces — an image too old for DIA-NN 2.5+ parquet fails QC. It is the single source of truth for the SIF too: `deploy.smk` derives both the pulled reference (registry included) and the SIF filename from it.
 
+### Bumping prolfquapp without a diann_runner release
+
+`PROLFQUAPP_IMAGE` in the environment overrides `prolfquapp_image` for whichever runtime block was selected. The A386 app sets it in `app.yml`, the same way A414_DEA does:
+
+```yaml
+      process:
+        command: python -m diann_runner.run_diann_cli apprunner --docker ... --work-dir
+        env:
+          PROLFQUAPP_IMAGE: ghcr.io/prolfqua/prolfquapp:2.9.0
+```
+
+So a QC image bump is a one-line `slurmworker` change plus a pull on the deploy host — no `diann_runner` commit, no `pylock.toml` regeneration. Under apptainer the value is a SIF path.
+
+The catch: `deploy.smk` reads the config, not the environment. An image set only via `PROLFQUAPP_IMAGE` is never built or pulled by a local `deploy.smk` run, so it must already exist in the registry (or as a SIF). Keep `defaults_server.yml` in step when you intend the new version to be the built default.
+
 Migrating a host from Docker to Apptainer is purely an ops action: install `apptainer`, populate the SIF cache (see below), pull `slurmworker`. No `diann_runner` config change needed.
 
 ### Apptainer Host Setup

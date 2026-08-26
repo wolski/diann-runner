@@ -238,8 +238,17 @@ go by hand, and a reused tag whose base image changed needs
 `--config force_rebuild=true` plus deletion of the stale SIF.
 
 The prolfquapp image must track the DIA-NN output format the runner produces —
-an image too old for DIA-NN 2.5+ parquet fails QC. Bump it in
-`defaults_server.yml`, and check the other places the same image is pinned.
+an image too old for DIA-NN 2.5+ parquet fails QC.
+
+To bump it for the running app, set `PROLFQUAPP_IMAGE` in the `process` `env:`
+block of `slurmworker/config/A386_DIANN_23/app.yml` — it overrides
+`prolfquapp_image` for whichever runtime block was selected, so the bump needs
+no `diann_runner` commit and no `pylock.toml` regeneration. This is the same
+variable A414_DEA uses. Under apptainer the value is a SIF path.
+
+`deploy.smk` reads the config rather than the environment, so an image set only
+via the env var is never built locally and must already exist in the registry.
+Bump `defaults_server.yml` too when the new version should be the built default.
 
 ### Verify
 

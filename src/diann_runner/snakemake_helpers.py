@@ -94,6 +94,14 @@ def load_deploy_config(raw_dir: Path, runtime_override: str | None = None) -> di
     container_runtime=docker`` — so a host with apptainer installed but no SIF
     cache (e.g. a docker-only box) uses docker without editing any config.
 
+    ``PROLFQUAPP_IMAGE`` in the environment overrides the resolved
+    ``prolfquapp_image``, whichever runtime block it came from. This lets the
+    B-Fabric app bump prolfquapp from ``app.yml``'s env block without a
+    diann_runner release, as the A414 DEA app does. Under apptainer the value
+    is a SIF path. Note that ``deploy.smk`` still reads the config, not the
+    environment, so a run overridden this way uses an image the local deploy
+    never built.
+
     Args:
         raw_dir: directory searched (before the package config) for the YAML.
         runtime_override: ``"docker"``/``"apptainer"`` to force the runtime,
@@ -145,6 +153,15 @@ def load_deploy_config(raw_dir: Path, runtime_override: str | None = None) -> di
     deploy_dict = {k: v for k, v in raw_config.items() if k != "images"}
     deploy_dict.update(images_by_runtime[runtime])
     deploy_dict["container_runtime"] = runtime
+
+    # PROLFQUAPP_IMAGE overrides the resolved image, so the B-Fabric app can bump
+    # prolfquapp from app.yml's env block without a diann_runner release. Same
+    # variable the A414 DEA app uses. Applied after flattening so it wins for
+    # either runtime; under apptainer its value is a SIF path.
+    prolfquapp_override = os.environ.get("PROLFQUAPP_IMAGE")
+    if prolfquapp_override:
+        deploy_dict["prolfquapp_image"] = prolfquapp_override
+
     return deploy_dict
 
 

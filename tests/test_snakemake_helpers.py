@@ -811,6 +811,56 @@ class TestLoadDeployConfig(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_deploy_config(tmp_path)
 
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/docker" if n == "docker" else None)
+    def test_prolfquapp_image_env_overrides_config(self, _):
+        # The A386 app.yml bumps prolfquapp via env, as A414 does, so no
+        # diann_runner release is needed for an image bump.
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_config(tmp_path)
+            with patch.dict(
+                os.environ,
+                {"PROLFQUAPP_IMAGE": "ghcr.io/prolfqua/prolfquapp:9.9.9"},
+            ):
+                deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(
+            deploy_dict["prolfquapp_image"], "ghcr.io/prolfqua/prolfquapp:9.9.9"
+        )
+        # Only prolfquapp is overridden; the rest of the block is untouched.
+        self.assertEqual(deploy_dict["thermoraw_image"], "thermorawfileparser:2.0.0")
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/apptainer" if n == "apptainer" else None)
+    def test_prolfquapp_image_env_overrides_apptainer_block(self, _):
+        # Under apptainer the override is a SIF path, and it must win over the
+        # apptainer block rather than the docker one.
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_config(tmp_path)
+            with patch.dict(
+                os.environ,
+                {"PROLFQUAPP_IMAGE": "/misc/container/exp/prolfquapp/prolfquapp-9.9.9.sif"},
+            ):
+                deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(
+            deploy_dict["prolfquapp_image"],
+            "/misc/container/exp/prolfquapp/prolfquapp-9.9.9.sif",
+        )
+
+    @patch("diann_runner.container_utils.shutil.which",
+           side_effect=lambda n: "/usr/bin/docker" if n == "docker" else None)
+    def test_config_used_when_env_absent_or_empty(self, _):
+        # An empty PROLFQUAPP_IMAGE must not blank the image out.
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_config(tmp_path)
+            with patch.dict(os.environ, {"PROLFQUAPP_IMAGE": ""}):
+                deploy_dict = load_deploy_config(tmp_path)
+        self.assertEqual(
+            deploy_dict["prolfquapp_image"], "prolfqua/prolfquapp:2.0.10"
+        )
+
 
 class TestFinalQuantificationOutputs(unittest.TestCase):
     """get_final_quantification_outputs after dropping the prolfqua-format TSV.

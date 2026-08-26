@@ -139,7 +139,8 @@ All source modules are located in `src/diann_runner/`:
 - Automatically detects Apple Silicon and uses `--platform linux/amd64`
 - Mounts current directory to `/work` in container
 - Preserves UID/GID on Unix systems for correct file permissions
-- Environment variables: `DIANN_DOCKER_IMAGE`, `DIANN_PLATFORM`, `DIANN_EXTRA`
+- Image and runtime come from `--image` / `--runtime` arguments only; this
+  wrapper reads no environment variables.
 
 **`src/diann_runner/plotter.py`** - QC plotting utilities (`diann-qc` command)
 
