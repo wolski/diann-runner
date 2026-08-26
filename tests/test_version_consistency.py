@@ -58,9 +58,13 @@ def _version_token(ref: str) -> str:
 
 
 def _sif_version_token(path: str, prefix: str) -> str:
-    """Version embedded in a SIF filename ('.../prefix_1.2.3.sif' -> '1.2.3')."""
+    """Version embedded in a SIF filename ('.../prefix-1.2.3.sif' -> '1.2.3').
+
+    Hyphen, not underscore: installed SIFs are named <app>-<version>.sif per the
+    FGCZ apptainer standard (slurmworker docs/apptainer-build.md).
+    """
     stem = Path(path).stem  # drops .sif
-    assert stem.startswith(prefix + "_"), f"{path!r} is not a {prefix} SIF"
+    assert stem.startswith(prefix + "-"), f"{path!r} is not a {prefix} SIF"
     return stem[len(prefix) + 1 :]
 
 
@@ -109,6 +113,38 @@ class TestVersionConsistency(unittest.TestCase):
                 _sif_version_token(apptainer["thermoraw_image"], "thermorawfileparser"),
                 f"{defaults_filename}: docker vs apptainer thermoraw version drift",
             )
+
+    def test_apptainer_paths_follow_the_fgcz_standard(self):
+        """Every apptainer image path is /misc/container/exp/<app>/<app>-<ver>.sif.
+
+        The installed layout is fixed by slurmworker docs/apptainer-build.md, and
+        the per-app directory has to match the filename prefix or install_sif.py
+        would place the SIF where nothing looks for it.
+        """
+        for defaults_filename in DEFAULTS_FILES:
+            apptainer = apptainer_images_block(defaults_filename)
+            paths = list(apptainer["diann_images"].values()) + [
+                apptainer["diann_docker_image"],
+                apptainer["thermoraw_image"],
+                apptainer["msconvert_docker"],
+                apptainer["prolfquapp_image"],
+            ]
+            for path in paths:
+                with self.subTest(defaults=defaults_filename, path=path):
+                    parts = Path(path).parts
+                    self.assertEqual(
+                        parts[:4],
+                        ("/", "misc", "container", "exp"),
+                        f"{path!r} is not under /misc/container/exp",
+                    )
+                    app_dir, filename = parts[-2], parts[-1]
+                    self.assertTrue(
+                        filename.endswith(".sif"), f"{path!r} is not a .sif"
+                    )
+                    self.assertTrue(
+                        filename.startswith(app_dir + "-"),
+                        f"{filename!r} does not match its directory {app_dir!r}",
+                    )
 
     def test_deploy_derives_upstream_versions_from_config(self):
         """deploy derives prolfquapp/thermoraw versions from defaults_server.yml

@@ -24,7 +24,7 @@ Identify which one before touching anything:
 |---|---|---|
 | Workflow logic, helper, or Snakefile change not taking effect | `pylock.toml` git pin | [A — workflow code](#path-a--workflow-code) |
 | Parameter missing/wrong in the B-Fabric GUI; new enum value | executable definition | [B — executable](#path-b--gui-parameters) |
-| Wrong DIA-NN version available; image or SIF missing | images / SIF cache | [C — containers](#path-c--containers) |
+| Wrong DIA-NN version available; image or SIF missing | images / installed SIFs | [C — containers](#path-c--containers) |
 
 ## Load first, and resolve the placeholders
 
@@ -198,13 +198,32 @@ what the deployed `app.yml` process command already does.
 `src/diann_runner/config/defaults_server.yml` is the single config for both
 runtime and build: an `images:` block with parallel `docker:` and `apptainer:`
 sub-blocks (DIA-NN per version, `thermoraw_image`, `msconvert_docker`,
-`prolfquapp_image`), and a `deploy:` block (`sif_output_dir`, `sif_builder`,
-`force_rebuild`). `deploy.smk` derives image versions from the `images:` block,
+`prolfquapp_image`), and a `deploy:` block (`sif_staging_dir`, `sif_builder`,
+`force_rebuild`, the `sif_install_*` target). `deploy.smk` derives image versions from the `images:` block,
 so build and runtime cannot drift. Override for a one-off with
 `--config key=value`.
 
-Migrating a host to apptainer is ops-only: install apptainer, populate the SIF
-directory, pull `slurmworker`. No `diann_runner` change.
+Migrating a host to apptainer is ops-only: install apptainer, make sure the
+SIFs are installed, pull `slurmworker`. No `diann_runner` change.
+
+### SIFs: build to scratch, install separately
+
+Installed SIFs follow the FGCZ standard,
+`/misc/container/exp/<app>/<app>-<version>.sif` (slurmworker
+`docs/apptainer-build.md`). The version in the filename is the reproducibility
+anchor: bump the path, never overwrite an installed SIF. A job invokes that path
+directly — apptainer does not pull it, so it must already exist on every node
+the job can land on.
+
+`deploy.smk` cannot write there; `/misc/container/exp` is a privileged NFS
+export. It builds into `deploy.sif_staging_dir` (node-local scratch, `${USER}`
+expanded) using the installed filenames, and `scripts/install_sif.py` copies to
+the NFS host — validating each SIF, and skipping rather than overwriting a
+version already installed. Installing needs a host that reaches the NFS host
+with write access to the export, so it is a consent-worthy step.
+
+pwiz is the one exception to version-in-filename: upstream publishes no usable
+tag, so the filename carries `deploy.msconvert_capture_date` instead.
 
 ### Building
 
@@ -219,10 +238,15 @@ snakemake -s deploy.smk check_images --cores 1
 snakemake -s deploy.smk .deploy_flags/diann_2.5.1_built.flag --cores 1
 
 # SIFs — sif_builder=native (the default) needs no docker: spython converts each
-# Dockerfile to a .def under build/, then `apptainer build`.
+# Dockerfile to a .def under build/, then `apptainer build`. Output goes to the
+# staging dir, NOT the shared export.
 snakemake -s deploy.smk all_sif --cores 1
 # sif_builder=docker converts local docker images via docker-daemon://
 snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=docker
+
+# Then install (asks for nothing — check --dry-run first)
+python3 scripts/install_sif.py --dry-run
+python3 scripts/install_sif.py
 ```
 
 Native builds need apptainer's user namespace configured — check with
@@ -235,7 +259,9 @@ Cleanup: `snakemake -s deploy.smk clean --cores 1` drops flags;
 `clean_all` also removes images — but only the tags currently listed in
 `diann_images`. Renamed or dropped tags (the old `diann:*-thermo` suffix) must
 go by hand, and a reused tag whose base image changed needs
-`--config force_rebuild=true` plus deletion of the stale SIF.
+`--config force_rebuild=true` plus deletion of the stale SIF from staging.
+Nothing needs deleting under `/misc/container/exp`: an installed SIF is never
+overwritten, so a rebuild lands on a new version path.
 
 The prolfquapp image must track the DIA-NN output format the runner produces —
 an image too old for DIA-NN 2.5+ parquet fails QC.
@@ -254,8 +280,8 @@ Bump `defaults_server.yml` too when the new version should be the built default.
 
 ```bash
 python3 -c "from diann_runner.container_utils import detect_runtime; print(detect_runtime())"
-apptainer exec <sif-dir>/diann_2.3.2.sif diann --help
-diann-docker --runtime apptainer --image <sif-dir>/diann_2.3.2.sif -- --help
+apptainer exec /misc/container/exp/diann/diann-2.3.2.sif diann --help
+diann-docker --runtime apptainer --image /misc/container/exp/diann/diann-2.3.2.sif -- --help
 docker images | grep -E "^(diann|thermorawfileparser)"
 ```
 

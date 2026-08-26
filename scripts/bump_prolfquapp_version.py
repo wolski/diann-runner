@@ -58,7 +58,10 @@ def bump_text(text: str, repo: str, version: str) -> str:
     """Rewrite the docker tag and apptainer SIF filename to ``version``."""
     name = repo.rsplit("/", 1)[-1]
     text = re.sub(rf'({re.escape(repo)}:)[^"\s]+', rf"\g<1>{version}", text)
-    text = re.sub(rf'({re.escape(name)}_)\d[^"/\s]*(\.sif)', rf"\g<1>{version}\g<2>", text)
+    # SIFs are named <app>-<version>.sif per the FGCZ apptainer standard; the
+    # hyphen matters — matching the old underscore form silently left the SIF
+    # path pinned to the previous version.
+    text = re.sub(rf'({re.escape(name)}-)\d[^"/\s]*(\.sif)', rf"\g<1>{version}\g<2>", text)
     return text
 
 

@@ -29,18 +29,26 @@ images:
     prolfquapp_image: "ghcr.io/prolfqua/prolfquapp:2.9.0"
 
   apptainer:
-    # SIF paths. Shared FGCZ apptainer cache, populated by deploy.smk
-    # (see README_DEPLOYMENT.md).
+    # Installed SIF paths, per the FGCZ apptainer standard:
+    # /misc/container/exp/<app>/<app>-<version>.sif (slurmworker
+    # docs/apptainer-build.md). The version in the filename is the
+    # reproducibility anchor — bump the path, never overwrite a SIF in place.
+    #
+    # deploy.smk does NOT write here: /misc/container/exp is a shared,
+    # privileged export. It builds into deploy.sif_staging_dir; installing is
+    # the separate, deliberate scripts/install_sif.sh step.
     diann_images:
-      "2.3.2": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
-      "2.5.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.0.sif"
-      "2.5.1": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.1.sif"
-      "2.6.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.6.0.sif"
-      "2.6.1": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.6.1.sif"
-    diann_docker_image: "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
-    thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
-    msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.9.0.sif"
+      "2.3.2": "/misc/container/exp/diann/diann-2.3.2.sif"
+      "2.5.0": "/misc/container/exp/diann/diann-2.5.0.sif"
+      "2.5.1": "/misc/container/exp/diann/diann-2.5.1.sif"
+      "2.6.0": "/misc/container/exp/diann/diann-2.6.0.sif"
+      "2.6.1": "/misc/container/exp/diann/diann-2.6.1.sif"
+    diann_docker_image: "/misc/container/exp/diann/diann-2.3.2.sif"
+    thermoraw_image: "/misc/container/exp/thermorawfileparser/thermorawfileparser-2.0.0.sif"
+    # pwiz publishes no usable version tag, so the filename records the date
+    # the image was captured (deploy.msconvert_capture_date) instead.
+    msconvert_docker: "/misc/container/exp/pwiz/pwiz-2026-08-26.sif"
+    prolfquapp_image: "/misc/container/exp/prolfquapp/prolfquapp-2.9.0.sif"
 
 # Build-time settings for deploy.smk (building/pulling the images above).
 # Kept here, next to the image definitions, so there is a single config
@@ -48,9 +56,17 @@ images:
 # repeated — deploy.smk derives them from the images block above. Override
 # any of these for a one-off build with `--config key=value`.
 deploy:
-  # Where deploy.smk writes/pulls SIFs. The shared FGCZ apptainer cache is
-  # also where the runtime workflow (images.apptainer above) reads them from.
-  sif_output_dir: /misc/fgcz01/nextflow_apptainer_cache
+  # Where deploy.smk builds/pulls SIFs. Staging only — node-local scratch, not
+  # the shared export the runtime reads from. ${USER} is expanded.
+  sif_staging_dir: "/scratch/${USER}/sif"
+  # Install target for scripts/install_sif.sh. The SIF must be copied to the
+  # NFS server's export path, which compute nodes see as /misc/container/exp.
+  sif_install_host: fgcz-h-492
+  sif_install_root: /export/nfs4/container/exp
+  # pwiz is pulled untagged, so its SIF filename carries the capture date
+  # instead of a version. Bump this when re-pulling msconvert, and update
+  # images.apptainer.msconvert_docker to match.
+  msconvert_capture_date: "2026-08-26"
   # SIF builder: "native" (apptainer build from .def, no docker) or "docker"
   # (convert local docker images via docker-daemon://).
   sif_builder: native

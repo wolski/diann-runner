@@ -25,14 +25,18 @@ images:
     prolfquapp_image: "ghcr.io/prolfqua/prolfquapp:2.9.0"
 
   apptainer:
-    # SIF paths. Shared FGCZ apptainer cache, populated by deploy.smk.
+    # Installed SIF paths, per the FGCZ apptainer standard:
+    # /misc/container/exp/<app>/<app>-<version>.sif. Kept identical to
+    # defaults_server.yml so a local apptainer run on an FGCZ host resolves
+    # the same images. Override with --config for a scratch build.
     diann_images:
-      "2.3.2": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
-      "2.5.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.0.sif"
-      "2.5.1": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.5.1.sif"
-      "2.6.0": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.6.0.sif"
-      "2.6.1": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.6.1.sif"
-    diann_docker_image: "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif"
-    thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
-    msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.9.0.sif"
+      "2.3.2": "/misc/container/exp/diann/diann-2.3.2.sif"
+      "2.5.0": "/misc/container/exp/diann/diann-2.5.0.sif"
+      "2.5.1": "/misc/container/exp/diann/diann-2.5.1.sif"
+      "2.6.0": "/misc/container/exp/diann/diann-2.6.0.sif"
+      "2.6.1": "/misc/container/exp/diann/diann-2.6.1.sif"
+    diann_docker_image: "/misc/container/exp/diann/diann-2.3.2.sif"
+    thermoraw_image: "/misc/container/exp/thermorawfileparser/thermorawfileparser-2.0.0.sif"
+    # pwiz publishes no usable version tag, so the filename records the capture date.
+    msconvert_docker: "/misc/container/exp/pwiz/pwiz-2026-08-26.sif"
+    prolfquapp_image: "/misc/container/exp/prolfquapp/prolfquapp-2.9.0.sif"

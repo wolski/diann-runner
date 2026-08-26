@@ -32,7 +32,11 @@ def load_diann_build_matrix() -> list[dict]:
     - ``version``: map key, passed as ``--build-arg DIANN_VERSION`` (e.g. ``2.5.1``)
     - ``tag``: docker image tag (e.g. ``diann:2.5.1``)
     - ``dockerfile``: the shared DIA-NN Dockerfile
-    - ``slug``: filesystem-safe token used for SIF/.def/flag/log names
+    - ``slug``: filesystem-safe token used for .def/flag/log names
+    - ``sif_name``: installed SIF filename, ``<app>-<version>.sif`` per the
+      FGCZ apptainer standard (slurmworker ``docs/apptainer-build.md``). Kept
+      separate from ``slug`` so renaming the SIF does not invalidate the
+      docker build flags and force a rebuild.
     """
     images = _load_server_docker_images()["diann_images"]
     return [
@@ -41,6 +45,7 @@ def load_diann_build_matrix() -> list[dict]:
             "tag": tag,
             "dockerfile": DIANN_DOCKERFILE,
             "slug": tag.replace(":", "_"),
+            "sif_name": f"{tag.rsplit(':', 1)[0]}-{version}.sif",
         }
         for version, tag in images.items()
     ]

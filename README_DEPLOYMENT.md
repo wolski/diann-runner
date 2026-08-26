@@ -28,10 +28,10 @@ images:
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
     prolfquapp_image: "ghcr.io/prolfqua/prolfquapp:2.9.0"
   apptainer:
-    diann_images: { "2.3.2": "/misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif", ... }
-    thermoraw_image: "/misc/fgcz01/nextflow_apptainer_cache/thermorawfileparser_2.0.0.sif"
-    msconvert_docker: "/misc/fgcz01/nextflow_apptainer_cache/pwiz.sif"
-    prolfquapp_image: "/misc/fgcz01/nextflow_apptainer_cache/prolfquapp_2.9.0.sif"
+    diann_images: { "2.3.2": "/misc/container/exp/diann/diann-2.3.2.sif", ... }
+    thermoraw_image: "/misc/container/exp/thermorawfileparser/thermorawfileparser-2.0.0.sif"
+    msconvert_docker: "/misc/container/exp/pwiz/pwiz-2026-08-26.sif"   # untagged upstream; date = capture
+    prolfquapp_image: "/misc/container/exp/prolfquapp/prolfquapp-2.9.0.sif"
 ```
 
 The DIA-NN keys are the `pipeline_diann_version` dropdown values from the B-Fabric executable, so the two must be kept in step: adding a version to the GUI enumeration without adding its image here yields a KeyError at runtime.
@@ -53,13 +53,33 @@ So a QC image bump is a one-line `slurmworker` change plus a pull on the deploy 
 
 The catch: `deploy.smk` reads the config, not the environment. An image set only via `PROLFQUAPP_IMAGE` is never built or pulled by a local `deploy.smk` run, so it must already exist in the registry (or as a SIF). Keep `defaults_server.yml` in step when you intend the new version to be the built default.
 
-Migrating a host from Docker to Apptainer is purely an ops action: install `apptainer`, populate the SIF cache (see below), pull `slurmworker`. No `diann_runner` config change needed.
+Migrating a host from Docker to Apptainer is purely an ops action: install `apptainer`, make sure the SIFs are installed (see below), pull `slurmworker`. No `diann_runner` config change needed.
+
+### Apptainer: where SIFs live
+
+SIFs follow the FGCZ apptainer standard (slurmworker `docs/apptainer-build.md`):
+
+```
+/misc/container/exp/<app>/<app>-<version>.sif
+```
+
+The version in the filename is the reproducibility anchor — bump the path, never overwrite an installed SIF in place. That path is what `images.apptainer` in `defaults_server.yml` points at, and what a job invokes directly: Apptainer does **not** pull it, so it must already exist and be readable on every node the job can land on.
+
+**Building and installing are separate steps, deliberately.** `/misc/container/exp` is a privileged NFS export that compute nodes mount read-only, so `deploy.smk` cannot write it. It builds into `deploy.sif_staging_dir` (node-local scratch, `${USER}` expanded) with the installed filenames already applied; `scripts/install_sif.py` does the copy to the NFS host:
+
+```bash
+snakemake -s deploy.smk all_sif --cores 1        # -> /scratch/$USER/sif/diann-2.6.1.sif
+python3 scripts/install_sif.py --dry-run         # what would be copied where
+python3 scripts/install_sif.py                   # validate + scp to the export
+```
+
+`install_sif.py` validates each SIF with `apptainer inspect`, skips any version already installed rather than overwriting it, and derives the per-app directory from the filename. It needs to run from a host that reaches the NFS host directly, with write access to the export — `ls -ld /export/nfs4/container/exp/<app>/` shows who that is. The install host and root come from the `deploy:` block.
+
+Keep the previous SIF in place until the new one has been validated in a real run, so a rollback is just repointing the config.
 
 ### Apptainer Host Setup
 
-Tested with `apptainer version 1.4.2`. `defaults_server.yml` points both the runtime image paths and `deploy.sif_output_dir` at the shared FGCZ apptainer cache, `/misc/fgcz01/nextflow_apptainer_cache`. Override with `--config sif_output_dir=...` for a one-off build elsewhere. Two ways to populate it:
-
-`deploy.smk all_sif` offers two builders, selected via `--config sif_builder={native,docker}`:
+Tested with `apptainer version 1.4.2`. `deploy.smk all_sif` offers two builders, selected via `--config sif_builder={native,docker}`:
 
 #### Option A — Native builder (default; apptainer-only host, no docker needed)
 
@@ -81,13 +101,13 @@ Run on a host with **both** docker (daemon running) and apptainer. Locally-built
 
 ```bash
 snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=docker
-snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=docker sif_output_dir=./sif
+snakemake -s deploy.smk all_sif --cores 1 --config sif_builder=docker sif_staging_dir=./sif
 ```
 
-Then copy to the apptainer host:
+Then install from the staging dir as above:
 
 ```bash
-rsync -av sif/ <apptainer-host>:/misc/fgcz01/nextflow_apptainer_cache/
+python3 scripts/install_sif.py --staging-dir ./sif
 ```
 
 #### Option C — Pull from a registry on the apptainer host
@@ -95,12 +115,13 @@ rsync -av sif/ <apptainer-host>:/misc/fgcz01/nextflow_apptainer_cache/
 If you have a registry the apptainer host can reach (and the locally-built images have been pushed to it), pull directly without `deploy.smk`:
 
 ```bash
-mkdir -p /misc/fgcz01/nextflow_apptainer_cache
-apptainer pull /misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif docker://<registry>/diann:2.3.2
-apptainer pull /misc/fgcz01/nextflow_apptainer_cache/pwiz.sif docker://chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
+mkdir -p "/scratch/$(id -un)/sif"
+apptainer pull "/scratch/$(id -un)/sif/diann-2.3.2.sif" docker://<registry>/diann:2.3.2
+apptainer pull "/scratch/$(id -un)/sif/pwiz-2026-08-26.sif" docker://chambm/pwiz-skyline-i-agree-to-the-vendor-licenses
+python3 scripts/install_sif.py
 ```
 
-Useful when several apptainer hosts share the same registry.
+Useful when several apptainer hosts share the same registry. Name the file as it will be installed — `install_sif.py` derives the target directory from the filename.
 
 #### Build rules summary
 
@@ -113,7 +134,7 @@ Useful when several apptainer hosts share the same registry.
 - `pull_msconvert_sif`, `pull_prolfquapp_sif` — same in both modes (`apptainer pull docker://<ref>`, no docker needed)
 - `sif_deployment_complete` — combined marker
 
-All deploy configuration lives in one file, `src/diann_runner/config/defaults_server.yml` — the same file the runtime workflow reads, so nothing can drift. Image versions (DIA-NN, thermorawfileparser, prolfquapp, msconvert) are derived from its `images:` block; build-time knobs (`sif_output_dir`, `sif_builder`, `force_rebuild`) live in its `deploy:` block. Override any of them for a one-off build with `--config key=value`.
+All deploy configuration lives in one file, `src/diann_runner/config/defaults_server.yml` — the same file the runtime workflow reads, so nothing can drift. Image versions (DIA-NN, thermorawfileparser, prolfquapp, msconvert) are derived from its `images:` block; build-time knobs (`sif_staging_dir`, `sif_builder`, `force_rebuild`, the `sif_install_*` target, `msconvert_capture_date`) live in its `deploy:` block. Override any of them for a one-off build with `--config key=value`.
 
 #### Verify
 
@@ -121,8 +142,8 @@ All deploy configuration lives in one file, `src/diann_runner/config/defaults_se
 python3 -c "from diann_runner.container_utils import detect_runtime; print(detect_runtime())"
 # Expected: apptainer
 
-apptainer exec /misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif diann --help
-diann-docker --runtime apptainer --image /misc/fgcz01/nextflow_apptainer_cache/diann_2.3.2.sif -- --help
+apptainer exec /misc/container/exp/diann/diann-2.3.2.sif diann --help
+diann-docker --runtime apptainer --image /misc/container/exp/diann/diann-2.3.2.sif -- --help
 ```
 
 Note for msconvert: Wine inside the pwiz image needs a writable `$WINEPREFIX`. The `thermoraw` wrapper handles this automatically under apptainer by adding `--writable-tmpfs --env WINEPREFIX=/tmp/.wine` to the `apptainer exec` invocation. No setup required.
@@ -293,7 +314,7 @@ docker image prune -f      # drop now-dangling layers (old Ubuntu base, etc.)
 
 ```bash
 # Apptainer host
-rm -f /misc/fgcz01/nextflow_apptainer_cache/diann_*-thermo.sif
+rm -f "/scratch/$(id -un)/sif/"diann-*-thermo.sif
 ```
 
 **2. Reused tags built on the old base.** `diann:2.3.2` keeps its name, but its base changed (Ubuntu → Debian + .NET 8). Force a rebuild so it gains native `.raw` support, then refresh the SIFs:
@@ -301,7 +322,7 @@ rm -f /misc/fgcz01/nextflow_apptainer_cache/diann_*-thermo.sif
 ```bash
 snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 # Apptainer: re-pull/rebuild SIFs (delete stale ones first if names are unchanged)
-rm -f /misc/fgcz01/nextflow_apptainer_cache/diann_{2.3.2,2.5.0,2.5.1,2.6.0,2.6.1}.sif
+rm -f "/scratch/$(id -un)/sif/"diann-{2.3.2,2.5.0,2.5.1,2.6.0,2.6.1}.sif
 snakemake -s deploy.smk all_sif --cores 1
 ```
 

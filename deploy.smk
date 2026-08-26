@@ -33,6 +33,7 @@ DIA-NN versions:
     picks it up automatically.
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -77,16 +78,28 @@ MSCONVERT_IMAGE = config.get("msconvert_image", load_msconvert_image())
 DIANN_MATRIX = load_diann_build_matrix()
 DIANN_BY_SLUG = {m["slug"]: m for m in DIANN_MATRIX}
 DIANN_SLUGS = list(DIANN_BY_SLUG)
+# SIF rules key on the version rather than the slug: the installed filename is
+# diann-<version>.sif, while .def/flag/log names stay on the slug.
+DIANN_BY_VERSION = {m["version"]: m for m in DIANN_MATRIX}
+DIANN_VERSIONS = list(DIANN_BY_VERSION)
 
 # Constrain the {slug} wildcard to known DIA-NN slugs so the wildcarded
 # build/SIF rules never capture the thermorawfileparser/pwiz/prolfquapp flags.
 wildcard_constraints:
-    slug = "|".join(re.escape(s) for s in DIANN_SLUGS)
+    slug = "|".join(re.escape(s) for s in DIANN_SLUGS),
+    dver = "|".join(re.escape(v) for v in DIANN_VERSIONS)
 
-# SIF output directory (used by all_sif), from the deploy: block — the shared
-# FGCZ apptainer cache, where the runtime workflow also reads SIFs from.
-# Override with --config sif_output_dir=... for a one-off build elsewhere.
-SIF_DIR = Path(config.get("sif_output_dir", DEPLOY["sif_output_dir"]))
+# SIF staging directory, from the deploy: block. Node-local scratch, NOT the
+# shared export the runtime reads from: /misc/container/exp is privileged and
+# cannot be written directly (slurmworker docs/apptainer-build.md). Built SIFs
+# already carry their installed names; scripts/install_sif.sh copies them to
+# the NFS export. Override with --config sif_staging_dir=... .
+SIF_DIR = Path(os.path.expandvars(config.get("sif_staging_dir", DEPLOY["sif_staging_dir"])))
+
+# pwiz is pulled untagged, so its SIF filename carries the capture date.
+MSCONVERT_CAPTURE_DATE = config.get(
+    "msconvert_capture_date", DEPLOY["msconvert_capture_date"]
+)
 
 # SIF builder: "native" (apptainer build from spython-generated .def, no
 # docker needed) or "docker" (converts locally-built docker images via
@@ -231,13 +244,13 @@ if SIF_BUILDER == "docker":
         """Convert each diann:<version> docker image to SIF via docker-daemon://."""
         input:
             prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
-            docker_flag = FLAGS_DIR / "{slug}_built.flag"
+            docker_flag = lambda wc: FLAGS_DIR / f"{DIANN_BY_VERSION[wc.dver]['slug']}_built.flag"
         output:
-            sif = SIF_DIR / "{slug}.sif"
+            sif = SIF_DIR / "diann-{dver}.sif"
         log:
-            LOGS_DIR / "build_{slug}_sif.log"
+            LOGS_DIR / "build_diann-{dver}_sif.log"
         params:
-            tag = lambda wc: DIANN_BY_SLUG[wc.slug]["tag"]
+            tag = lambda wc: DIANN_BY_VERSION[wc.dver]["tag"]
         shell:
             """
             mkdir -p "$(dirname {output.sif:q})"
@@ -250,7 +263,7 @@ if SIF_BUILDER == "docker":
             prereq_flag = FLAGS_DIR / "apptainer_prereq_checked.flag",
             docker_flag = FLAGS_DIR / "thermorawfileparser_docker_built.flag"
         output:
-            sif = SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif"
+            sif = SIF_DIR / f"thermorawfileparser-{THERMORAW_VERSION}.sif"
         log:
             LOGS_DIR / "build_thermorawfileparser_sif.log"
         params:
@@ -272,7 +285,7 @@ rule pull_msconvert_sif:
     input:
         prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag"
     output:
-        sif = SIF_DIR / "pwiz.sif"
+        sif = SIF_DIR / f"pwiz-{MSCONVERT_CAPTURE_DATE}.sif"
     log:
         LOGS_DIR / "pull_msconvert_sif.log"
     params:
@@ -289,7 +302,7 @@ rule pull_prolfquapp_sif:
     input:
         prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag"
     output:
-        sif = SIF_DIR / f"prolfquapp_{PROLFQUAPP_VERSION}.sif"
+        sif = SIF_DIR / f"prolfquapp-{PROLFQUAPP_VERSION}.sif"
     log:
         LOGS_DIR / "pull_prolfquapp_sif.log"
     params:
@@ -304,10 +317,10 @@ rule pull_prolfquapp_sif:
 rule sif_deployment_complete:
     """Final SIF deployment marker with summary."""
     input:
-        expand(str(SIF_DIR / "{slug}.sif"), slug=DIANN_SLUGS),
-        SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif",
-        SIF_DIR / "pwiz.sif",
-        SIF_DIR / f"prolfquapp_{PROLFQUAPP_VERSION}.sif"
+        expand(str(SIF_DIR / "diann-{dver}.sif"), dver=DIANN_VERSIONS),
+        SIF_DIR / f"thermorawfileparser-{THERMORAW_VERSION}.sif",
+        SIF_DIR / f"pwiz-{MSCONVERT_CAPTURE_DATE}.sif",
+        SIF_DIR / f"prolfquapp-{PROLFQUAPP_VERSION}.sif"
     output:
         flag = FLAGS_DIR / "sif_deployment_complete.flag"
     run:
@@ -378,11 +391,11 @@ if SIF_BUILDER == "native":
         """Build each diann SIF natively from its generated .def file (no docker)."""
         input:
             prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
-            deffile = DEF_DIR / "{slug}.def"
+            deffile = lambda wc: DEF_DIR / f"{DIANN_BY_VERSION[wc.dver]['slug']}.def"
         output:
-            sif = SIF_DIR / "{slug}.sif"
+            sif = SIF_DIR / "diann-{dver}.sif"
         log:
-            LOGS_DIR / "build_{slug}_sif.log"
+            LOGS_DIR / "build_diann-{dver}_sif.log"
         shell:
             """
             mkdir -p "$(dirname {output.sif:q})"
@@ -395,7 +408,7 @@ if SIF_BUILDER == "native":
             prereq_flag = FLAGS_DIR / "apptainer_only_prereq_checked.flag",
             deffile = DEF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.def"
         output:
-            sif = SIF_DIR / f"thermorawfileparser_{THERMORAW_VERSION}.sif"
+            sif = SIF_DIR / f"thermorawfileparser-{THERMORAW_VERSION}.sif"
         log:
             LOGS_DIR / "build_thermorawfileparser_sif.log"
         shell:
