@@ -216,12 +216,54 @@ Force Docker image rebuilds:
 snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 ```
 
-Build or verify a specific image (target its flag; one per `diann_images` version):
+Build or verify a specific image (target its flag, absolute path — one per
+`diann_images` version):
 
 ```bash
-snakemake -s deploy.smk .deploy_flags/diann_2.5.1_built.flag --cores 1
+snakemake -s deploy.smk "$PWD/.deploy_flags/diann_2.5.1_built.flag" --cores 1
 snakemake -s deploy.smk check_images --cores 1
 ```
+
+## Adding a DIA-NN version
+
+Four files, then a build. Missing any of the four is caught by
+`tests/test_version_consistency.py`, so run the tests before deploying.
+
+1. **The GUI dropdown** — add the value to the `pipeline_diann_version`
+   `enumeration` in `bfabric_executable/executable_A386_DIANN_3.2.yaml`, and
+   update the parameter description if it names the newest version.
+2. **The mirror copy** — the same edit in
+   `slurmworker/config/A386_DIANN_23/executable_A386_DIANN23plus.yaml`. The two
+   files have no sync mechanism; `diff` them.
+3. **The image maps** — add the version key to `images.docker.diann_images` and
+   `images.apptainer.diann_images` in **both** `defaults_server.yml` and
+   `defaults_local.yml`. Docker gets `diann:<version>`; apptainer gets
+   `/misc/container/exp/diann/diann-<version>.sif`.
+4. **Build it.** `deploy.smk` derives its build matrix from the docker map, so
+   it picks the new version up with no change to the Snakefile:
+
+```bash
+uv run pytest tests/                      # the consistency guard
+snakemake -s deploy.smk --cores 1         # builds only versions without a flag
+```
+
+To build just the one image, target its flag with an **absolute** path — the
+flag paths are absolute, so a relative target raises `MissingRuleException`:
+
+```bash
+snakemake -s deploy.smk "$PWD/.deploy_flags/diann_2.6.1_built.flag" --cores 1
+```
+
+No Dockerfile change is needed. `Dockerfile.diann` takes `DIANN_VERSION` as a
+build arg and `DIANN_URL` resolves every version from the upstream `2.0` release
+tag, which is why DIA-NN release links all point there.
+
+Then deploy as a workflow-code change (push, `make_lock.sh`, pull), and upload
+the executable so the new value appears in the GUI — remembering that
+`make upload` creates a new executable rather than updating the live one.
+
+For apptainer, also build and install the SIF (see below); the config path alone
+does not create it.
 
 ## Verification
 

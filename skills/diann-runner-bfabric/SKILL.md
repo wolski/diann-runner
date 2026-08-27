@@ -240,7 +240,8 @@ snakemake -s deploy.smk --cores 1 --dry-run
 snakemake -s deploy.smk --cores 1
 snakemake -s deploy.smk --cores 1 --config force_rebuild=true
 snakemake -s deploy.smk check_images --cores 1
-snakemake -s deploy.smk .deploy_flags/diann_2.5.1_built.flag --cores 1
+# a single image: absolute flag path, a relative one raises MissingRuleException
+snakemake -s deploy.smk "$PWD/.deploy_flags/diann_2.5.1_built.flag" --cores 1
 
 # SIFs — sif_builder=native (the default) needs no docker: spython converts each
 # Dockerfile to a .def under build/, then `apptainer build`. Output goes to the
