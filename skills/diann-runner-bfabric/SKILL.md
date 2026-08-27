@@ -7,15 +7,20 @@ description: Deploy, change, reproduce, and verify the FGCZ B-Fabric A386 DIA-NN
 
 ## The chain
 
+The B-Fabric executable defines the GUI parameters and its `program:` points at
+`slurmworker/config/A386_DIANN_23/app.yml`. That app.yml defines two of the four
+phases app-runner runs; `inputs` and `stage` are app-runner's own:
+
 ```
-B-Fabric A386 application
-  -> executable (GUI parameter definitions)          bfabric_executable/executable_A386_DIANN_3.2.yaml
-  -> app.yml                                         slurmworker/config/A386_DIANN_23/app.yml
-  -> dispatch.py            workunit -> work/params.yml + work/inputs.yml
-  -> pylock.toml            pins the diann_runner git revision
-  -> diann_runner           run_diann_cli apprunner -> Snakefile.DIANN3step.smk
-  -> container runtime      docker images or apptainer SIFs
+dispatch  dispatch.py               -> work/params.yml + work/inputs.yml
+inputs    (app-runner)              downloads the staged inputs
+process   run_diann_cli apprunner   -> Snakefile.DIANN3step.smk -> containers
+stage     (app-runner)              registers outputs in B-Fabric
 ```
+
+Both app-defined phases are `type: python_env` provisioned from `pylock.toml`,
+which is what pins the `diann_runner` revision — it is the environment for the
+commands, not a step between them.
 
 Three independent things can be out of date, and they deploy differently.
 Identify which one before touching anything:
