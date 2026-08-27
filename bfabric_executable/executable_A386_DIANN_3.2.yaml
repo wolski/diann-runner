@@ -159,7 +159,7 @@ executable:
     modifiable: 'true'
     required: 'true'
     type: STRING
-    value: /misc/fasta/p34486_Proteobench_TripleProteome_20240614.fasta
+    value: /misc/fasta/fgcz_9606_UP000005640_Human_1spg_20260619.fasta
   - description: fasta path from storage folder (FASTA Database parameter must be NONE)
     context: APPLICATION
     key: input_fasta_additional
