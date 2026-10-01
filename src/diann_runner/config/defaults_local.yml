@@ -18,6 +18,7 @@ images:
       "2.5.1": "diann:2.5.1"
       "2.6.0": "diann:2.6.0"
       "2.6.1": "diann:2.6.1"
+      "2.7.0": "diann:2.7.0"
     diann_docker_image: "diann:2.3.2"
     thermoraw_image: "thermorawfileparser:2.0.0"
     msconvert_docker: "chambm/pwiz-skyline-i-agree-to-the-vendor-licenses"
@@ -35,6 +36,7 @@ images:
       "2.5.1": "/misc/container/exp/diann/diann-2.5.1.sif"
       "2.6.0": "/misc/container/exp/diann/diann-2.6.0.sif"
       "2.6.1": "/misc/container/exp/diann/diann-2.6.1.sif"
+      "2.7.0": "/misc/container/exp/diann/diann-2.7.0.sif"
     diann_docker_image: "/misc/container/exp/diann/diann-2.3.2.sif"
     thermoraw_image: "/misc/container/exp/thermorawfileparser/thermorawfileparser-2.0.0.sif"
     # pwiz publishes no usable version tag, so the filename records the capture date.

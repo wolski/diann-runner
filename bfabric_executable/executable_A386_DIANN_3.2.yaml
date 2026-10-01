@@ -5,7 +5,7 @@ executable:
   context: APPLICATION
   enabled: 'true'
   parameter:
-  - description: DIA-NN version to use. 2.3.2 is the current production default; 2.6.1 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.
+  - description: DIA-NN version to use. 2.6.1 is the current production default; 2.7.0 is the newest. All versions run in the same .NET 8 image and read Thermo .raw natively.
     context: APPLICATION
     enumeration:
     - 2.3.2
@@ -13,12 +13,13 @@ executable:
     - 2.5.1
     - 2.6.0
     - 2.6.1
+    - 2.7.0
     key: pipeline_diann_version
     label: DIA-NN Version
     modifiable: 'true'
     required: 'true'
     type: STRING
-    value: 2.3.2
+    value: 2.6.1
   - description: 'Workflow mode. two_step: separate library prediction (Step A) then quantification (Step B) — standard mode. single_step: combined library prediction + quantification in one DIA-NN invocation — faster for small-to-medium datasets.'
     context: APPLICATION
     enumeration:
