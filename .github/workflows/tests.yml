@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.13"
+      # Docker, the test data zips and the slurmworker mirror are absent here;
+      # the tests that need them skip themselves.
+      - run: uv run --extra test pytest tests/ -q -rs
