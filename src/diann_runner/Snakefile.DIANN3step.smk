@@ -12,6 +12,7 @@ import pandas as pd
 # Import helpers from diann_runner package
 from diann_runner.snakemake_helpers import (
     copy_fasta_if_missing,
+    d_zip_extract_dir,
     get_diann_input_dependency,
     get_diann_input_path,
     get_fasta_paths,
@@ -130,6 +131,7 @@ rule convert_d_zip:
     """Extract .d.zip to .d folder for direct use by DIA-NN.
 
     DIA-NN natively supports Bruker .d input — no mzML conversion needed.
+    A zip holding only the folder's contents is extracted into <sample>.d.
     """
     input:
         file = RAW_SOURCE_DIR / "{sample}.d.zip"
@@ -138,15 +140,15 @@ rule convert_d_zip:
     log:
         logfile = "logs/convert_d_zip_{sample}.log"
     params:
-        extract_dir = CONVERTED_DIR,
+        extract_dir = lambda wildcards, input: d_zip_extract_dir(input.file, CONVERTED_DIR, wildcards.sample),
         folder = lambda wildcards: CONVERTED_DIR / f"{wildcards.sample}.d"
     retries: 3
     shell:
         """
         exec 2> {log.logfile}
-        echo "Extracting {input.file:q}"
+        echo "Extracting {input.file:q} into {params.extract_dir:q}"
         unzip -o {input.file:q} -d {params.extract_dir:q}
-        test -d {params.folder:q}
+        test -f {params.folder:q}/analysis.tdf
         touch {output.marker:q}
         """
 

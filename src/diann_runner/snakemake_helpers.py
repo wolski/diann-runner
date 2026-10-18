@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import zipfile
 from html import escape
 from pathlib import Path
 
@@ -191,6 +192,18 @@ def load_workflow_params(workdir: str | Path, config: dict) -> tuple[dict, dict]
 
     config_dict = load_config(workdir)
     return parse_flat_params(config_dict["params"]), config_dict["registration"]
+
+
+def d_zip_extract_dir(zip_path: Path, converted_dir: Path, sample: str) -> Path:
+    """Return the directory to unzip ``<sample>.d.zip`` into so it yields ``<sample>.d``.
+
+    Instrument zips contain the folder itself (``<sample>.d/analysis.tdf``).
+    Some imports (e.g. TIMSC4L_1) zip only the folder's contents
+    (``analysis.tdf`` and ``*.m/`` at the top); those go into ``<sample>.d``.
+    """
+    with zipfile.ZipFile(zip_path) as zf:
+        nested = all(name.startswith(f"{sample}.d/") for name in zf.namelist())
+    return Path(converted_dir) if nested else Path(converted_dir) / f"{sample}.d"
 
 
 def detect_input_files(raw_dir: Path) -> tuple[list[str], str, dict[str, list[Path]]]:

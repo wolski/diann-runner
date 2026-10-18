@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from diann_runner.snakemake_helpers import (
+    d_zip_extract_dir,
     discover_prolfqua_reports,
     get_diann_input_dependency,
     get_diann_input_path,
@@ -95,6 +96,39 @@ class TestSnakemakeHelpers(unittest.TestCase):
 
         self.assertIn('folder = lambda wildcards: CONVERTED_DIR / f"{wildcards.sample}.d"', content)
         self.assertNotIn('folder = CONVERTED_DIR / "{sample}.d"', content)
+
+    def _write_d_zip(self, zip_path, prefix):
+        with zipfile.ZipFile(zip_path, "w") as zip_file:
+            zip_file.writestr(f"{prefix}analysis.tdf", "tdf")
+            zip_file.writestr(f"{prefix}analysis.tdf_bin", "bin")
+            zip_file.writestr(f"{prefix}13399.m/hystar.method", "method")
+
+    def test_d_zip_extract_dir_nested_zip_extracts_into_converted_dir(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            zip_path = tmp_path / "run1.d.zip"
+            self._write_d_zip(zip_path, "run1.d/")
+
+            extract_dir = d_zip_extract_dir(zip_path, tmp_path / "raw", "run1")
+
+            self.assertEqual(extract_dir, tmp_path / "raw")
+            with zipfile.ZipFile(zip_path) as zip_file:
+                zip_file.extractall(extract_dir)
+            self.assertTrue((tmp_path / "raw" / "run1.d" / "analysis.tdf").is_file())
+
+    def test_d_zip_extract_dir_flat_zip_extracts_into_d_folder(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            zip_path = tmp_path / "run1.d.zip"
+            self._write_d_zip(zip_path, "")
+
+            extract_dir = d_zip_extract_dir(zip_path, tmp_path / "raw", "run1")
+
+            self.assertEqual(extract_dir, tmp_path / "raw" / "run1.d")
+            with zipfile.ZipFile(zip_path) as zip_file:
+                zip_file.extractall(extract_dir)
+            self.assertTrue((tmp_path / "raw" / "run1.d" / "analysis.tdf").is_file())
+            self.assertTrue((tmp_path / "raw" / "run1.d" / "13399.m" / "hystar.method").is_file())
 
     def test_zip_diann_results_includes_extra_files_at_archive_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
