@@ -1,5 +1,7 @@
 # TODO: delete staged inputs after a successful A386 run
 
+Status 2026-10-19: implemented in diann-runner `b17bcb5` (`prepare.cleanup_work_dir`), checkbox in both executables, slurmworker lock `e74cee9`. Open: executable upload + repoint, then the TEST check (one run ticked, one unticked).
+
 Verdict: feasible and safe on the AppRunner path. Implement it in diann_runner, right after Snakemake exits 0, behind a new executable checkbox `output_cleanup_on_success`. Raw copies are over 99 % of a workunit dir, so this alone would have freed WU351848's 1.3 TB two days before WU351887 died with `No space left on device` (inferred from the 2026-09-21 sizes).
 
 ## Decisions (Witold, 2026-09-25)
