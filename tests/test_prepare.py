@@ -144,5 +144,77 @@ class TestDeliverOutputs(unittest.TestCase):
             self.assertTrue((req.output_dir / "qc_result" / "x.txt").is_file())
 
 
+def _finished_work_dir(work: Path) -> None:
+    """A work dir as a successful AppRunner run leaves it."""
+    raw = work / "input" / "raw"
+    raw.mkdir(parents=True, exist_ok=True)
+    (raw / "dataset.parquet").write_text("ds")
+    (raw / "c.d.zip").write_text("zip")
+    (raw / "c.done").write_text("")
+    d = raw / "c.d"
+    (d / "m.m").mkdir(parents=True)
+    (d / "analysis.tdf").write_text("tdf")
+    (d / "m.m" / "hystar.method").write_text("m")
+    for p in (d / "m.m", d):  # staged timsTOF .d dirs arrive read-only
+        p.chmod(0o555)
+    (work / "temp-DIANN_quantB").mkdir()
+    (work / "temp-DIANN_quantB" / "a.quant").write_text("q")
+    (work / "out-DIANN_quantB").mkdir()
+    (work / "out-DIANN_quantB" / "report.parquet").write_text("r")
+    (work / "logs").mkdir()
+    (work / "Result_WU999.zip").write_text("zip")
+    (work / "outputs.yml").write_text("outputs: []")
+    (work / "params.yml").write_text("p")
+
+
+class TestCleanupWorkDir(unittest.TestCase):
+    def test_removes_raws_and_intermediates_keeps_deliverables(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            work = tmp / "work"
+            req = _make_request(tmp, raw_dir=work / "input" / "raw", work_dir=work)
+            _finished_work_dir(work)
+            prepare.cleanup_work_dir(req)
+            raw = work / "input" / "raw"
+            for gone in ("a.raw", "b.raw", "c.d.zip", "c.d"):
+                self.assertFalse((raw / gone).exists(), gone)
+            self.assertFalse((work / "temp-DIANN_quantB").exists())
+            self.assertFalse((work / "out-DIANN_quantB").exists())
+            for kept in ("Result_WU999.zip", "outputs.yml", "params.yml", "input/raw/dataset.parquet"):
+                self.assertTrue((work / kept).is_file(), kept)
+            self.assertIn("freed", (work / "logs" / "cleanup.log").read_text())
+
+    def test_external_raw_dir_is_never_touched(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            work = tmp / "work"
+            req = _make_request(tmp, raw_dir=tmp / "primary", work_dir=work)
+            _finished_work_dir(work)
+            prepare.cleanup_work_dir(req)
+            self.assertTrue((tmp / "primary" / "a.raw").is_file())
+            self.assertTrue((tmp / "primary" / "b.raw").is_file())
+            self.assertFalse((work / "input" / "raw" / "c.d").exists())  # conversion output goes
+
+    def test_nothing_deleted_without_outputs_yml(self):
+        with tempfile.TemporaryDirectory() as t:
+            tmp = Path(t)
+            work = tmp / "work"
+            req = _make_request(tmp, raw_dir=work / "input" / "raw", work_dir=work)
+            _finished_work_dir(work)
+            (work / "outputs.yml").unlink()
+            prepare.cleanup_work_dir(req)
+            self.assertTrue((work / "input" / "raw" / "a.raw").is_file())
+            self.assertTrue((work / "temp-DIANN_quantB").is_dir())
+            for p in (work / "input" / "raw" / "c.d", work / "input" / "raw" / "c.d" / "m.m"):
+                p.chmod(0o755)  # let TemporaryDirectory clean up
+
+    def test_flag_defaults_off(self):
+        params = DIANNRunnerParams.from_parsed(parse_flat_params(dict(FLAT)))
+        self.assertFalse(params.output.cleanup_on_success)
+        flat = dict(FLAT, output_cleanup_on_success="true")
+        params = DIANNRunnerParams.from_parsed(parse_flat_params(flat))
+        self.assertTrue(params.output.cleanup_on_success)
+
+
 if __name__ == "__main__":
     unittest.main()

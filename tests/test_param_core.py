@@ -191,6 +191,7 @@ class TestBuildInternalParams(unittest.TestCase):
                 "enable_step_c",
                 "include_libs",
                 "pmultiqc",
+                "cleanup_on_success",
             },
         )
 

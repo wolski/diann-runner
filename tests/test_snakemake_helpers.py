@@ -589,6 +589,7 @@ class TestSnakemakeHelpers(unittest.TestCase):
                 'fragment_quant': False,
                 'include_libs': False,
                 'pmultiqc': True,
+                'cleanup_on_success': False,
             },
             'advanced': {
                 'freestyle': [],

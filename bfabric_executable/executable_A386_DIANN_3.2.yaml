@@ -504,6 +504,14 @@ executable:
     required: 'true'
     type: BOOLEAN
     value: 'true'
+  - description: After a successful run, delete the copied raw files and DIA-NN intermediates from the workunit scratch directory. The Result zip is kept and registered as usual. Untick for method development if you want to inspect intermediates.
+    context: APPLICATION
+    key: output_cleanup_on_success
+    label: Delete input and intermediate files after success
+    modifiable: 'true'
+    required: 'true'
+    type: BOOLEAN
+    value: 'true'
   - description: 'Add additional DIA-NN parameters at your own risk. Advanced users only. Example: --no-prot-inf --rt-profiling'
     context: APPLICATION
     key: advanced_freestyle

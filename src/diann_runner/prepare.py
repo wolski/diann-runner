@@ -11,6 +11,7 @@ the containers when external; see :mod:`diann_runner.diann_docker`).
 from __future__ import annotations
 
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 
@@ -162,6 +163,81 @@ def deliver_outputs(request: DiannRunRequest) -> None:
     logger.info(f"Delivered outputs to {out}")
 
 
+RAW_DATA_SUFFIXES = (".raw", ".mzML", ".d", ".d.zip")
+CLEANUP_LOG = "logs/cleanup.log"
+
+
+def _make_writable_and_retry(func, path, _exc) -> None:
+    """rmtree onexc handler: staged timsTOF .d dirs arrive mode 555."""
+    parent = Path(path).parent
+    parent.chmod(parent.stat().st_mode | stat.S_IWUSR)
+    Path(path).chmod(Path(path).lstat().st_mode | stat.S_IWUSR)
+    func(path)
+
+
+def _size(path: Path) -> int:
+    if path.is_symlink() or path.is_file():
+        return path.lstat().st_size
+    return sum(p.lstat().st_size for p in path.rglob("*") if not p.is_symlink() and p.is_file())
+
+
+def _remove(path: Path) -> None:
+    if path.is_symlink() or not path.is_dir():
+        path.unlink()
+    else:
+        shutil.rmtree(path, onexc=_make_writable_and_retry)
+
+
+def cleanup_targets(request: DiannRunRequest) -> list[Path]:
+    """Paths to delete after a successful run: raw data, temp-/out-DIANN dirs.
+
+    Raw data is removed from ``raw_file_dir`` only when it lies inside
+    ``work_dir`` (AppRunner copies). An external raw dir (SUSHI reads primary
+    data in place) is never touched; only conversion outputs under
+    ``work_dir/input/raw`` go.
+    """
+    work = request.work_dir.resolve()
+    raw_dir = request.raw_file_dir.resolve()
+    raw_inside = raw_dir == work or raw_dir.is_relative_to(work)
+    data_dir = raw_dir if raw_inside else work / CONVERTED_SUBDIR
+    targets = []
+    if data_dir.is_dir():
+        targets += [p for p in sorted(data_dir.iterdir()) if p.name.endswith(RAW_DATA_SUFFIXES)]
+    targets += [p for p in sorted(work.glob("temp-DIANN*")) if p.is_dir()]
+    targets += [p for p in sorted(work.glob("out-DIANN*")) if p.is_dir()]
+    return targets
+
+
+def cleanup_work_dir(request: DiannRunRequest) -> None:
+    """Delete staged raws and intermediates; keep the Result zip, outputs.yml, logs.
+
+    Runs only when the Result zip is non-empty and ``outputs.yml`` exists. A
+    failure is logged as a warning and never fails the run: the analysis is
+    already delivered, and workunit_cleaner removes the rest later.
+    """
+    work = request.work_dir.resolve()
+    result_zip = work / f"Result_WU{request.workunit_id}.zip"
+    if not (result_zip.is_file() and result_zip.stat().st_size > 0 and (work / "outputs.yml").is_file()):
+        logger.warning(f"Skipping cleanup: {result_zip.name} or outputs.yml missing in {work}")
+        return
+    log_path = work / CLEANUP_LOG
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    freed = 0
+    with open(log_path, "a") as log:
+        for path in cleanup_targets(request):
+            try:
+                size = _size(path)
+                _remove(path)
+            except OSError as exc:
+                logger.warning(f"Cleanup failed for {path}: {exc}")
+                log.write(f"FAILED {path}: {exc}\n")
+                continue
+            freed += size
+            log.write(f"removed {path} {size}\n")
+        log.write(f"freed {freed} bytes\n")
+    logger.info(f"Cleanup freed {freed / 1e9:.1f} GB in {work}")
+
+
 def run_request(
     request: DiannRunRequest,
     *,
@@ -176,4 +252,6 @@ def run_request(
     returncode = subprocess.run(cmd, check=False).returncode
     if returncode == 0 and not dry_run:
         deliver_outputs(request)
+        if request.params.output.cleanup_on_success:
+            cleanup_work_dir(request)
     return returncode

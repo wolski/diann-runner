@@ -142,6 +142,8 @@ class OutputParams(BaseModel):
     # Default True so normalized TOMLs written before this flag existed still
     # validate (pmultiqc report on by default); matches param_core's default.
     pmultiqc: bool = True
+    # Delete staged raws and intermediates after a successful run (prepare.cleanup_work_dir).
+    cleanup_on_success: bool = False
 
 
 class AdvancedParams(BaseModel):

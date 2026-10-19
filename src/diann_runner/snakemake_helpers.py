@@ -309,6 +309,7 @@ BFABRIC_TO_DRUNNER: dict[str, str] = {
     "output_fragment_quant": "fragment_quant",
     "output_include_libs": "include_libs",
     "output_pmultiqc": "pmultiqc",
+    "output_cleanup_on_success": "cleanup_on_success",
     "advanced_freestyle": "freestyle",
     "advanced_verbose": "verbose",
     "library_predictor": "library_predictor",

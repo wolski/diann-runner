@@ -154,6 +154,8 @@ DIANN_FIELDS: dict[str, FieldSpec] = {
     "fragment_quant": FieldSpec("output", _to_bool, default=False),
     "include_libs":   FieldSpec("output", _to_bool, default=False),
     "pmultiqc":       FieldSpec("output", _to_bool, default=True),
+    # off unless the executable checkbox sends true (old executables, SUSHI)
+    "cleanup_on_success": FieldSpec("output", _to_bool, default=False),
     # advanced / diagnostic (freestyle = arbitrary DIA-NN flags, quant steps B/C only)
     "freestyle": FieldSpec("advanced", _freestyle, default=[]),
     "verbose":   FieldSpec("advanced", int),
