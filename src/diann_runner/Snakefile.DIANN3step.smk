@@ -531,7 +531,9 @@ rule pmultiqc_diann_report:
         mkdir -p pmultiqc_input
         cp {input.report:q} pmultiqc_input/report.parquet
         cp {input.runlog:q} pmultiqc_input/report.log.txt
-        multiqc pmultiqc_input --diann-plugin \
+        # PYTHONUTF8: multiqc decodes `ps aux` with the locale encoding and crashes on
+        # non-ASCII command lines under an ASCII locale (MultiQC/MultiQC#3721)
+        PYTHONUTF8=1 multiqc pmultiqc_input --diann-plugin \
             -o pmultiqc_result \
             --filename pmultiqc_diann_report.html \
             --force --verbose
